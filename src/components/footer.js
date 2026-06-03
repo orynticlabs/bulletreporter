@@ -28,8 +28,7 @@ const CONTENT = {
     ],
     copyright: (
       <>© 2026 बुलेट रिपोर्टर। Developed By{' '}
-        <a href="#" className="text-[#e84118] hover:underline">Kraf Technologies</a>
-        {' '}(Powered By InGrey Pvt. Ltd.)
+        <a href="https://orynticlabs.com/" target="_blank" rel="noopener noreferrer" className="text-[#e84118] hover:underline">OrynticLabs</a>
       </>
     ),
     mainCatName: 'मुख्य समाचार',
@@ -57,8 +56,7 @@ const CONTENT = {
     ],
     copyright: (
       <>© 2026 Bullet Reporter. Developed By{' '}
-        <a href="#" className="text-[#e84118] hover:underline">Kraf Technologies</a>
-        {' '}(Powered By InGrey Pvt. Ltd.)
+        <a href="https://orynticlabs.com/" target="_blank" rel="noopener noreferrer" className="text-[#e84118] hover:underline">OrynticLabs</a>
       </>
     ),
     mainCatName: 'Top News',
@@ -135,14 +133,14 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[260px_1fr_1fr_1fr] gap-8 lg:gap-10">
 
           {/* Brand column */}
-<div>
-  <div className="mb-4">
-    <img
-      src="/logo.png"
-      alt="Bullet Reporter"
-      className="h-14 w-auto object-contain"
-    />
-  </div>
+          <div>
+            <div className="mb-4">
+              <img
+                src="/logo.png"
+                alt="Bullet Reporter"
+                className="h-14 w-auto object-contain"
+              />
+            </div>
             <p className="text-[#888] text-sm leading-7 mb-5">{t.tagline}</p>
             <div className="flex flex-wrap gap-2">
               {socialLinks.map(link => (

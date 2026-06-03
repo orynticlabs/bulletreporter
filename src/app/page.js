@@ -14,6 +14,8 @@ import { shareOnPlatform } from '@/utils/socialSharing'
 import { optimizeArticleData } from '@/utils/performanceUtils'
 import { getReadingTime } from '@/utils/timeUtils'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { Clock, User } from 'lucide-react'
+import { DUMMY_ARTICLES } from '@/data/dummyArticles'
 
 const fetchArticles = async ({ queryKey }) => {
   const [, { is_breaking, limit, offset }] = queryKey
@@ -68,22 +70,28 @@ export default function Home() {
 
   return (
     <Layout>
+      {/* Top Ad */}
       <div className="container mx-auto px-4 py-4">
         <AdBanner size="large" position="top_banner" />
       </div>
+
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <div className="lg:col-span-3 space-y-12">
 
-            {/* Breaking News */}
+            {/* ── Breaking News ── */}
             <section>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-bold text-primary">{t.home.breakingNews}</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-primary flex items-center gap-2">
+                  <span className="w-1 h-8 bg-red-600 rounded-full inline-block"></span>
+                  {t.home.breakingNews}
+                </h2>
                 <div className="flex space-x-2">
                   <span className="category-tag cursor-pointer" onClick={() => router.push(getLangPath('/news/breaking'))}>{t.home.viewAll}</span>
                   <span className="category-tag cursor-pointer" onClick={() => handleShare('whatsapp')}>{t.home.share}</span>
                 </div>
               </div>
+
               {breakingLoading ? (
                 <LoadingSpinner message={t.home.loadingBreaking} size="lg" variant="skeleton" />
               ) : breakingError ? (
@@ -108,17 +116,22 @@ export default function Home() {
               )}
             </section>
 
+            {/* ── Mid Ad ── */}
             <section><AdBanner size="medium" position="middle_banner" /></section>
 
-            {/* Latest News */}
+            {/* ── Latest News ── */}
             <section>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-bold text-primary">{t.home.latestNews}</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-primary flex items-center gap-2">
+                  <span className="w-1 h-8 bg-red-600 rounded-full inline-block"></span>
+                  {t.home.latestNews}
+                </h2>
                 <div className="flex space-x-2">
                   <span className="category-tag cursor-pointer" onClick={() => router.push(getLangPath('/news'))}>{t.home.viewAll}</span>
                   <span className="category-tag cursor-pointer" onClick={() => handleShare('whatsapp')}>{t.home.share}</span>
                 </div>
               </div>
+
               {articlesLoading ? (
                 <LoadingSpinner message={t.home.loadingNews} size="lg" variant="skeleton" />
               ) : articlesError ? (
@@ -142,9 +155,87 @@ export default function Home() {
               )}
             </section>
 
+            {/* ── विशेष लेख (Special Articles) ── */}
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold text-primary flex items-center gap-2">
+                  <span className="w-1 h-8 bg-red-600 rounded-full inline-block"></span>
+                  {lang === 'en' ? 'Special Articles' : 'विशेष लेख'}
+                </h2>
+                <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
+                  {lang === 'en' ? 'Featured' : 'फीचर्ड'}
+                </span>
+              </div>
+
+              {/* Featured big card — first article */}
+              <div
+                className="relative rounded-2xl overflow-hidden h-64 md:h-80 mb-6 cursor-pointer group shadow-lg"
+                onClick={() => router.push(getLangPath(`/article/${DUMMY_ARTICLES[0].slug}`))}
+              >
+                <img
+                  src={DUMMY_ARTICLES[0].image}
+                  alt={DUMMY_ARTICLES[0].title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
+                  <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-2 inline-block">
+                    {DUMMY_ARTICLES[0].category}
+                  </span>
+                  <h3 className="text-white font-bold text-lg md:text-2xl leading-snug mb-2">
+                    {DUMMY_ARTICLES[0].title}
+                  </h3>
+                  <div className="flex items-center gap-4 text-white/70 text-xs">
+                    <span className="flex items-center gap-1"><User className="w-3 h-3" />{DUMMY_ARTICLES[0].author}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{DUMMY_ARTICLES[0].readTime} {lang === 'en' ? 'min' : 'मिनट'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Remaining 5 articles — grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                {DUMMY_ARTICLES.slice(1).map(article => (
+                  <div
+                    key={article.id}
+                    className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group"
+                    onClick={() => router.push(getLangPath(`/article/${article.slug}`))}
+                  >
+                    <div className="relative h-44 overflow-hidden">
+                      <img
+                        src={article.image}
+                        alt={article.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <span className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        {article.category}
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-gray-800 text-sm md:text-base line-clamp-2 mb-2 group-hover:text-red-600 transition-colors">
+                        {article.title}
+                      </h3>
+                      <p className="text-gray-500 text-xs line-clamp-2 mb-3">{article.excerpt}</p>
+                      <div className="flex items-center justify-between text-xs text-gray-400 border-t pt-2">
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3 text-red-400" />{article.author}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-red-400" />{article.readTime} {lang === 'en' ? 'min' : 'मिनट'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* ── Bottom Ad ── */}
             <section><AdBanner size="large" position="bottom_banner" /></section>
           </div>
 
+          {/* ── Sidebar ── */}
           <div className="lg:col-span-1">
             <div className="sticky top-24"><Sidebar /></div>
           </div>
