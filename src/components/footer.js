@@ -116,11 +116,16 @@ export default function Footer() {
       }
     },
     staleTime: 5 * 60 * 1000,
-  });
+  })
+
+  // Normalize categories response (Payload returns { docs: [...] } sometimes)
+  const categoriesArray = Array.isArray(categories)
+    ? categories
+    : (categories && (Array.isArray(categories.docs) ? categories.docs : []))
 
   const categoryLinks = [
     { name: t.mainCatName, href: '/' },
-    ...categories.slice(0, 9).map(cat => ({
+    ...categoriesArray.slice(0, 9).map(cat => ({
       name: lang === 'hi' ? cat.name : (cat.nameEn || cat.name),
       href: `/category/${encodeURIComponent(cat.name)}`,
     })),

@@ -4,14 +4,14 @@ import React, { useRef, useImperativeHandle, forwardRef } from 'react'
 import dynamic from 'next/dynamic'
 
 // react-quill must be dynamically imported in Next.js (SSR issue)
-const ReactQuill = dynamic(() => import('react-quill'), {
+const ReactQuill = dynamic(() => import('react-quill-new'), {
   ssr: false,
   loading: () => <div className="h-40 bg-gray-100 animate-pulse rounded-lg"></div>,
 })
 
 // Import quill CSS only on client
 if (typeof window !== 'undefined') {
-  require('react-quill/dist/quill.snow.css')
+  require('react-quill-new/dist/quill.snow.css')
 }
 
 const QuillWrapper = forwardRef(({ value, onChange, theme = 'snow', placeholder = 'Enter text...' }, ref) => {

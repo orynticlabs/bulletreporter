@@ -46,12 +46,17 @@ function Header() {
     staleTime: 10 * 60 * 1000,
   })
 
+  // Normalize categories response (Payload returns { docs: [...] } sometimes)
+  const categoriesArray = Array.isArray(categories)
+    ? categories
+    : (categories && (Array.isArray(categories.docs) ? categories.docs : []))
+
   // Build nav URLs based on current language
   const getLangPath = (path) => lang === 'en' ? `/en${path}` : path
 
   const mainCategories = [
     { name: t.header.mainNews, href: getLangPath('/') },
-    ...categories.map(cat => ({
+    ...categoriesArray.map(cat => ({
       name: cat.name,
       href: getLangPath(`/category/${encodeURIComponent(cat.name)}`)
     }))

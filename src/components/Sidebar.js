@@ -69,6 +69,11 @@ function Sidebar() {
     retry: 1,
   })
 
+  // Normalize categories response (Payload returns { docs: [...] } sometimes)
+  const categoriesArray = Array.isArray(categories)
+    ? categories
+    : (categories && (Array.isArray(categories.docs) ? categories.docs : []))
+
   const getLangPath = useCallback((path) => lang === 'en' ? `/en${path}` : path, [lang])
 
   return (
@@ -183,11 +188,11 @@ function Sidebar() {
               <div key={i} className="h-8 bg-gray-100 animate-pulse rounded-lg"></div>
             ))}
           </div>
-        ) : categories.length === 0 ? (
+        ) : categoriesArray.length === 0 ? (
           <p className="text-gray-500 text-sm">{t.sidebar.noCategories}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {categories.map(cat => (
+            {categoriesArray.map(cat => (
               <button key={cat.id || cat.name}
                 className="px-3 py-1.5 bg-red-50 hover:bg-red-600 text-red-700 hover:text-white text-sm font-medium rounded-full transition-colors border border-red-200"
                 onClick={() => router.push(getLangPath(`/category/${encodeURIComponent(cat.name)}`))}
