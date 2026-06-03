@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------ */
+/* Base Theme Variables    */
+/* ------------------------ */
+@layer base {
+  :root {
+    /* App Base Colors */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
+
+    --primary: 350 85% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-dark: 350 90% 35%;
+    --primary-light: 350 70% 55%;
+
+    --accent: 45 95% 55%;
+    --accent-foreground: 0 0% 15%;
+    --accent-dark: 45 85% 45%;
+    --accent-light: 45 100% 75%;
+
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 15%;
+    --secondary-dark: 0 0% 90%;
+
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 45%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 96%;
+    --ring: 350 85% 45%;
+
+    --radius: 0.75rem;
+
+    /* News Specific Colors */
+    --news-header: 350 85% 45%;
+    --news-accent: 45 95% 55%;
+    --breaking-news: 0 85% 60%;
+    --category-tag: 45 85% 45%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(350 85% 45%), hsl(350 90% 35%));
+    --gradient-accent: linear-gradient(135deg, hsl(45 95% 55%), hsl(45 85% 45%));
+    --gradient-hero: linear-gradient(135deg, hsl(350 85% 45%), hsl(45 95% 55%));
+
+    /* Shadows */
+    --shadow-news-card: 0 4px 12px hsl(0 0% 0% / 0.1);
+    --shadow-header: 0 2px 8px hsl(350 85% 45% / 0.15);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 350 85% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-dark: 350 90% 40%;
+    --primary-light: 350 70% 60%;
+
+    --accent: 45 95% 60%;
+    --accent-foreground: 0 0% 15%;
+    --accent-dark: 45 85% 50%;
+    --accent-light: 45 100% 80%;
+
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 95%;
+    --secondary-dark: 0 0% 12%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 95%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 350 85% 50%;
+
+    --news-header: 350 85% 50%;
+    --news-accent: 45 95% 60%;
+    --breaking-news: 0 85% 65%;
+    --category-tag: 45 85% 50%;
+
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 350 85% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 350 85% 50%;
+  }
+
+  /* Global element base styles */
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-hindi antialiased;
+  }
+
+  /* Font family setup */
+  .font-hindi {
+    font-family: 'Noto Sans Devanagari', 'Inter', sans-serif;
+  }
+
+  .font-english {
+    font-family: 'Inter', sans-serif;
+  }
+  /* Hide scrollbar cross-browser */
+.scrollbar-hide::-webkit-scrollbar { display: none !important; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Line clamp utilities */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+}
+/* ─── Mobile Responsive Fixes ─────────────────────── */
+
+/* Better touch targets on mobile */
+@media (max-width: 768px) {
+  button, a, [role="button"] {
+    min-height: 40px;
+  }
+  
+  /* Bigger text on article body for readability */
+  .prose p {
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+  
+  /* Prevent horizontal overflow */
+  .container {
+    overflow-x: hidden;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better image rendering */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Line clamp utilities */
+.line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+.line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+
+/* Category tag */
+.category-tag {
+  @apply inline-block bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full border border-red-200 hover:bg-red-600 hover:text-white transition-colors cursor-pointer;
+}
+
+/* Aspect ratio for video embeds */
+.aspect-video {
+  aspect-ratio: 16 / 9;
+}
+
+/* Prose styles for article body */
+.prose h1, .prose h2, .prose h3 {
+  color: #111827;
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.prose p { margin-bottom: 1em; }
+.prose img { border-radius: 0.5rem; margin: 1em auto; }
+.prose a { color: #dc2626; text-decoration: underline; }
+.prose ul, .prose ol { padding-left: 1.5em; margin-bottom: 1em; }
+.prose blockquote {
+  border-left: 4px solid #dc2626;
+  padding-left: 1em;
+  color: #4b5563;
+  font-style: italic;
+  margin: 1em 0;
+}
