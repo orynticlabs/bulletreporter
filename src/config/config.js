@@ -1,6 +1,6 @@
 const config = {
   // API Configuration
-  API_URL: process.env.NEXT_PUBLIC_API_URL,
+  API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://bullet-reporter-backend.onrender.com/api',
   
   // Environment
   NODE_ENV: process.env.NODE_ENV || 'development',

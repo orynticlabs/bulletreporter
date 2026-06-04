@@ -78,6 +78,15 @@ function Header() {
     staleTime: 10 * 60 * 1000,
   })
 
+<<<<<<< HEAD
+=======
+        // Normalize categories responses that wrap results in docs.
+  const categoriesArray = Array.isArray(categories)
+    ? categories
+    : (categories && (Array.isArray(categories.docs) ? categories.docs : []))
+
+  // Build nav URLs based on current language
+>>>>>>> ab4375c (Updated Payload Issue)
   const getLangPath = (path) => lang === 'en' ? `/en${path}` : path
 
   const mainCategories = [

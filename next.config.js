@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const { withPayload } = require('@payloadcms/next/withPayload')
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://bullet-reporter-backend.onrender.com/api'
+
 const nextConfig = {
   // ─── Performance ───────────────────────────────────
   compress: true,
@@ -10,6 +12,10 @@ const nextConfig = {
   // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
+  },
+
+  env: {
+    NEXT_PUBLIC_API_URL: apiUrl,
   },
 
   // ─── Images ────────────────────────────────────────
@@ -82,30 +88,6 @@ const nextConfig = {
   // ─── Client packages (needed for react-quill SSR) ──
   transpilePackages: ['react-quill-new'],
 
-  // ─── Webpack: replace node_modules CSS/SCSS with empty stub on server ──
-  // (avoids "built-in-css-disabled" error — no CSS loader rules added)
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      const { NormalModuleReplacementPlugin } = require('webpack')
-      // Only null plain .css imports from node_modules JS files.
-      // Payload's component styles are .scss and must compile normally so
-      // Next.js can collect them into the client CSS bundle.
-      config.plugins.push(
-        new NormalModuleReplacementPlugin(
-          /\.css$/,
-          (resource) => {
-            const context = resource.context || ''
-            const issuer = resource.contextInfo?.issuer || ''
-            const issuerIsStylesheet = /\.(css|scss|sass)$/.test(issuer)
-            if (context.includes('node_modules') && !issuerIsStylesheet) {
-              resource.request = require.resolve('./src/empty-module.js')
-            }
-          }
-        )
-      )
-    }
-    return config
-  },
 }
 
 module.exports = withPayload(nextConfig)

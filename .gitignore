@@ -10,6 +10,10 @@
 /.next/
 /out/
 
+# payload cms local database
+payload.db
+payload.db-*
+
 # production
 /build
 

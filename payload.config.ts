@@ -1,5 +1,5 @@
 import { buildConfig } from 'payload'
-import { postgresAdapter } from '@payloadcms/db-postgres'
+import { sqliteAdapter } from '@payloadcms/db-sqlite'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import sharp from 'sharp'
 import path from 'path'
@@ -8,21 +8,29 @@ import { fileURLToPath } from 'url'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
+const databaseUrl = process.env.PAYLOAD_DATABASE_URL || 'file:./payload.db'
+
 export default buildConfig({
-  secret: process.env.PAYLOAD_SECRET || 'bullet-reporter-secret-key-change-in-production',
+  secret: process.env.PAYLOAD_SECRET || 'change-this-payload-secret-for-production',
   sharp,
+
   admin: {
     user: 'users',
+    importMap: {
+      baseDir: dirname,
+      importMapFile: path.resolve(dirname, 'src/app/(payload)/admin/importMap.js'),
+    },
   },
-  db: postgresAdapter({
-    pool: {
-      connectionString: process.env.DATABASE_URL?.replace('sslmode=require', 'sslmode=verify-full'),
-      ssl: { rejectUnauthorized: true },
+
+  db: sqliteAdapter({
+    client: {
+      url: databaseUrl,
     },
   }),
+
   editor: lexicalEditor(),
+
   collections: [
-    // ─── Users ───────────────────────────────────────
     {
       slug: 'users',
       auth: true,
@@ -31,13 +39,21 @@ export default buildConfig({
       },
       fields: [
         { name: 'name', type: 'text', required: true },
-        { name: 'role', type: 'select', options: ['admin', 'editor', 'author'], defaultValue: 'author' },
+        {
+          name: 'role',
+          type: 'select',
+          options: [
+            { label: 'Admin', value: 'admin' },
+            { label: 'Editor', value: 'editor' },
+            { label: 'Author', value: 'author' },
+          ],
+          defaultValue: 'author',
+          required: true,
+        },
         { name: 'bio', type: 'textarea' },
         { name: 'avatar', type: 'upload', relationTo: 'media' },
       ],
     },
-
-    // ─── Media ───────────────────────────────────────
     {
       slug: 'media',
       upload: {
@@ -49,17 +65,19 @@ export default buildConfig({
           { name: 'hero', width: 1280, height: 720, position: 'centre' },
         ],
       },
+      admin: {
+        useAsTitle: 'alt',
+      },
       fields: [
         { name: 'alt', type: 'text', required: true },
         { name: 'caption', type: 'text' },
       ],
     },
-
-    // ─── Categories ──────────────────────────────────
     {
       slug: 'categories',
       admin: {
         useAsTitle: 'name',
+        defaultColumns: ['name', 'slug', 'order'],
       },
       fields: [
         { name: 'name', type: 'text', required: true },
@@ -70,8 +88,6 @@ export default buildConfig({
         { name: 'order', type: 'number', defaultValue: 0 },
       ],
     },
-
-    // ─── News Articles ────────────────────────────────
     {
       slug: 'news',
       admin: {
@@ -89,7 +105,6 @@ export default buildConfig({
         {
           name: 'content',
           type: 'richText',
-          editor: lexicalEditor(),
           required: true,
         },
         {
@@ -159,8 +174,6 @@ export default buildConfig({
         },
       ],
     },
-
-    // ─── Comments ────────────────────────────────────
     {
       slug: 'comments',
       admin: {
@@ -189,12 +202,11 @@ export default buildConfig({
         },
       ],
     },
-
-    // ─── Advertisements ──────────────────────────────
     {
       slug: 'advertisements',
       admin: {
         useAsTitle: 'title',
+        defaultColumns: ['title', 'position', 'isActive', 'startsAt', 'endsAt'],
       },
       fields: [
         { name: 'title', type: 'text', required: true },
@@ -203,7 +215,13 @@ export default buildConfig({
         {
           name: 'position',
           type: 'select',
-          options: ['header', 'sidebar', 'footer', 'inline'],
+          options: [
+            { label: 'Top Banner', value: 'top_banner' },
+            { label: 'Middle Banner', value: 'middle_banner' },
+            { label: 'Bottom Banner', value: 'bottom_banner' },
+            { label: 'Sidebar', value: 'sidebar' },
+            { label: 'Bottom Sidebar', value: 'bottom_sidebar' },
+          ],
           required: true,
         },
         { name: 'isActive', type: 'checkbox', defaultValue: true },
@@ -214,7 +232,6 @@ export default buildConfig({
   ],
 
   globals: [
-    // ─── Site Settings ────────────────────────────────
     {
       slug: 'settings',
       label: 'Site Settings',
@@ -223,12 +240,16 @@ export default buildConfig({
         { name: 'tagline', type: 'text' },
         { name: 'logo', type: 'upload', relationTo: 'media' },
         { name: 'favicon', type: 'upload', relationTo: 'media' },
-        { name: 'socialLinks', type: 'group', fields: [
-          { name: 'facebook', type: 'text' },
-          { name: 'twitter', type: 'text' },
-          { name: 'instagram', type: 'text' },
-          { name: 'youtube', type: 'text' },
-        ]},
+        {
+          name: 'socialLinks',
+          type: 'group',
+          fields: [
+            { name: 'facebook', type: 'text' },
+            { name: 'twitter', type: 'text' },
+            { name: 'instagram', type: 'text' },
+            { name: 'youtube', type: 'text' },
+          ],
+        },
         { name: 'footerText', type: 'textarea' },
         { name: 'breakingNewsTicker', type: 'checkbox', defaultValue: true },
       ],
@@ -236,6 +257,6 @@ export default buildConfig({
   ],
 
   typescript: {
-    outputFile: path.resolve(dirname, 'payload-types.ts'),
+    outputFile: path.resolve(dirname, 'src/payload-types.ts'),
   },
 })

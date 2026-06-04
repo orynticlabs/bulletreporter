@@ -1,35 +1,33 @@
 import './globals.css'
 import Providers from './providers'
+import JsonLd from '@/components/JsonLd'
+import {
+  buildMetadata,
+  organizationJsonLd,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE,
+  websiteJsonLd,
+} from '@/lib/seo'
 
 export const metadata = {
-  metadataBase: new URL('https://bullet-reporter.vercel.app'),
-  title: {
-    default: 'Bullet Reporter - ताज़ा खबरें | Latest Hindi News',
-    template: '%s | Bullet Reporter',
+  ...buildMetadata({
+    title: {
+      default: `${SITE_TITLE} - Latest Hindi News`,
+      template: `%s | ${SITE_NAME}`,
+    },
+    description: SITE_DESCRIPTION,
+    path: '/',
+  }),
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
   },
-  description: 'सबसे तेज़ और विश्वसनीय हिंदी समाचार - Latest breaking news in Hindi and English',
-  keywords: ['hindi news', 'breaking news', 'bullet reporter', 'ताज़ा खबरें', 'ब्रेकिंग न्यूज़'],
-  authors: [{ name: 'Bullet Reporter' }],
-  robots: { index: true, follow: true },
-  openGraph: {
-    type: 'website',
-    locale: 'hi_IN',
-    alternateLocale: ['en_IN'],
-    siteName: 'Bullet Reporter',
-    title: 'Bullet Reporter - ताज़ा खबरें',
-    description: 'सबसे तेज़ हिंदी समाचार',
-    images: [{ url: '/favicon.png', width: 512, height: 512, alt: 'Bullet Reporter' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Bullet Reporter - ताज़ा खबरें',
-    description: 'सबसे तेज़ हिंदी समाचार',
-    images: ['/favicon.png'],
-  },
-  // Both language alternates for SEO
-  alternates: {
-    canonical: '/',
-    languages: { 'hi': '/', 'en': '/en' },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: SITE_NAME,
   },
 }
 
@@ -65,6 +63,8 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-title" content="Bullet Reporter" />
       </head>
       <body suppressHydrationWarning>
+        <JsonLd data={organizationJsonLd()} />
+        <JsonLd data={websiteJsonLd()} />
         <Providers>
           {children}
         </Providers>

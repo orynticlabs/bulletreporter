@@ -1,4 +1,5 @@
 import { RootPage } from '@payloadcms/next/views'
+import type { SanitizedConfig } from 'payload'
 import { importMap } from '../../importMap'
 
 export const dynamic = 'force-dynamic'
@@ -9,10 +10,10 @@ type Args = {
   searchParams: Promise<{ [key: string]: string | string[] }>
 }
 
-export default async function Page({ params, searchParams }: Args) {
-  const mod = await import('@payload-config')
-  const config = mod?.default ?? mod
+const configPromise = import('@payload-config').then(
+  ({ default: config }) => config,
+) as Promise<SanitizedConfig>
 
-  // @ts-ignore
-  return RootPage({ config, params, searchParams, importMap })
+export default function Page({ params, searchParams }: Args) {
+  return RootPage({ config: configPromise, params, searchParams, importMap })
 }

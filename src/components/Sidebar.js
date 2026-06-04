@@ -69,7 +69,7 @@ function Sidebar() {
     retry: 1,
   })
 
-  // Normalize categories response (Payload returns { docs: [...] } sometimes)
+        // Normalize categories responses that wrap results in docs.
   const categoriesArray = Array.isArray(categories)
     ? categories
     : (categories && (Array.isArray(categories.docs) ? categories.docs : []))

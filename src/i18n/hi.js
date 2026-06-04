@@ -7,7 +7,7 @@ const hi = {
     newsAlerts: 'समाचार अलर्ट',
     followUs: 'हमें फॉलो करें',
     searchPlaceholder: 'समाचार खोजें...',
-    adminPanel: 'एडमिन पैनल',
+    adminPanel: 'CMS एडमिन',
     mainNews: 'मुख्य समाचार',
     loadingCategories: 'श्रेणियां लोड हो रही हैं...',
   },
@@ -120,25 +120,6 @@ const hi = {
     results: 'परिणाम मिले',
     clickToRead: 'क्लिक करें',
     searching: 'खोज रहे हैं...',
-  },
-
-  // Admin
-  admin: {
-    dashboard: 'डैशबोर्ड',
-    articles: 'लेख प्रबंधन',
-    categories: 'श्रेणी प्रबंधन',
-    users: 'उपयोगकर्ता प्रबंधन',
-    analytics: 'एनालिटिक्स',
-    settings: 'सेटिंग्स',
-    advertisements: 'विज्ञापन',
-    comments: 'टिप्पणियां',
-    newArticle: 'नया लेख लिखें',
-    adminPanel: 'न्यूज़ एडमिन पैनल',
-    logout: 'लॉगआउट',
-    backToSite: 'मुख्य साइट पर जाएं',
-    login: 'लॉगिन करें',
-    loginTitle: 'एडमिन लॉगिन',
-    loginSubtitle: 'अपने एडमिन पैनल में प्रवेश करें',
   },
 
   // Common

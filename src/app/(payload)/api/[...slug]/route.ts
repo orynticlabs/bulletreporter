@@ -1,10 +1,15 @@
-import { REST_DELETE, REST_GET, REST_PATCH, REST_POST } from '@payloadcms/next/routes'
+import { REST_DELETE, REST_GET, REST_OPTIONS, REST_PATCH, REST_POST, REST_PUT } from '@payloadcms/next/routes'
+import type { SanitizedConfig } from 'payload'
 
 export const dynamic = 'force-dynamic'
 
-const configPromise = import('@payload-config').then((m) => m?.default ?? m)
+const configPromise = import('@payload-config').then(
+  ({ default: config }) => config,
+) as Promise<SanitizedConfig>
 
 export const GET = REST_GET(configPromise)
 export const POST = REST_POST(configPromise)
 export const DELETE = REST_DELETE(configPromise)
 export const PATCH = REST_PATCH(configPromise)
+export const PUT = REST_PUT(configPromise)
+export const OPTIONS = REST_OPTIONS(configPromise)

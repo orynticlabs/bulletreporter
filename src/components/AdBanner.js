@@ -4,12 +4,29 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useQuery } from '@tanstack/react-query';
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
 const fetchAdvertisements = async () => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  // Change this line to call the public endpoint for active advertisements
   const response = await axios.get(`${apiUrl}/advertisements/active`);
   return response.data;
 };
+
+const getMediaUrl = (ad) => {
+  const image = ad.imageUrl || ad.image;
+  const url = typeof image === 'string' ? image : image?.url;
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+
+  return url;
+};
+
+const normalizeAd = (ad) => ({
+  ...ad,
+  imageUrl: getMediaUrl(ad),
+  isActive: ad.isActive ?? ad.is_active ?? true,
+  linkUrl: ad.linkUrl || ad.link || '#',
+  placement: ad.placement || ad.position,
+});
 
 const AdBanner = ({ size, position }) => {
   const { data: advertisements, isLoading, error } = useQuery({
@@ -21,7 +38,8 @@ const AdBanner = ({ size, position }) => {
 
   useEffect(() => {
     if (advertisements && position) {
-      const foundAd = advertisements.find(
+      const adList = Array.isArray(advertisements) ? advertisements : advertisements.docs || [];
+      const foundAd = adList.map(normalizeAd).find(
         (ad) => ad.placement === position && ad.isActive
       );
       setCurrentAd(foundAd);

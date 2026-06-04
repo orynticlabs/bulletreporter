@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,7 +42,7 @@ function ResetPassword() {
         title: "सफल",
         description: response.data.message || "आपका पासवर्ड सफलतापूर्वक रीसेट कर दिया गया है।",
       });
-      router.push("/admin/login");
+      router.push("/");
     } catch (error) {
       // console.error('Reset password error:', error.response?.data || error.message);
       toast({
@@ -120,12 +119,6 @@ function ResetPassword() {
               {isLoading ? "रीसेट कर रहा है..." : "पासवर्ड रीसेट करें"}
             </Button>
           </form>
-          
-          <div className="mt-4 text-center">
-            <Link href="/admin-login" className="text-sm text-primary hover:underline">
-              लॉगिन पेज पर वापस जाएं
-            </Link>
-          </div>
         </CardContent>
       </Card>
     </div>

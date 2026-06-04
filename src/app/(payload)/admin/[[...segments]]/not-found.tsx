@@ -1,12 +1,16 @@
 import { NotFoundPage } from '@payloadcms/next/views'
+import type { SanitizedConfig } from 'payload'
 import { importMap } from '../../importMap'
 
-export const dynamic = 'force-dynamic'
+type Args = {
+  params: Promise<{ segments: string[] }>
+  searchParams: Promise<{ [key: string]: string | string[] }>
+}
 
-export default async function NotFound() {
-  const mod = await import('@payload-config')
-  const config = mod?.default ?? mod
+const configPromise = import('@payload-config').then(
+  ({ default: config }) => config,
+) as Promise<SanitizedConfig>
 
-  // @ts-ignore
-  return NotFoundPage({ config, importMap })
+export default function NotFound({ params, searchParams }: Args) {
+  return NotFoundPage({ config: configPromise, params, searchParams, importMap })
 }

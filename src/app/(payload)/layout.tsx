@@ -1,20 +1,18 @@
 import { RootLayout } from '@payloadcms/next/layouts'
 import React from 'react'
+import type { SanitizedConfig } from 'payload'
 import { importMap } from './importMap'
 import { payloadServerFunction } from './serverFunctions'
 
-// Payload admin stylesheet — must be imported here so Next.js includes it in the client bundle
-// Global variables + resets (defines --theme-*, --color-* CSS custom properties)
-import '@payloadcms/ui/scss/app.scss'
-// Pre-compiled component class styles (.btn, .login, .nav, etc.)
-import '@payloadcms/ui/styles.css'
+import '@payloadcms/next/css'
 
-export default async function PayloadRootLayout({ children }: { children: React.ReactNode }) {
-  const mod = await import('@payload-config')
-  const config = mod?.default ?? mod
+const configPromise = import('@payload-config').then(
+  ({ default: config }) => config,
+) as Promise<SanitizedConfig>
 
+export default function PayloadRootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RootLayout config={config} importMap={importMap} serverFunction={payloadServerFunction}>
+    <RootLayout config={configPromise} importMap={importMap} serverFunction={payloadServerFunction}>
       {children}
     </RootLayout>
   )

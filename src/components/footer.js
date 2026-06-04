@@ -27,7 +27,7 @@ const CONTENT = {
       { name: 'T&C', href: '/terms' },
     ],
     copyright: (
-      <>© 2026 बुलेट रिपोर्टर। Developed By{' '}
+      <>© 2026 बुलेट रिपोर्टर। Built by{' '}
         <a href="https://orynticlabs.com/" target="_blank" rel="noopener noreferrer" className="text-[#e84118] hover:underline">OrynticLabs</a>
       </>
     ),
@@ -55,7 +55,7 @@ const CONTENT = {
       { name: 'T&C', href: '/terms' },
     ],
     copyright: (
-      <>© 2026 Bullet Reporter. Developed By{' '}
+      <>© 2026 Bullet Reporter. Built by{' '}
         <a href="https://orynticlabs.com/" target="_blank" rel="noopener noreferrer" className="text-[#e84118] hover:underline">OrynticLabs</a>
       </>
     ),
@@ -118,7 +118,7 @@ export default function Footer() {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Normalize categories response (Payload returns { docs: [...] } sometimes)
+      // Normalize categories responses that wrap results in docs.
   const categoriesArray = Array.isArray(categories)
     ? categories
     : (categories && (Array.isArray(categories.docs) ? categories.docs : []))

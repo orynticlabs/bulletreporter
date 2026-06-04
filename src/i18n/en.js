@@ -7,7 +7,7 @@ const en = {
     newsAlerts: 'News Alerts',
     followUs: 'Follow Us',
     searchPlaceholder: 'Search news...',
-    adminPanel: 'Admin Panel',
+    adminPanel: 'CMS Admin',
     mainNews: 'Home',
     loadingCategories: 'Loading categories...',
   },
@@ -120,25 +120,6 @@ const en = {
     results: 'results found',
     clickToRead: 'Click to read',
     searching: 'Searching...',
-  },
-
-  // Admin
-  admin: {
-    dashboard: 'Dashboard',
-    articles: 'Article Management',
-    categories: 'Category Management',
-    users: 'User Management',
-    analytics: 'Analytics',
-    settings: 'Settings',
-    advertisements: 'Advertisements',
-    comments: 'Comments',
-    newArticle: 'Write New Article',
-    adminPanel: 'News Admin Panel',
-    logout: 'Logout',
-    backToSite: 'Back to Main Site',
-    login: 'Login',
-    loginTitle: 'Admin Login',
-    loginSubtitle: 'Enter your admin panel',
   },
 
   // Common
