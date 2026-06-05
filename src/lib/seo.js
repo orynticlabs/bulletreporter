@@ -22,6 +22,19 @@ export function absoluteUrl(path = '/') {
   return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`
 }
 
+// For Cloudinary URLs, inject a w_1280,h_720,c_fill,f_jpg,q_auto transformation
+// so the OG image is always exactly 1280×720 regardless of the original upload size.
+function toOgImageUrl(url = '') {
+  if (!url) return url
+  const cloudinaryRe = /^(https?:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)([^/]+\/)?(.+)$/
+  const match = url.match(cloudinaryRe)
+  if (!match) return url
+  const [, base, existingTransform, publicId] = match
+  // Replace any existing transform segment with the OG-specific one
+  void existingTransform
+  return `${base}w_1280,h_720,c_fill,f_jpg,q_auto/${publicId}`
+}
+
 export function stripHtml(value = '') {
   return String(value)
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -50,9 +63,21 @@ export function buildMetadata({
   noIndex = false,
 } = {}) {
   const canonical = absoluteUrl(path)
-  const imageUrl = absoluteUrl(image || DEFAULT_IMAGE)
+  const rawImageUrl = absoluteUrl(image || DEFAULT_IMAGE)
+  const ogImageUrl = toOgImageUrl(rawImageUrl)
   const cleanDescription = truncate(description || SITE_DESCRIPTION)
   const plainTitle = typeof title === 'string' ? title : title?.default || SITE_TITLE
+
+  const ogImages = [
+    {
+      url: ogImageUrl,
+      secureUrl: ogImageUrl,
+      width: 1280,
+      height: 720,
+      alt: plainTitle,
+      type: 'image/jpeg',
+    },
+  ]
 
   return {
     metadataBase: new URL(SITE_URL),
@@ -91,23 +116,20 @@ export function buildMetadata({
       siteName: SITE_NAME,
       title: plainTitle,
       description: cleanDescription,
-      publishedTime,
-      modifiedTime,
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: title,
-        },
-      ],
+      ...(type === 'article' && {
+        publishedTime,
+        modifiedTime,
+        authors,
+      }),
+      images: ogImages,
     },
     twitter: {
       card: 'summary_large_image',
+      site: '@bulletreporter',
+      creator: '@bulletreporter',
       title: plainTitle,
       description: cleanDescription,
-      images: [imageUrl],
-      creator: '@bulletreporter',
+      images: [ogImageUrl],
     },
     other: {
       'news_keywords': [...SITE_KEYWORDS, ...keywords].slice(0, 10).join(', '),

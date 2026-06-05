@@ -54,13 +54,13 @@ export default function NewsDetail({ initialArticle = null }) {
     retry: 1,
   })
 
-  // Fetch related articles
+  // Fetch related articles — use category_slug (English name) so the API filter resolves correctly
   const { data: relatedData } = useQuery({
-    queryKey: ['related', article?.category],
+    queryKey: ['related', article?.category_slug || article?.category],
     queryFn: async () => {
-      return fetchPayloadArticles({ category: article.category, limit: 4 })
+      return fetchPayloadArticles({ category: article.category_slug || article.category, limit: 4 })
     },
-    enabled: !!article?.category,
+    enabled: !!(article?.category_slug || article?.category),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -161,11 +161,11 @@ export default function NewsDetail({ initialArticle = null }) {
           {/* Main Article */}
           <article className="lg:col-span-3">
             <Card className="overflow-hidden shadow-lg">
-              {/* Hero Image */}
+              {/* Hero Image — 1280×720 (16:9) */}
               {article.image_url && (
-                <div className="relative h-48 sm:h-64 md:h-80 lg:h-96 w-full overflow-hidden">
+                <div className="relative w-full" style={{ aspectRatio: '16/9', maxHeight: '720px' }}>
                   <img src={article.image_url} alt={article.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain bg-black"
                     loading="eager"
                   />
                 </div>
@@ -362,7 +362,7 @@ export default function NewsDetail({ initialArticle = null }) {
               {relatedArticles.map(a => (
                 <NewsCard key={a.id} id={a.id} title={a.title}
                   excerpt={(a.description || '').slice(0, 80) + '...'}
-                  category={a.category} author={a.editor_name || a.author_name}
+                  category={a.category} categorySlug={a.category_slug} author={a.editor_name || a.author_name}
                   publishedAt={a.created_at} readTime={getReadingTime(a.contentText || a.description)}
                   views={a.views || 0} imageUrl={a.image_url} slug={a.slug} />
               ))}

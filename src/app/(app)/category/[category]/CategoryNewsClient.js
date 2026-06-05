@@ -72,7 +72,7 @@ export default function CategoryNews() {
               {articles.map(article => (
                 <NewsCard key={article.id} id={article.id} title={article.title}
                   excerpt={(article.description || '').slice(0, 100) + '...'}
-                  category={article.category} author={article.editor_name || article.author_name}
+                  category={article.category} categorySlug={article.category_slug} author={article.editor_name || article.author_name}
                   publishedAt={article.created_at} readTime={getReadingTime(article.contentText || article.description)}
                   views={article.views || 0} imageUrl={article.image_url}
                   youtubeUrl={article.youtube_url} slug={article.slug} />

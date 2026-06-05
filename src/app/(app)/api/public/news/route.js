@@ -20,6 +20,35 @@ const getNumber = (value, fallback) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
 
+/**
+ * Resolve a category name/slug string to a numeric ID.
+ * The frontend routes by the category name shown on the card, which may be
+ * the nameHindi value.  We search all three identifiers so the filter always
+ * matches regardless of which display name ended up in the URL.
+ */
+async function resolveCategoryId(payload, categoryParam) {
+  if (!categoryParam) return null
+  try {
+    const result = await payload.find({
+      collection: 'categories',
+      limit: 1,
+      depth: 0,
+      draft: true,
+      overrideAccess: true,
+      where: {
+        or: [
+          { name: { equals: categoryParam } },
+          { nameHindi: { equals: categoryParam } },
+          { slug: { equals: categoryParam } },
+        ],
+      },
+    })
+    return result.docs[0]?.id ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const cacheKey = getCacheKey(searchParams)
@@ -33,21 +62,41 @@ export async function GET(request) {
   }
 
   const payload = await getPayload({ config })
+
+  // Build the where clause using only our custom status field.
+  // We query with draft:true so that articles saved (but not yet "Published"
+  // via the Payload Publish button) are included — our custom status field is
+  // the sole visibility gate.
   const where = { status: { equals: 'published' } }
+
   const isBreaking = getBoolean(searchParams.get('isBreaking'))
   const isFeatured = getBoolean(searchParams.get('isFeatured'))
   const slug = normalizeRouteSlug(searchParams.get('slug'))
-  const category = searchParams.get('category')
+  const categoryParam = searchParams.get('category')
   const search = searchParams.get('search')
 
   if (typeof isBreaking === 'boolean') where.isBreaking = { equals: isBreaking }
   if (typeof isFeatured === 'boolean') where.isFeatured = { equals: isFeatured }
   if (slug) where.slug = { equals: slug }
-  if (category) where['category.name'] = { equals: category }
   if (search) where.title = { like: search }
+
+  // Resolve category name → ID so the JOIN works reliably regardless of
+  // whether nameHindi or name ended up in the URL.
+  if (categoryParam) {
+    const categoryId = await resolveCategoryId(payload, categoryParam)
+    if (categoryId) {
+      where.category = { equals: categoryId }
+    } else {
+      // No matching category — return empty result immediately
+      const empty = { docs: [], totalDocs: 0, totalPages: 1, page: 1, hasNextPage: false, hasPrevPage: false }
+      return Response.json(empty, { headers: { 'Cache-Control': 'public, max-age=30' } })
+    }
+  }
 
   const data = await payload.find({
     collection: 'news',
+    draft: true,           // include articles saved but not yet Published via Payload button
+    overrideAccess: true,  // access rule is enforced manually via the where clause above
     depth: getNumber(searchParams.get('depth'), 1),
     limit: getNumber(searchParams.get('limit'), 10),
     page: getNumber(searchParams.get('page'), 1),

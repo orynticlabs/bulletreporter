@@ -10,10 +10,13 @@ import { shareOnPlatform } from '@/utils/socialSharing'
 import { getRelativeTime } from '@/utils/dateUtils'
 import { useLanguage } from '@/contexts/LanguageContext'
 
-function NewsCard({ id, title, excerpt, category, author, publishedAt, readTime, views = 0, imageUrl, youtubeUrl, slug, featured = false }) {
+function NewsCard({ id, title, excerpt, category, categorySlug, author, publishedAt, readTime, views = 0, imageUrl, youtubeUrl, slug, featured = false }) {
   const router = useRouter()
   const { toast } = useToast()
   const { t, lang } = useLanguage()
+
+  // categorySlug is the URL-safe key (English name); falls back to display name
+  const categoryKey = categorySlug || category
 
   const getLangPath = useCallback((path) => lang === 'en' ? `/en${path}` : path, [lang])
 
@@ -23,8 +26,8 @@ function NewsCard({ id, title, excerpt, category, author, publishedAt, readTime,
 
   const handleCategoryClick = useCallback((e) => {
     e.stopPropagation()
-    if (category) router.push(getLangPath(`/category/${encodeURIComponent(category)}`))
-  }, [category, router, getLangPath])
+    if (categoryKey) router.push(getLangPath(`/category/${encodeURIComponent(categoryKey)}`))
+  }, [categoryKey, router, getLangPath])
 
   const handleShare = useCallback((e, platform) => {
     e.stopPropagation()
@@ -35,10 +38,10 @@ function NewsCard({ id, title, excerpt, category, author, publishedAt, readTime,
   return (
     <Card className={`group overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${featured ? 'md:col-span-2 border-red-200' : ''}`}
       onClick={handleCardClick}>
-      <div className={`relative overflow-hidden ${featured ? 'h-64' : 'h-48'}`}>
+      <div className="relative w-full overflow-hidden bg-black" style={{ aspectRatio: '16/9' }}>
         {imageUrl ? (
           <img src={imageUrl} alt={title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
         ) : youtubeUrl ? (

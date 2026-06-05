@@ -1,12 +1,13 @@
 import JsonLd from '@/components/JsonLd'
-import { buildMetadata, fetchNewsArticle, newsArticleJsonLd, SITE_DESCRIPTION, SITE_TITLE } from '@/lib/seo'
+import { buildMetadata, newsArticleJsonLd, SITE_DESCRIPTION, SITE_TITLE, truncate } from '@/lib/seo'
+import { fetchArticleBySlug } from '@/lib/payload-direct'
 import { normalizeRouteSlug } from '@/utils/payloadArticles'
 import ArticleDetailClient from './ArticleDetailClient'
 
 export async function generateMetadata({ params }) {
   const { slug: rawSlug } = await params
   const slug = normalizeRouteSlug(rawSlug)
-  const article = await fetchNewsArticle(slug)
+  const article = await fetchArticleBySlug(slug)
 
   if (!article) {
     return buildMetadata({
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }) {
 
   return buildMetadata({
     title: article.title,
-    description: article.description || article.contentText || article.content,
+    description: truncate(article.description || article.contentText || SITE_DESCRIPTION),
     path: `/article/${article.slug}`,
     image: article.image_url || '/logo.png',
     type: 'article',
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }) {
 export default async function ArticlePage({ params }) {
   const { slug: rawSlug } = await params
   const slug = normalizeRouteSlug(rawSlug)
-  const article = await fetchNewsArticle(slug)
+  const article = await fetchArticleBySlug(slug)
 
   return (
     <>

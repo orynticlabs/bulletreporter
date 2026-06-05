@@ -121,6 +121,7 @@
   /* Global element base styles */
   * {
     @apply border-border;
+    outline: none;
   }
 
   body {

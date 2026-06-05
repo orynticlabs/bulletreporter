@@ -20,13 +20,21 @@ const getCachedJson = async (url, ttl = PUBLIC_CACHE_TTL) => {
   }
 
   const request = fetch(url, {
-    cache: 'force-cache',
+    // 'no-cache' always validates with the server (respects ETag/Last-Modified)
+    // but falls back to cached data if the server says 304. This prevents the
+    // browser from serving a stale or broken cached response via 'force-cache'.
+    cache: 'no-cache',
     credentials: 'omit',
-    next: { revalidate: Math.ceil(ttl / 1000) },
   })
     .then(async (response) => {
       if (!response.ok) {
         throw new Error(`Payload request failed: ${response.status}`)
+      }
+
+      // Guard against non-JSON responses (e.g. an HTML error page)
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        throw new Error(`Expected JSON but got ${contentType}`)
       }
 
       const data = await response.json()
@@ -229,7 +237,18 @@ export const normalizePayloadArticle = (doc) => {
   const contentText = lexicalToPlainText(doc.contentHindi || doc.content)
   const excerpt = doc.excerptHindi || doc.excerpt || contentText.slice(0, 180)
   const imageUrl = getMediaUrl(doc.featuredImage)
-  const category = getRelationshipTitle(doc.category, 'News')
+
+  // category_slug  → used in URLs (always the English `name` field so the API
+  //                   filter `category: { equals: id }` resolves consistently)
+  // category       → display label (nameHindi when available, otherwise name)
+  const categoryObj = (doc.category && typeof doc.category === 'object') ? doc.category : null
+  const categoryDisplay = categoryObj
+    ? (categoryObj.nameHindi || categoryObj.name || 'News')
+    : (typeof doc.category === 'string' ? doc.category : 'News')
+  const categorySlug = categoryObj
+    ? (categoryObj.name || categoryObj.nameHindi || categoryDisplay)
+    : categoryDisplay
+
   const tags = Array.isArray(doc.tags)
     ? doc.tags.map((item) => item.tag).filter(Boolean)
     : []
@@ -241,7 +260,8 @@ export const normalizePayloadArticle = (doc) => {
     description: excerpt,
     content: contentHtml,
     contentText,
-    category,
+    category: categoryDisplay,   // shown in badges / cards
+    category_slug: categorySlug, // used in /category/[slug] URLs
     author_name: getAuthorName(doc.author),
     editor_name: getAuthorName(doc.editor),
     created_at: doc.publishedAt || doc.createdAt || doc.created_at,

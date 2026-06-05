@@ -91,7 +91,7 @@ function Header() {
   }
 
   return (
-    <header className="bg-white shadow-lg border-b-2 border-red-600" ref={menuRef}>
+    <header className="relative" ref={menuRef}>
 
       {/* ── Top Bar ── */}
       <div className="bg-red-700 text-white text-xs">
@@ -108,8 +108,8 @@ function Header() {
                 <span className="hidden sm:block opacity-80">{currentDate}</span>
               )}
               {currentTime && (
-                <span className="hidden md:flex items-center gap-1 bg-red-800/50 px-2 py-0.5 rounded font-mono">
-                  🕐 {currentTime}
+                <span className="hidden md:flex items-center gap-1 font-mono opacity-90">
+                  {currentTime}
                 </span>
               )}
             </div>
@@ -170,7 +170,7 @@ function Header() {
       </div>
 
       {/* ── Main Header (Logo + Search) ── */}
-      <div className={`bg-white sticky top-0 z-40 transition-shadow duration-300 ${isScrolled ? 'shadow-lg' : 'shadow-sm'}`}>
+      <div className={`bg-white sticky top-0 z-40 transition-shadow duration-300 ${isScrolled ? 'shadow-lg' : ''}`}>
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
 
@@ -234,7 +234,7 @@ function Header() {
       </div>
 
       {/* ── Desktop Navigation ── */}
-      <div className="bg-red-600 hidden md:block">
+      <div className="bg-red-600 hidden md:block outline-none border-0">
         <div className="container mx-auto px-4">
           {categoriesLoading ? (
             <div className="flex items-center justify-center py-3 gap-2">

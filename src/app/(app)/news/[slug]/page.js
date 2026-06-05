@@ -1,12 +1,13 @@
 import JsonLd from '@/components/JsonLd'
-import { buildMetadata, fetchNewsArticle, newsArticleJsonLd, SITE_DESCRIPTION, SITE_TITLE, truncate } from '@/lib/seo'
+import { buildMetadata, newsArticleJsonLd, SITE_DESCRIPTION, SITE_TITLE, truncate } from '@/lib/seo'
+import { fetchArticleBySlug } from '@/lib/payload-direct'
 import { normalizeRouteSlug } from '@/utils/payloadArticles'
 import NewsDetailClient from './NewsDetailClient'
 
 export async function generateMetadata({ params }) {
   const { slug: rawSlug } = await params
   const slug = normalizeRouteSlug(rawSlug)
-  const article = await fetchNewsArticle(slug)
+  const article = await fetchArticleBySlug(slug)
 
   if (!article) {
     return buildMetadata({
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }) {
 
   return buildMetadata({
     title: article.title || SITE_TITLE,
-    description: article.meta_description || article.description || truncate(article.contentText || article.content || SITE_DESCRIPTION),
+    description: truncate(article.meta_description || article.description || article.contentText || SITE_DESCRIPTION),
     path: `/news/${slug}`,
     image: article.image_url || '/logo.png',
     type: 'article',
@@ -33,7 +34,8 @@ export async function generateMetadata({ params }) {
 export default async function NewsDetailPage({ params }) {
   const { slug: rawSlug } = await params
   const slug = normalizeRouteSlug(rawSlug)
-  const article = await fetchNewsArticle(slug)
+  // React cache() deduplicates — same object returned from generateMetadata, no second DB query
+  const article = await fetchArticleBySlug(slug)
 
   return (
     <>
