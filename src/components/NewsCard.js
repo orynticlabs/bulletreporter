@@ -18,7 +18,7 @@ function NewsCard({ id, title, excerpt, category, author, publishedAt, readTime,
   const getLangPath = useCallback((path) => lang === 'en' ? `/en${path}` : path, [lang])
 
   const handleCardClick = useCallback(() => {
-    if (slug) router.push(getLangPath(`/news/${slug}`))
+    if (slug) router.push(getLangPath(`/news/${encodeURIComponent(slug)}`))
   }, [slug, router, getLangPath])
 
   const handleCategoryClick = useCallback((e) => {

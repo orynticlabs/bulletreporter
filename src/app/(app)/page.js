@@ -8,26 +8,16 @@ import NewsCard from '@/components/NewsCard'
 import AdBanner from '@/components/AdBanner'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
 import { useToast } from '@/hooks/use-toast'
 import { shareOnPlatform } from '@/utils/socialSharing'
-import { optimizeArticleData } from '@/utils/performanceUtils'
+import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { getReadingTime } from '@/utils/timeUtils'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { Clock, User } from 'lucide-react'
-import { DUMMY_ARTICLES } from '@/data/dummyArticles'
+import { Star } from 'lucide-react'
 
 const fetchArticles = async ({ queryKey }) => {
-  const [, { is_breaking, limit, offset }] = queryKey
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL
-  const response = await axios.get(`${apiUrl}/news`, {
-    params: { is_breaking, limit, offset },
-    timeout: 20000,
-  })
-  return {
-    ...response.data,
-    articles: (response.data.articles || []).map(optimizeArticleData),
-  }
+  const [, options] = queryKey
+  return fetchPayloadArticles(options)
 }
 
 export default function Home() {
@@ -38,14 +28,21 @@ export default function Home() {
   const getLangPath = useCallback((p) => lang === 'en' ? `/en${p}` : p, [lang])
 
   const { data: breakingData, isLoading: breakingLoading, error: breakingError, refetch: refetchBreaking } = useQuery({
-    queryKey: ['articles', { is_breaking: true, limit: 3, offset: 0 }],
+    queryKey: ['articles', { isBreaking: true, limit: 3, page: 1 }],
     queryFn: fetchArticles,
     staleTime: 2 * 60 * 1000,
     retry: 1,
   })
 
   const { data: articlesData, isLoading: articlesLoading, error: articlesError, refetch: refetchArticles } = useQuery({
-    queryKey: ['articles', { is_breaking: false, limit: 10, offset: 0 }],
+    queryKey: ['articles', { limit: 10, page: 1 }],
+    queryFn: fetchArticles,
+    staleTime: 2 * 60 * 1000,
+    retry: 1,
+  })
+
+  const { data: featuredData, isLoading: featuredLoading } = useQuery({
+    queryKey: ['articles', { isFeatured: true, limit: 6, page: 1 }],
     queryFn: fetchArticles,
     staleTime: 2 * 60 * 1000,
     retry: 1,
@@ -53,6 +50,7 @@ export default function Home() {
 
   const breakingNews = breakingData?.articles || []
   const articles = articlesData?.articles || []
+  const featuredArticles = featuredData?.articles || []
 
   useEffect(() => {
     if (breakingError) toast({ title: t.home.errorBreaking, description: t.home.serverTimeout, variant: 'destructive' })
@@ -155,80 +153,37 @@ export default function Home() {
               )}
             </section>
 
-            {/* ── विशेष लेख (Special Articles) ── */}
+            {/* ── विशेष लेख (Featured Payload Articles) ── */}
             <section>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl md:text-3xl font-bold text-primary flex items-center gap-2">
                   <span className="w-1 h-8 bg-red-600 rounded-full inline-block"></span>
                   {lang === 'en' ? 'Special Articles' : 'विशेष लेख'}
                 </h2>
-                <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
-                  {lang === 'en' ? 'Featured' : 'फीचर्ड'}
+                <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1">
+                  <Star className="w-3 h-3 text-yellow-500" />
+                  {lang === 'en' ? 'From Payload' : 'Payload से'}
                 </span>
               </div>
 
-              {/* Featured big card — first article */}
-              <div
-                className="relative rounded-2xl overflow-hidden h-64 md:h-80 mb-6 cursor-pointer group shadow-lg"
-                onClick={() => router.push(getLangPath(`/article/${DUMMY_ARTICLES[0].slug}`))}
-              >
-                <img
-                  src={DUMMY_ARTICLES[0].image}
-                  alt={DUMMY_ARTICLES[0].title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
-                  <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-2 inline-block">
-                    {DUMMY_ARTICLES[0].category}
-                  </span>
-                  <h3 className="text-white font-bold text-lg md:text-2xl leading-snug mb-2">
-                    {DUMMY_ARTICLES[0].title}
-                  </h3>
-                  <div className="flex items-center gap-4 text-white/70 text-xs">
-                    <span className="flex items-center gap-1"><User className="w-3 h-3" />{DUMMY_ARTICLES[0].author}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{DUMMY_ARTICLES[0].readTime} {lang === 'en' ? 'min' : 'मिनट'}</span>
-                  </div>
+              {featuredLoading ? (
+                <LoadingSpinner message={t.home.loadingNews} size="lg" variant="skeleton" />
+              ) : featuredArticles.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {featuredArticles.map((article, i) => (
+                    <NewsCard key={article.id} id={article.id} title={article.title}
+                      excerpt={(article.description || '').slice(0, 120)}
+                      category={article.category} author={article.editor_name || article.author_name}
+                      publishedAt={article.created_at} readTime={getReadingTime(article.contentText || article.description)}
+                      views={article.views || 0} imageUrl={article.image_url}
+                      youtubeUrl={article.youtube_url} slug={article.slug} featured={i === 0} />
+                  ))}
                 </div>
-              </div>
-
-              {/* Remaining 5 articles — grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-                {DUMMY_ARTICLES.slice(1).map(article => (
-                  <div
-                    key={article.id}
-                    className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group"
-                    onClick={() => router.push(getLangPath(`/article/${article.slug}`))}
-                  >
-                    <div className="relative h-44 overflow-hidden">
-                      <img
-                        src={article.image}
-                        alt={article.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        loading="lazy"
-                      />
-                      <span className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                        {article.category}
-                      </span>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-bold text-gray-800 text-sm md:text-base line-clamp-2 mb-2 group-hover:text-red-600 transition-colors">
-                        {article.title}
-                      </h3>
-                      <p className="text-gray-500 text-xs line-clamp-2 mb-3">{article.excerpt}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-400 border-t pt-2">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3 h-3 text-red-400" />{article.author}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-red-400" />{article.readTime} {lang === 'en' ? 'min' : 'मिनट'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {lang === 'en' ? 'No featured Payload articles yet.' : 'अभी कोई फीचर्ड Payload लेख नहीं है।'}
+                </div>
+              )}
             </section>
 
             {/* ── Bottom Ad ── */}

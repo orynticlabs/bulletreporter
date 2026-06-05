@@ -8,8 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Lock, Eye, EyeOff } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
-
 function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -35,19 +33,22 @@ function ResetPassword() {
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const response = await axios.put(`${apiUrl}/auth/reset-password/${token}`, { newPassword });
-      
+      const res = await fetch('/api/users/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password: newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed')
       toast({
         title: "सफल",
-        description: response.data.message || "आपका पासवर्ड सफलतापूर्वक रीसेट कर दिया गया है।",
+        description: "आपका पासवर्ड सफलतापूर्वक रीसेट कर दिया गया है।",
       });
       router.push("/");
     } catch (error) {
-      // console.error('Reset password error:', error.response?.data || error.message);
       toast({
         title: "त्रुटि",
-        description: error.response?.data?.message || "पासवर्ड रीसेट करने में विफल। कृपया पुनः प्रयास करें।",
+        description: error.message || "पासवर्ड रीसेट करने में विफल। कृपया पुनः प्रयास करें।",
         variant: "destructive",
       });
     } finally {

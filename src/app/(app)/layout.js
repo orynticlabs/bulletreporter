@@ -40,13 +40,12 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="hi" suppressHydrationWarning>
+    <html lang="hi" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         {/* Preconnect to external origins for speed */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://res.cloudinary.com" />
-        <link rel="preconnect" href="https://bullet-reporter-backend.onrender.com" />
 
         {/* Fonts — display=swap prevents FOIT */}
         <link

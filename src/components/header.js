@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Menu, Bell, Globe, Share2, Youtube, Facebook, Twitter, Instagram, Loader2, Languages, X, Phone, Mail, ChevronDown } from 'lucide-react'
+import { Search, Menu, Bell, Globe, Share2, Youtube, Facebook, Twitter, Instagram, Loader2, Languages, X, Phone, Mail } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, usePathname } from 'next/navigation'
-import axios from 'axios'
 import { useSearch } from '@/contexts/SearchContext'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { fetchPayloadCategories } from '@/utils/payloadCategories'
 import SearchResults from './SearchResults'
 
 function Header() {
@@ -14,6 +14,7 @@ function Header() {
   const [isSocialOpen, setIsSocialOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [currentTime, setCurrentTime] = useState('')
+  const [currentDate, setCurrentDate] = useState('')
   const router = useRouter()
   const pathname = usePathname()
   const { t, lang, toggleLanguage } = useLanguage()
@@ -21,17 +22,15 @@ function Header() {
 
   const { searchQuery, handleSearchInputChange, handleSearchSubmit, searchLoading } = useSearch()
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL
-
-  // Live clock
+  // Live clock + date — both set client-side only to avoid SSR mismatch
   useEffect(() => {
-    const update = () => {
-      setCurrentTime(new Date().toLocaleTimeString(lang === 'en' ? 'en-IN' : 'hi-IN', {
-        hour: '2-digit', minute: '2-digit', second: '2-digit'
-      }))
+    const locale = lang === 'en' ? 'en-IN' : 'hi-IN'
+    const updateTime = () => {
+      setCurrentTime(new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
     }
-    update()
-    const timer = setInterval(update, 1000)
+    setCurrentDate(new Date().toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }))
+    updateTime()
+    const timer = setInterval(updateTime, 1000)
     return () => clearInterval(timer)
   }, [lang])
 
@@ -58,41 +57,16 @@ function Header() {
 
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories'],
-    queryFn: async () => {
-      try {
-        const response = await axios.get(`${apiUrl}/categories`, { timeout: 15000 })
-        const data = response.data
-        return Array.isArray(data) ? data : (data?.docs || [])
-      } catch {
-        return [
-          { name: lang === 'en' ? 'State' : 'राज्य', id: 'state' },
-          { name: lang === 'en' ? 'National' : 'राष्ट्रीय', id: 'national' },
-          { name: lang === 'en' ? 'International' : 'अंतर्राष्ट्रीय', id: 'international' },
-          { name: lang === 'en' ? 'Sports' : 'खेल', id: 'sports' },
-          { name: lang === 'en' ? 'Entertainment' : 'मनोरंजन', id: 'entertainment' },
-          { name: lang === 'en' ? 'Business' : 'व्यवसाय', id: 'business' },
-          { name: lang === 'en' ? 'Technology' : 'तकनीक', id: 'tech' },
-        ]
-      }
-    },
+    queryFn: fetchPayloadCategories,
     staleTime: 10 * 60 * 1000,
   })
 
-<<<<<<< HEAD
-=======
-        // Normalize categories responses that wrap results in docs.
-  const categoriesArray = Array.isArray(categories)
-    ? categories
-    : (categories && (Array.isArray(categories.docs) ? categories.docs : []))
-
-  // Build nav URLs based on current language
->>>>>>> ab4375c (Updated Payload Issue)
   const getLangPath = (path) => lang === 'en' ? `/en${path}` : path
 
   const mainCategories = [
     { name: t.header.mainNews, href: getLangPath('/') },
     ...categories.map(cat => ({
-      name: cat.name,
+      name: cat.nameHindi || cat.name,
       href: getLangPath(`/category/${encodeURIComponent(cat.name)}`)
     }))
   ]
@@ -130,11 +104,9 @@ function Header() {
                 <Globe className="w-3.5 h-3.5 opacity-80" />
                 <span className="font-medium">{t.header.language}</span>
               </div>
-              <span className="hidden sm:block opacity-80">
-                {new Date().toLocaleDateString(lang === 'en' ? 'en-IN' : 'hi-IN', {
-                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                })}
-              </span>
+              {currentDate && (
+                <span className="hidden sm:block opacity-80">{currentDate}</span>
+              )}
               {currentTime && (
                 <span className="hidden md:flex items-center gap-1 bg-red-800/50 px-2 py-0.5 rounded font-mono">
                   🕐 {currentTime}
@@ -282,7 +254,6 @@ function Header() {
                     }`}
                   >
                     {category.name}
-                    {/* Active dot indicator */}
                     {isActive(category.href) && (
                       <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"></span>
                     )}
@@ -346,7 +317,6 @@ function Header() {
                   </a>
                 ))}
               </div>
-              {/* Language toggle in mobile */}
               <button
                 onClick={toggleLanguage}
                 className="flex items-center gap-1.5 bg-red-600 text-white px-3 py-2 rounded-xl text-sm font-bold transition-colors hover:bg-red-700"

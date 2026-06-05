@@ -1,10 +1,12 @@
 import JsonLd from '@/components/JsonLd'
-import { buildMetadata, getDummyArticle, newsArticleJsonLd, SITE_DESCRIPTION, SITE_TITLE } from '@/lib/seo'
+import { buildMetadata, fetchNewsArticle, newsArticleJsonLd, SITE_DESCRIPTION, SITE_TITLE } from '@/lib/seo'
+import { normalizeRouteSlug } from '@/utils/payloadArticles'
 import ArticleDetailClient from './ArticleDetailClient'
 
 export async function generateMetadata({ params }) {
-  const { slug } = await params
-  const article = getDummyArticle(slug)
+  const { slug: rawSlug } = await params
+  const slug = normalizeRouteSlug(rawSlug)
+  const article = await fetchNewsArticle(slug)
 
   if (!article) {
     return buildMetadata({
@@ -17,25 +19,26 @@ export async function generateMetadata({ params }) {
 
   return buildMetadata({
     title: article.title,
-    description: article.excerpt || article.content,
+    description: article.description || article.contentText || article.content,
     path: `/article/${article.slug}`,
-    image: article.image,
+    image: article.image_url || '/logo.png',
     type: 'article',
     publishedTime: article.created_at,
-    modifiedTime: article.created_at,
-    authors: [article.author || SITE_TITLE],
+    modifiedTime: article.updated_at || article.created_at,
+    authors: [article.editor_name || article.author_name || SITE_TITLE],
     keywords: [article.category, ...(article.tags || [])].filter(Boolean),
   })
 }
 
 export default async function ArticlePage({ params }) {
-  const { slug } = await params
-  const article = getDummyArticle(slug)
+  const { slug: rawSlug } = await params
+  const slug = normalizeRouteSlug(rawSlug)
+  const article = await fetchNewsArticle(slug)
 
   return (
     <>
       <JsonLd data={newsArticleJsonLd(article, `/article/${slug}`)} />
-      <ArticleDetailClient />
+      <ArticleDetailClient initialArticle={article} />
     </>
   )
 }

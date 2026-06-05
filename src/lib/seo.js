@@ -1,4 +1,4 @@
-import { DUMMY_ARTICLES } from '@/data/dummyArticles'
+import { fetchPayloadArticleBySlug, fetchPayloadArticles } from '@/utils/payloadArticles'
 
 export const SITE_NAME = 'Bullet Reporter'
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bullet-reporter.vercel.app'
@@ -16,8 +16,6 @@ export const SITE_KEYWORDS = [
 ]
 export const CREATOR = 'OrynticLabs'
 export const DEFAULT_IMAGE = '/logo.png'
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bullet-reporter-backend.onrender.com/api'
-
 export function absoluteUrl(path = '/') {
   if (!path) return SITE_URL
   if (/^https?:\/\//i.test(path)) return path
@@ -123,46 +121,25 @@ export async function fetchNewsArticle(slug) {
   if (!slug) return null
 
   try {
-    const response = await fetch(`${API_URL}/news/${encodeURIComponent(slug)}`, {
-      next: { revalidate: 300 },
-    })
-
-    if (!response.ok) return null
-    return response.json()
+    return await fetchPayloadArticleBySlug(slug)
   } catch {
     return null
   }
 }
 
 export async function fetchNewsList(params = {}) {
-  const searchParams = new URLSearchParams()
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      searchParams.set(key, String(value))
-    }
-  })
-
   try {
-    const response = await fetch(`${API_URL}/news?${searchParams.toString()}`, {
-      next: { revalidate: 300 },
-    })
-
-    if (!response.ok) return { articles: [] }
-    return response.json()
+    return await fetchPayloadArticles(params)
   } catch {
     return { articles: [] }
   }
-}
-
-export function getDummyArticle(slug) {
-  return DUMMY_ARTICLES.find((article) => article.slug === slug)
 }
 
 export function newsArticleJsonLd(article, path) {
   if (!article) return null
 
   const title = article.title || SITE_TITLE
-  const description = truncate(article.description || article.content || article.excerpt || SITE_DESCRIPTION, 180)
+  const description = truncate(article.description || article.contentText || article.content || article.excerpt || SITE_DESCRIPTION, 180)
   const image = absoluteUrl(article.image_url || article.image || DEFAULT_IMAGE)
 
   return {
@@ -172,8 +149,8 @@ export function newsArticleJsonLd(article, path) {
     headline: title,
     description,
     image: [image],
-    datePublished: article.created_at || article.datePublished,
-    dateModified: article.updated_at || article.created_at || article.datePublished,
+    datePublished: article.created_at || article.createdAt || article.datePublished,
+    dateModified: article.updated_at || article.updatedAt || article.created_at || article.createdAt || article.datePublished,
     author: {
       '@type': 'Person',
       name: article.author_name || article.author || SITE_NAME,

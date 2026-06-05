@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Cloud, Wind, Droplets, RefreshCw, TrendingUp, Tag } from 'lucide-react'
-import axios from 'axios'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { fetchPayloadArticles } from '@/utils/payloadArticles'
+import { fetchPayloadCategories } from '@/utils/payloadCategories'
 
 function Sidebar() {
   const router = useRouter()
   const { t, lang } = useLanguage()
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL
 
   const [weatherData, setWeatherData] = useState({
     temperature: null, humidity: null, windSpeed: null,
@@ -21,6 +21,11 @@ function Sidebar() {
     try {
       setWeatherData(prev => ({ ...prev, loading: true, error: null }))
       const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
+      if (!apiKey) {
+        setWeatherData(prev => ({ ...prev, loading: false, error: t.sidebar.weatherError }))
+        return
+      }
+
       const city = 'Bhopal'
       const response = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=${lang === 'en' ? 'en' : 'hi'}`,
@@ -50,29 +55,21 @@ function Sidebar() {
   }, [fetchWeatherData])
 
   const { data: trendingData = [], isLoading: trendingLoading } = useQuery({
-    queryKey: ['trending', lang],
+    queryKey: ['trending'],
     queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/news`, { params: { limit: 6, offset: 0 }, timeout: 15000 })
-      return res.data.articles || []
+      const result = await fetchPayloadArticles({ limit: 6 })
+      return result.articles || []
     },
     staleTime: 5 * 60 * 1000,
     retry: 1,
   })
 
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
-    queryKey: ['categories-sidebar'],
-    queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/categories`, { timeout: 15000 })
-      return res.data || []
-    },
+    queryKey: ['categories'],
+    queryFn: fetchPayloadCategories,
     staleTime: 10 * 60 * 1000,
     retry: 1,
   })
-
-        // Normalize categories responses that wrap results in docs.
-  const categoriesArray = Array.isArray(categories)
-    ? categories
-    : (categories && (Array.isArray(categories.docs) ? categories.docs : []))
 
   const getLangPath = useCallback((path) => lang === 'en' ? `/en${path}` : path, [lang])
 
@@ -150,7 +147,7 @@ function Sidebar() {
             {trendingData.map((news, index) => (
               <div key={news.id}
                 className="flex gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors group"
-                onClick={() => router.push(getLangPath(`/news/${news.slug}`))}
+                onClick={() => router.push(getLangPath(`/news/${encodeURIComponent(news.slug)}`))}
               >
                 <div className="relative w-16 h-16 flex-shrink-0">
                   {news.image_url ? (
@@ -188,16 +185,16 @@ function Sidebar() {
               <div key={i} className="h-8 bg-gray-100 animate-pulse rounded-lg"></div>
             ))}
           </div>
-        ) : categoriesArray.length === 0 ? (
+        ) : categories.length === 0 ? (
           <p className="text-gray-500 text-sm">{t.sidebar.noCategories}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {categoriesArray.map(cat => (
+            {categories.map(cat => (
               <button key={cat.id || cat.name}
                 className="px-3 py-1.5 bg-red-50 hover:bg-red-600 text-red-700 hover:text-white text-sm font-medium rounded-full transition-colors border border-red-200"
                 onClick={() => router.push(getLangPath(`/category/${encodeURIComponent(cat.name)}`))}
               >
-                {cat.name}
+                {cat.nameHindi || cat.name}
               </button>
             ))}
           </div>

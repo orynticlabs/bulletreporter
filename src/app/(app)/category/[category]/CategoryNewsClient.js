@@ -7,8 +7,8 @@ import NewsCard from '@/components/NewsCard'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import AdBanner from '@/components/AdBanner'
 import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
 import { getReadingTime } from '@/utils/timeUtils'
+import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -24,12 +24,7 @@ export default function CategoryNews() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['category-news', category, page],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL
-      const res = await axios.get(`${apiUrl}/news`, {
-        params: { category, limit: LIMIT, offset: (page - 1) * LIMIT },
-        timeout: 20000,
-      })
-      return res.data
+      return fetchPayloadArticles({ category, limit: LIMIT, page })
     },
     staleTime: 2 * 60 * 1000,
     retry: 1,
@@ -39,7 +34,7 @@ export default function CategoryNews() {
 
   const articles = data?.articles || []
   const total = data?.total || 0
-  const totalPages = Math.ceil(total / LIMIT)
+  const totalPages = data?.totalPages || Math.ceil(total / LIMIT)
   const getLangPath = useCallback((p) => lang === 'en' ? `/en${p}` : p, [lang])
 
   return (
@@ -77,8 +72,8 @@ export default function CategoryNews() {
               {articles.map(article => (
                 <NewsCard key={article.id} id={article.id} title={article.title}
                   excerpt={(article.description || '').slice(0, 100) + '...'}
-                  category={article.category} author={article.author_name}
-                  publishedAt={article.created_at} readTime={getReadingTime(article.description)}
+                  category={article.category} author={article.editor_name || article.author_name}
+                  publishedAt={article.created_at} readTime={getReadingTime(article.contentText || article.description)}
                   views={article.views || 0} imageUrl={article.image_url}
                   youtubeUrl={article.youtube_url} slug={article.slug} />
               ))}

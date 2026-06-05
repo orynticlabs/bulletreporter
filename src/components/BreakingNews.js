@@ -4,24 +4,19 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Zap, ChevronRight } from 'lucide-react'
-import axios from 'axios'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { fetchPayloadArticles } from '@/utils/payloadArticles'
 
 function BreakingNews() {
   const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
   const { t, lang } = useLanguage()
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL
-
   const { data: breakingNews = [], isLoading } = useQuery({
     queryKey: ['breaking-ticker'],
     queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/news`, {
-        params: { is_breaking: true, limit: 10 },
-        timeout: 15000,
-      })
-      return res.data.articles || []
+      const result = await fetchPayloadArticles({ isBreaking: true, limit: 10 })
+      return result.articles || []
     },
     staleTime: 2 * 60 * 1000,
     retry: 1,
@@ -36,7 +31,8 @@ function BreakingNews() {
   }, [breakingNews.length])
 
   const handleClick = useCallback((slug) => {
-    const path = lang === 'en' ? `/en/news/${slug}` : `/news/${slug}`
+    const encodedSlug = encodeURIComponent(slug)
+    const path = lang === 'en' ? `/en/news/${encodedSlug}` : `/news/${encodedSlug}`
     router.push(path)
   }, [lang, router])
 

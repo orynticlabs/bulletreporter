@@ -1,21 +1,14 @@
 /** @type {import('next').NextConfig} */
 const { withPayload } = require('@payloadcms/next/withPayload')
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://bullet-reporter-backend.onrender.com/api'
-
 const nextConfig = {
   // ─── Performance ───────────────────────────────────
   compress: true,
   poweredByHeader: false,
   reactStrictMode: true,
 
-  // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
-  },
-
-  env: {
-    NEXT_PUBLIC_API_URL: apiUrl,
   },
 
   // ─── Images ────────────────────────────────────────
@@ -25,36 +18,31 @@ const nextConfig = {
       { protocol: 'https', hostname: 'img.youtube.com' },
       { protocol: 'https', hostname: '**' },
     ],
-    formats: ['image/avif', 'image/webp'],   // Modern formats = smaller size
+    formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200],
-    minimumCacheTTL: 3600,                   // Cache images 1 hour
+    minimumCacheTTL: 3600,
   },
 
-  // ─── Caching Headers (2000+ users ke liye CDN caching) ─
+  // ─── Caching Headers ────────────────────────────────
   async headers() {
     return [
       {
-        // Static assets — cache aggressively
         source: '/_next/static/:path*',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
       {
-        // Images — cache 1 week
         source: '/_next/image(.*)',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=86400' }],
       },
       {
-        // Favicon & public assets
         source: '/favicon.png',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=86400' }],
       },
       {
-        // API pages — cache 60 seconds with revalidation
         source: '/(news|category)/:path*',
         headers: [{ key: 'Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=30' }],
       },
       {
-        // Security headers
         source: '/(.*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -69,7 +57,6 @@ const nextConfig = {
   // ─── Redirects ──────────────────────────────────────
   async redirects() {
     return [
-      // Old CRA routes → new Next.js routes
       { source: '/home', destination: '/', permanent: true },
       { source: '/breaking', destination: '/news/breaking', permanent: true },
       { source: '/all-news', destination: '/news', permanent: true },
@@ -81,13 +68,10 @@ const nextConfig = {
     optimizePackageImports: [
       'lucide-react',
       '@tanstack/react-query',
-      'axios',
     ],
   },
 
-  // ─── Client packages (needed for react-quill SSR) ──
   transpilePackages: ['react-quill-new'],
-
 }
 
 module.exports = withPayload(nextConfig)

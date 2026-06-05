@@ -3,16 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "rm -rf .next && next dev",
     "build": "next build",
     "start": "next start",
+    "media:migrate-cloudinary": "node scripts/migrate-media-to-cloudinary.mjs",
     "lint": "next lint"
   },
   "dependencies": {
     "@cloudinary/react": "^1.14.3",
     "@cloudinary/url-gen": "^1.21.0",
+    "@jhb.software/payload-cloudinary-plugin": "^0.3.4",
     "@payloadcms/db-postgres": "^3.85.0",
-    "@payloadcms/db-sqlite": "^3.85.0",
     "@payloadcms/next": "^3.85.0",
     "@payloadcms/richtext-lexical": "^3.85.0",
     "@supabase/supabase-js": "^2.51.0",
@@ -21,6 +22,7 @@
     "browser-image-compression": "^2.0.2",
     "chart.js": "^4.5.0",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.10.0",
     "clsx": "^2.1.1",
     "graphql": "^16.14.1",
     "lodash": "^4.17.21",

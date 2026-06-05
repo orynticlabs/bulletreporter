@@ -3,24 +3,13 @@
 import React, { useState, useEffect } from 'react'
 import NewsHeader from '@/components/header'
 import BreakingNews from '@/components/BreakingNews'
-import { getWhatsappGroupLink } from '@/services/settingService'
 import { MessageSquareMore, ChevronUp } from 'lucide-react'
 import Footer from '@/components/footer'
 
+const WHATSAPP_LINK = 'https://wa.me/919425470033'
 
 function Layout({ children, showBreakingNews = true }) {
-  const [whatsappLink, setWhatsappLink] = useState(null)
   const [showScrollTop, setShowScrollTop] = useState(false)
-
-  useEffect(() => {
-    const fetchLink = async () => {
-      try {
-        const link = await getWhatsappGroupLink()
-        if (link) setWhatsappLink(link)
-      } catch {}
-    }
-    fetchLink()
-  }, [])
 
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 400)
@@ -40,17 +29,15 @@ function Layout({ children, showBreakingNews = true }) {
       <Footer />
 
       {/* WhatsApp floating button */}
-      {whatsappLink && (
-        <a
-          href={whatsappLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white p-3 md:p-4 rounded-full shadow-xl transition-all duration-300 hover:scale-110 active:scale-95"
-          aria-label="Join WhatsApp Group"
-        >
-          <MessageSquareMore className="w-5 h-5 md:w-6 md:h-6" />
-        </a>
-      )}
+      <a
+        href={WHATSAPP_LINK}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white p-3 md:p-4 rounded-full shadow-xl transition-all duration-300 hover:scale-110 active:scale-95"
+        aria-label="Join WhatsApp Group"
+      >
+        <MessageSquareMore className="w-5 h-5 md:w-6 md:h-6" />
+      </a>
 
       {/* Scroll to top button — mobile pe especially useful */}
       {showScrollTop && (

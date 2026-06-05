@@ -1,14 +1,98 @@
 import { buildConfig } from 'payload'
-import { sqliteAdapter } from '@payloadcms/db-sqlite'
+import { postgresAdapter } from '@payloadcms/db-postgres'
+import { payloadCloudinaryPlugin } from '@jhb.software/payload-cloudinary-plugin'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import sharp from 'sharp'
+import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
-const databaseUrl = process.env.PAYLOAD_DATABASE_URL || 'file:./payload.db'
+const loadEnvFile = (filePath: string) => {
+  if (!fs.existsSync(filePath)) return
+
+  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/)
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue
+
+    const index = trimmed.indexOf('=')
+    const key = trimmed.slice(0, index).trim()
+    let value = trimmed.slice(index + 1).trim()
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1)
+    }
+
+    if (!process.env[key]) {
+      process.env[key] = value
+    }
+  }
+}
+
+loadEnvFile(path.resolve(dirname, '.env'))
+loadEnvFile(path.resolve(dirname, '.env.local'))
+
+const databaseUrl =
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
+  process.env.PAYLOAD_DATABASE_URL
+const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY
+const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET
+const hasCloudinaryCredentials = Boolean(cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret)
+const requireCloudinaryStorage = process.env.PAYLOAD_REQUIRE_CLOUDINARY !== 'false'
+const missingCloudinaryKeys = [
+  ['CLOUDINARY_CLOUD_NAME', cloudinaryCloudName],
+  ['CLOUDINARY_API_KEY', cloudinaryApiKey],
+  ['CLOUDINARY_API_SECRET', cloudinaryApiSecret],
+]
+  .filter(([, value]) => !value)
+  .map(([key]) => key)
+
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required for Payload CMS. Add your Neon Postgres connection string to .env.local.')
+}
+
+const randomSlug = (length = 12) => {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let value = ''
+
+  for (let i = 0; i < length; i += 1) {
+    value += alphabet[Math.floor(Math.random() * alphabet.length)]
+  }
+
+  return value
+}
+
+const ensureNewsSlug = ({ data, operation }: { data?: Record<string, any>, operation?: string }) => {
+  if (!data) return data || {}
+
+  const shouldGenerate = operation === 'create' || !data.slug
+
+  if (shouldGenerate) {
+    data.slug = randomSlug()
+  }
+
+  return data
+}
+
+const ensureCloudinaryUploadConfigured = ({ data, req }: { data?: Record<string, any>, req?: any }) => {
+  if (requireCloudinaryStorage && req?.file && !hasCloudinaryCredentials) {
+    throw new Error(
+      `Cloudinary credentials are required for media uploads. Missing: ${missingCloudinaryKeys.join(', ')}. Save them in ${path.resolve(dirname, '.env.local')} and restart the dev server.`,
+    )
+  }
+
+  return data
+}
 
 export default buildConfig({
   secret: process.env.PAYLOAD_SECRET || 'change-this-payload-secret-for-production',
@@ -22,9 +106,11 @@ export default buildConfig({
     },
   },
 
-  db: sqliteAdapter({
-    client: {
-      url: databaseUrl,
+  db: postgresAdapter({
+    push: process.env.PAYLOAD_DB_PUSH === 'true',
+    pool: {
+      connectionString: databaseUrl,
+      ssl: databaseUrl.includes('sslmode=') ? undefined : { rejectUnauthorized: false },
     },
   }),
 
@@ -34,6 +120,12 @@ export default buildConfig({
     {
       slug: 'users',
       auth: true,
+      access: {
+        read: () => true,
+        create: () => false,
+        update: ({ req }) => Boolean(req.user),
+        delete: ({ req }) => req.user?.role === 'admin',
+      },
       admin: {
         useAsTitle: 'name',
       },
@@ -56,8 +148,13 @@ export default buildConfig({
     },
     {
       slug: 'media',
+      access: {
+        read: () => true,
+      },
+      hooks: {
+        beforeChange: [ensureCloudinaryUploadConfigured],
+      },
       upload: {
-        staticDir: path.resolve(dirname, 'public/media'),
         mimeTypes: ['image/*', 'video/*'],
         imageSizes: [
           { name: 'thumbnail', width: 400, height: 300, position: 'centre' },
@@ -75,6 +172,9 @@ export default buildConfig({
     },
     {
       slug: 'categories',
+      access: {
+        read: () => true,
+      },
       admin: {
         useAsTitle: 'name',
         defaultColumns: ['name', 'slug', 'order'],
@@ -90,6 +190,12 @@ export default buildConfig({
     },
     {
       slug: 'news',
+      access: {
+        read: ({ req }) => req.user ? true : { status: { equals: 'published' } },
+      },
+      hooks: {
+        beforeValidate: [ensureNewsSlug],
+      },
       admin: {
         useAsTitle: 'title',
         defaultColumns: ['title', 'category', 'status', 'publishedAt'],
@@ -98,19 +204,34 @@ export default buildConfig({
         drafts: true,
       },
       fields: [
-        { name: 'title', type: 'text', required: true },
-        { name: 'titleHindi', type: 'text', label: 'Title (Hindi)' },
-        { name: 'slug', type: 'text', required: true, unique: true },
-        { name: 'excerpt', type: 'textarea', label: 'Excerpt / Summary' },
+        { name: 'title', type: 'text', label: 'Title (Hindi)', required: true },
+        {
+          name: 'slug',
+          type: 'text',
+          unique: true,
+          admin: {
+            description: 'Auto-generated as random lowercase letters and numbers.',
+            readOnly: true,
+          },
+        },
+        { name: 'excerpt', type: 'textarea', label: 'Excerpt / Summary', required: true },
+        { name: 'excerptHindi', type: 'textarea', label: 'Excerpt / Summary (Hindi)' },
         {
           name: 'content',
           type: 'richText',
+          label: 'Content Editor',
           required: true,
+        },
+        {
+          name: 'contentHindi',
+          type: 'richText',
+          label: 'Content Editor (Hindi)',
         },
         {
           name: 'featuredImage',
           type: 'upload',
           relationTo: 'media',
+          required: true,
         },
         {
           name: 'category',
@@ -120,6 +241,12 @@ export default buildConfig({
         },
         {
           name: 'author',
+          type: 'relationship',
+          relationTo: 'users',
+          required: true,
+        },
+        {
+          name: 'editor',
           type: 'relationship',
           relationTo: 'users',
           required: true,
@@ -176,6 +303,10 @@ export default buildConfig({
     },
     {
       slug: 'comments',
+      access: {
+        create: () => true,
+        read: ({ req }) => req.user ? true : { status: { equals: 'approved' } },
+      },
       admin: {
         useAsTitle: 'authorName',
         defaultColumns: ['authorName', 'article', 'status', 'createdAt'],
@@ -204,6 +335,9 @@ export default buildConfig({
     },
     {
       slug: 'advertisements',
+      access: {
+        read: ({ req }) => req.user ? true : { isActive: { equals: true } },
+      },
       admin: {
         useAsTitle: 'title',
         defaultColumns: ['title', 'position', 'isActive', 'startsAt', 'endsAt'],
@@ -259,4 +393,21 @@ export default buildConfig({
   typescript: {
     outputFile: path.resolve(dirname, 'src/payload-types.ts'),
   },
+
+  plugins: [
+    payloadCloudinaryPlugin({
+      enabled: hasCloudinaryCredentials,
+      collections: {
+        media: true,
+      },
+      cloudName: cloudinaryCloudName || '',
+      credentials: {
+        apiKey: cloudinaryApiKey || '',
+        apiSecret: cloudinaryApiSecret || '',
+      },
+      folder: process.env.CLOUDINARY_FOLDER || 'bullet_reporter',
+      clientUploads: false,
+      useFilename: true,
+    }),
+  ],
 })

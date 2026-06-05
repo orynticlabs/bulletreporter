@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchPayloadCategories } from '@/utils/payloadCategories'
 
 const CONTENT = {
   hi: {
@@ -101,27 +101,16 @@ function ColTitle({ children }) {
 }
 
 export default function Footer() {
-  const [lang, setLang] = useState('hi');
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  const t = CONTENT[lang];
+  const [lang, setLang] = useState('hi')
+  const t = CONTENT[lang]
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
-    queryFn: async () => {
-      try {
-        const response = await axios.get(`${apiUrl}/categories`);
-        return response.data;
-      } catch {
-        return [];
-      }
-    },
+    queryFn: fetchPayloadCategories,
     staleTime: 5 * 60 * 1000,
   })
 
-      // Normalize categories responses that wrap results in docs.
-  const categoriesArray = Array.isArray(categories)
-    ? categories
-    : (categories && (Array.isArray(categories.docs) ? categories.docs : []))
+  const categoriesArray = Array.isArray(categories) ? categories : []
 
   const categoryLinks = [
     { name: t.mainCatName, href: '/' },

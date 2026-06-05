@@ -1,103 +1,77 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchPayloadArticles } from '@/utils/payloadArticles'
 
-const SearchContext = createContext();
+const SearchContext = createContext()
 
 export const useSearch = () => {
-  const context = useContext(SearchContext);
+  const context = useContext(SearchContext)
   if (!context) {
-    throw new Error('useSearch must be used within a SearchProvider');
+    throw new Error('useSearch must be used within a SearchProvider')
   }
-  return context;
-};
+  return context
+}
 
 export const SearchProvider = ({ children }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
-  const [showResults, setShowResults] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState([])
+  const [showResults, setShowResults] = useState(false)
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const isQueryReady = isSearching && (searchQuery.trim().includes(' ') || searchQuery.trim().length >= 3)
 
-  // Search query
   const { data: searchData, isLoading: searchLoading, error: searchError } = useQuery({
     queryKey: ['search', searchQuery],
     queryFn: async () => {
-      if (!searchQuery.trim()) return { articles: [] };
-      
-      // Check if query contains a complete word
-      const hasCompleteWord = searchQuery.trim().includes(' ') || searchQuery.trim().length >= 3;
-      if (!hasCompleteWord) return { articles: [] };
-      
-      try {
-        const response = await axios.get(`${apiUrl}/news/search`, {
-          params: { 
-            search: searchQuery,
-            limit: 20,
-            offset: 0
-          }
-        });
-        return response.data;
-      } catch (error) {
-        // console.error('Search error:', error);
-        throw error;
-      }
+      if (!searchQuery.trim()) return { articles: [] }
+      return fetchPayloadArticles({ search: searchQuery.trim(), limit: 20 })
     },
-    enabled: (searchQuery.trim().includes(' ') || searchQuery.trim().length >= 3) && isSearching,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+    enabled: isQueryReady,
+    staleTime: 5 * 60 * 1000,
+  })
 
-  // Update search results when data changes
   useEffect(() => {
     if (searchData) {
-      setSearchResults(searchData.articles || []);
+      setSearchResults(searchData.articles || [])
     }
-  }, [searchData]);
+  }, [searchData])
 
-  // Handle search
   const handleSearch = (query) => {
-    setSearchQuery(query);
-    setIsSearching(true);
-    setShowResults(true);
-  };
+    setSearchQuery(query)
+    setIsSearching(true)
+    setShowResults(true)
+  }
 
-  // Clear search
   const clearSearch = () => {
-    setSearchQuery('');
-    setSearchResults([]);
-    setShowResults(false);
-    setIsSearching(false);
-  };
+    setSearchQuery('')
+    setSearchResults([])
+    setShowResults(false)
+    setIsSearching(false)
+  }
 
-  // Handle search input change
   const handleSearchInputChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    
-    // Check if query contains a complete word (has space or is a single word)
-    const hasCompleteWord = query.trim().includes(' ') || query.trim().length >= 3;
-    
+    const query = e.target.value
+    setSearchQuery(query)
+    const hasCompleteWord = query.trim().includes(' ') || query.trim().length >= 3
     if (hasCompleteWord && query.trim().length > 0) {
-      setIsSearching(true);
-      setShowResults(true);
+      setIsSearching(true)
+      setShowResults(true)
     } else {
-      setSearchResults([]);
-      setShowResults(false);
-      setIsSearching(false);
+      setSearchResults([])
+      setShowResults(false)
+      setIsSearching(false)
     }
-  };
+  }
 
-  // Handle search submit
   const handleSearchSubmit = (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (searchQuery.trim()) {
-      setIsSearching(true);
-      setShowResults(true);
+      setIsSearching(true)
+      setShowResults(true)
     }
-  };
+  }
 
   const value = {
     searchQuery,
@@ -111,11 +85,11 @@ export const SearchProvider = ({ children }) => {
     handleSearchSubmit,
     clearSearch,
     setShowResults
-  };
+  }
 
   return (
     <SearchContext.Provider value={value}>
       {children}
     </SearchContext.Provider>
-  );
-}; 
+  )
+}

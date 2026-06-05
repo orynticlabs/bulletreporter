@@ -34,7 +34,7 @@ const SearchResults = () => {
   }
 
   const handleResultClick = (slug) => {
-    router.push(`/news/${slug}`);
+    router.push(`/news/${encodeURIComponent(slug)}`);
     clearSearch();
   };
 

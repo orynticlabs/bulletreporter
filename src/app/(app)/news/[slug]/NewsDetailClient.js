@@ -16,11 +16,11 @@ import {
   Clock, Eye, User, Calendar, ArrowLeft, Share2,
   MessageCircle, ChevronRight, Facebook, Twitter, Send
 } from 'lucide-react'
-import axios from 'axios'
 import { useToast } from '@/hooks/use-toast'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { getRelativeTime } from '@/utils/dateUtils'
 import { getReadingTime } from '@/utils/timeUtils'
+import { fetchPayloadArticleBySlug, fetchPayloadArticles, normalizeRouteSlug } from '@/utils/payloadArticles'
 
 const WhatsAppIcon = () => (
   <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -29,14 +29,13 @@ const WhatsAppIcon = () => (
   </svg>
 )
 
-export default function NewsDetail() {
+export default function NewsDetail({ initialArticle = null }) {
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
   const { t, lang } = useLanguage()
   const queryClient = useQueryClient()
-  const slug = params?.slug
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  const slug = normalizeRouteSlug(params?.slug || initialArticle?.slug)
 
   const [commentName, setCommentName] = useState('')
   const [commentText, setCommentText] = useState('')
@@ -47,9 +46,9 @@ export default function NewsDetail() {
   const { data: article, isLoading, error } = useQuery({
     queryKey: ['article', slug],
     queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/news/${slug}`, { timeout: 20000 })
-      return res.data
+      return fetchPayloadArticleBySlug(slug)
     },
+    initialData: initialArticle || undefined,
     enabled: !!slug,
     staleTime: 5 * 60 * 1000,
     retry: 1,
@@ -59,11 +58,7 @@ export default function NewsDetail() {
   const { data: relatedData } = useQuery({
     queryKey: ['related', article?.category],
     queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/news`, {
-        params: { category: article.category, limit: 3 },
-        timeout: 15000,
-      })
-      return res.data
+      return fetchPayloadArticles({ category: article.category, limit: 4 })
     },
     enabled: !!article?.category,
     staleTime: 5 * 60 * 1000,
@@ -75,8 +70,15 @@ export default function NewsDetail() {
   const { data: comments = [] } = useQuery({
     queryKey: ['comments', article?.id],
     queryFn: async () => {
-      const res = await axios.get(`${apiUrl}/comments/${article.id}`, { timeout: 10000 })
-      return res.data
+      const params = new URLSearchParams()
+      params.set('where[article][equals]', article.id)
+      params.set('where[status][equals]', 'approved')
+      params.set('sort', '-createdAt')
+      params.set('limit', '50')
+      const res = await fetch(`/api/comments?${params.toString()}`, { credentials: 'omit' })
+      if (!res.ok) return []
+      const data = await res.json()
+      return data.docs || []
     },
     enabled: !!article?.id,
     staleTime: 2 * 60 * 1000,
@@ -85,8 +87,13 @@ export default function NewsDetail() {
   // Submit comment
   const commentMutation = useMutation({
     mutationFn: async (data) => {
-      const res = await axios.post(`${apiUrl}/comments`, data, { timeout: 10000 })
-      return res.data
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) throw new Error('Comment submission failed')
+      return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['comments', article?.id])
@@ -114,7 +121,12 @@ export default function NewsDetail() {
       toast({ title: lang === 'en' ? 'Please fill all fields' : 'सभी फ़ील्ड भरें', variant: 'destructive' })
       return
     }
-    commentMutation.mutate({ article_id: article.id, name: commentName.trim(), comment: commentText.trim() })
+    commentMutation.mutate({
+      article: article.id,
+      authorName: commentName.trim(),
+      content: commentText.trim(),
+      status: 'pending',
+    })
   }
 
   if (isLoading) return <Layout><div className="container mx-auto px-4 py-16"><LoadingSpinner size="lg" /></div></Layout>
@@ -180,10 +192,10 @@ export default function NewsDetail() {
 
                 {/* Meta info row */}
                 <div className="flex flex-wrap gap-3 md:gap-4 text-xs md:text-sm text-gray-500 mb-6 pb-4 border-b">
-                  {article.author_name && (
+                  {(article.editor_name || article.author_name) && (
                     <span className="flex items-center gap-1">
                       <User className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-                      {article.author_name}
+                      {article.editor_name || article.author_name}
                     </span>
                   )}
                   {article.created_at && (
@@ -192,10 +204,10 @@ export default function NewsDetail() {
                       {getRelativeTime(article.created_at)}
                     </span>
                   )}
-                  {article.description && (
+                  {(article.contentText || article.description) && (
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-                      {getReadingTime(article.description)} {lang === 'en' ? 'min read' : 'मिनट'}
+                      {getReadingTime(article.contentText || article.description)}
                     </span>
                   )}
                   {article.views > 0 && (
@@ -209,7 +221,7 @@ export default function NewsDetail() {
                 {/* Body */}
                 <div
                   className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: article.description || article.content || '' }}
+                  dangerouslySetInnerHTML={{ __html: article.content || article.description || '' }}
                 />
 
                 {/* YouTube Embed */}
@@ -288,17 +300,17 @@ export default function NewsDetail() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {comments.map((c, i) => (
-                      <div key={i} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
+                    {comments.map((c) => (
+                      <div key={c.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
                         <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-red-600 font-bold text-sm">{c.name?.[0]?.toUpperCase()}</span>
+                          <span className="text-red-600 font-bold text-sm">{c.authorName?.[0]?.toUpperCase()}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className="font-semibold text-sm text-gray-800">{c.name}</span>
-                            <span className="text-xs text-gray-400">{getRelativeTime(c.created_at)}</span>
+                            <span className="font-semibold text-sm text-gray-800">{c.authorName}</span>
+                            <span className="text-xs text-gray-400">{getRelativeTime(c.createdAt)}</span>
                           </div>
-                          <p className="text-sm text-gray-700 break-words">{c.comment}</p>
+                          <p className="text-sm text-gray-700 break-words">{c.content}</p>
                         </div>
                       </div>
                     ))}
@@ -322,7 +334,7 @@ export default function NewsDetail() {
                   <CardContent className="space-y-3 p-3">
                     {relatedArticles.map(a => (
                       <div key={a.id} className="flex gap-2 cursor-pointer group"
-                        onClick={() => router.push(getLangPath(`/news/${a.slug}`))}>
+                        onClick={() => router.push(getLangPath(`/news/${encodeURIComponent(a.slug)}`))}>
                         {a.image_url && (
                           <img src={a.image_url} alt={a.title}
                             className="w-14 h-14 object-cover rounded flex-shrink-0" loading="lazy" />
@@ -350,8 +362,8 @@ export default function NewsDetail() {
               {relatedArticles.map(a => (
                 <NewsCard key={a.id} id={a.id} title={a.title}
                   excerpt={(a.description || '').slice(0, 80) + '...'}
-                  category={a.category} author={a.author_name}
-                  publishedAt={a.created_at} readTime={getReadingTime(a.description)}
+                  category={a.category} author={a.editor_name || a.author_name}
+                  publishedAt={a.created_at} readTime={getReadingTime(a.contentText || a.description)}
                   views={a.views || 0} imageUrl={a.image_url} slug={a.slug} />
               ))}
             </div>

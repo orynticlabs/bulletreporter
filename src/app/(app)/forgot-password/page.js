@@ -7,8 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Mail } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
-
 function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -19,18 +17,21 @@ function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const response = await axios.post(`${apiUrl}/auth/forgot-password`, { email });
-      
+      const res = await fetch('/api/users/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed')
       toast({
         title: "सफल",
-        description: response.data.message || "पासवर्ड रीसेट लिंक आपके ईमेल पर भेज दिया गया है।",
+        description: "पासवर्ड रीसेट लिंक आपके ईमेल पर भेज दिया गया है।",
       });
     } catch (error) {
-      // console.error('Forgot password error:', error.response?.data || error.message);
       toast({
         title: "त्रुटि",
-        description: error.response?.data?.message || "पासवर्ड रीसेट ईमेल भेजने में विफल। कृपया पुनः प्रयास करें।",
+        description: error.message || "पासवर्ड रीसेट ईमेल भेजने में विफल। कृपया पुनः प्रयास करें।",
         variant: "destructive",
       });
     } finally {

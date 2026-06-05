@@ -1,0 +1,314 @@
+const PAYLOAD_API_BASE =
+  typeof window === 'undefined'
+    ? process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    : ''
+
+const PUBLIC_CACHE_TTL = 2 * 60 * 1000
+const responseCache = new Map()
+const pendingRequests = new Map()
+
+const getCachedJson = async (url, ttl = PUBLIC_CACHE_TTL) => {
+  const now = Date.now()
+  const cached = responseCache.get(url)
+
+  if (cached && now - cached.timestamp < ttl) {
+    return cached.data
+  }
+
+  if (pendingRequests.has(url)) {
+    return pendingRequests.get(url)
+  }
+
+  const request = fetch(url, {
+    cache: 'force-cache',
+    credentials: 'omit',
+    next: { revalidate: Math.ceil(ttl / 1000) },
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`Payload request failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      responseCache.set(url, { data, timestamp: Date.now() })
+      return data
+    })
+    .finally(() => {
+      pendingRequests.delete(url)
+    })
+
+  pendingRequests.set(url, request)
+  return request
+}
+
+export const normalizeRouteSlug = (value = '') => {
+  let slug = Array.isArray(value) ? value[0] : String(value || '')
+
+  for (let i = 0; i < 3; i += 1) {
+    try {
+      const decoded = decodeURIComponent(slug)
+      if (decoded === slug) break
+      slug = decoded
+    } catch {
+      break
+    }
+  }
+
+  return slug.trim()
+}
+
+const escapeHtml = (value = '') =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
+const isCloudinaryUrl = (url = '') => /res\.cloudinary\.com|cloudinary\.com/.test(String(url))
+
+const getCloudinaryCloudName = (media) => {
+  const configuredName =
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+    process.env.CLOUDINARY_CLOUD_NAME
+
+  if (configuredName) return configuredName
+
+  const cloudinaryUrl = [media?.url, media?.thumbnailURL]
+    .filter(Boolean)
+    .find(isCloudinaryUrl)
+
+  if (!cloudinaryUrl) return null
+
+  try {
+    return new URL(cloudinaryUrl).pathname.split('/').filter(Boolean)[0] || null
+  } catch {
+    return null
+  }
+}
+
+const buildCloudinaryUrl = (media, transform = 'f_auto,q_auto') => {
+  if (!media?.cloudinaryPublicId) return null
+
+  const cloudName = getCloudinaryCloudName(media)
+  if (!cloudName) return null
+
+  const publicId = String(media.cloudinaryPublicId)
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const transformPath = transform ? `${transform}/` : ''
+
+  return `https://res.cloudinary.com/${cloudName}/image/upload/${transformPath}${publicId}`
+}
+
+const getMediaUrl = (media) => {
+  if (!media || typeof media !== 'object') return null
+  if (isCloudinaryUrl(media.url)) return media.url
+  if (media.cloudinaryPublicId) {
+    const cloudinaryUrl = buildCloudinaryUrl(media, 'f_auto,q_auto')
+    if (cloudinaryUrl) return cloudinaryUrl
+  }
+
+  const url =
+    media.sizes?.hero?.url ||
+    media.sizes?.card?.url ||
+    media.url ||
+    media.thumbnailURL
+
+  if (!url) return null
+  return url
+}
+
+const getRelationshipTitle = (value, fallback = '') => {
+  if (!value) return fallback
+  if (typeof value === 'string') return value
+  return value.nameHindi || value.name || value.title || fallback
+}
+
+const getAuthorName = (value) => {
+  if (!value) return 'Bullet Reporter'
+  if (typeof value === 'string') return value
+  return value.name || value.email || 'Bullet Reporter'
+}
+
+const renderLexicalText = (node) => {
+  let text = escapeHtml(node.text || '')
+  const format = Number(node.format || 0)
+
+  if (format & 16) text = `<code>${text}</code>`
+  if (format & 8) text = `<u>${text}</u>`
+  if (format & 4) text = `<s>${text}</s>`
+  if (format & 2) text = `<em>${text}</em>`
+  if (format & 1) text = `<strong>${text}</strong>`
+
+  return text
+}
+
+const renderLexicalChildren = (children = []) =>
+  children.map(renderLexicalNode).join('')
+
+const renderLexicalNode = (node) => {
+  if (!node) return ''
+
+  if (node.type === 'text') {
+    return renderLexicalText(node)
+  }
+
+  if (node.type === 'linebreak') {
+    return '<br />'
+  }
+
+  if (node.type === 'heading') {
+    const tag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(node.tag) ? node.tag : 'h2'
+    return `<${tag}>${renderLexicalChildren(node.children)}</${tag}>`
+  }
+
+  if (node.type === 'quote') {
+    return `<blockquote>${renderLexicalChildren(node.children)}</blockquote>`
+  }
+
+  if (node.type === 'list') {
+    const tag = node.listType === 'number' ? 'ol' : 'ul'
+    return `<${tag}>${renderLexicalChildren(node.children)}</${tag}>`
+  }
+
+  if (node.type === 'listitem') {
+    return `<li>${renderLexicalChildren(node.children)}</li>`
+  }
+
+  if (node.type === 'link') {
+    const href = escapeHtml(node.fields?.url || node.url || '#')
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${renderLexicalChildren(node.children)}</a>`
+  }
+
+  if (node.type === 'upload') {
+    const media = node.value
+    const src = getMediaUrl(media)
+    if (!src) return ''
+    const alt = escapeHtml(media?.alt || '')
+    return `<figure><img src="${escapeHtml(src)}" alt="${alt}" loading="lazy" /></figure>`
+  }
+
+  if (node.type === 'paragraph') {
+    const children = renderLexicalChildren(node.children)
+    return children.trim() ? `<p>${children}</p>` : ''
+  }
+
+  return renderLexicalChildren(node.children)
+}
+
+export const lexicalToHtml = (value) => {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  return renderLexicalChildren(value.root?.children || value.children || [])
+}
+
+export const lexicalToPlainText = (value) => {
+  if (!value) return ''
+  if (typeof value === 'string') return value.replace(/<[^>]*>/g, ' ')
+
+  const walk = (node) => {
+    if (!node) return ''
+    if (node.type === 'text') return node.text || ''
+    if (node.type === 'linebreak') return '\n'
+    return (node.children || []).map(walk).join(' ')
+  }
+
+  return (value.root?.children || value.children || [])
+    .map(walk)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+export const normalizePayloadArticle = (doc) => {
+  if (!doc) return null
+
+  const contentHtml = lexicalToHtml(doc.contentHindi || doc.content)
+  const contentText = lexicalToPlainText(doc.contentHindi || doc.content)
+  const excerpt = doc.excerptHindi || doc.excerpt || contentText.slice(0, 180)
+  const imageUrl = getMediaUrl(doc.featuredImage)
+  const category = getRelationshipTitle(doc.category, 'News')
+  const tags = Array.isArray(doc.tags)
+    ? doc.tags.map((item) => item.tag).filter(Boolean)
+    : []
+
+  return {
+    ...doc,
+    id: doc.id,
+    title: doc.title || 'Untitled',
+    description: excerpt,
+    content: contentHtml,
+    contentText,
+    category,
+    author_name: getAuthorName(doc.author),
+    editor_name: getAuthorName(doc.editor),
+    created_at: doc.publishedAt || doc.createdAt || doc.created_at,
+    updated_at: doc.updatedAt || doc.updated_at,
+    image_url: imageUrl,
+    youtube_url: doc.youtubeUrl || doc.youtube_url || null,
+    is_breaking: Boolean(doc.isBreaking),
+    is_featured: Boolean(doc.isFeatured),
+    views: Number(doc.views || 0),
+    tags,
+    slug: doc.slug || '',
+  }
+}
+
+const buildPayloadNewsUrl = (options = {}) => {
+  const {
+    limit = 10,
+    page = 1,
+    depth = 1,
+    sort = '-createdAt',
+    isBreaking,
+    isFeatured,
+    category,
+  } = options
+  const slug = normalizeRouteSlug(options.slug)
+
+  const params = new URLSearchParams()
+  params.set('depth', String(depth))
+  params.set('limit', String(limit))
+  params.set('page', String(page))
+  params.set('sort', sort)
+  if (typeof isBreaking === 'boolean') {
+    params.set('isBreaking', String(isBreaking))
+  }
+
+  if (typeof isFeatured === 'boolean') {
+    params.set('isFeatured', String(isFeatured))
+  }
+
+  if (slug) {
+    params.set('slug', slug)
+  }
+
+  if (category) {
+    params.set('category', category)
+  }
+
+  if (options.search) {
+    params.set('search', options.search)
+  }
+
+  return `${PAYLOAD_API_BASE}/api/public/news?${params.toString()}`
+}
+
+export async function fetchPayloadArticles(options = {}) {
+  const data = await getCachedJson(buildPayloadNewsUrl(options), options.ttl)
+  const articles = (data.docs || []).map(normalizePayloadArticle).filter(Boolean)
+
+  return {
+    ...data,
+    articles,
+    total: data.totalDocs || articles.length,
+    totalPages: data.totalPages || 1,
+  }
+}
+
+export async function fetchPayloadArticleBySlug(slug) {
+  const data = await fetchPayloadArticles({ slug, limit: 1, ttl: 60 * 1000 })
+  return data.articles[0] || null
+}
