@@ -1,5 +1,11 @@
 import JsonLd from '@/components/JsonLd'
-import { buildMetadata, newsArticleJsonLd, SITE_DESCRIPTION, SITE_TITLE, truncate } from '@/lib/seo'
+import {
+  buildMetadata,
+  newsArticleJsonLd,
+  SITE_DESCRIPTION,
+  SITE_TITLE,
+  truncate,
+} from '@/lib/seo'
 import { fetchArticleBySlug } from '@/lib/payload-direct'
 import { normalizeRouteSlug } from '@/utils/payloadArticles'
 import ArticleDetailClient from './ArticleDetailClient'
@@ -18,11 +24,17 @@ export async function generateMetadata({ params }) {
     })
   }
 
+  const ogImage = article.og_image_url || article.image_url || '/logo.png'
+
   return buildMetadata({
-    title: article.title,
-    description: truncate(article.description || article.contentText || SITE_DESCRIPTION),
-    path: `/article/${article.slug}`,
-    image: article.image_url || '/logo.png',
+    title: article.title || SITE_TITLE,
+    description: truncate(
+      article.description ||
+      article.contentText  ||
+      SITE_DESCRIPTION
+    ),
+    path: `/article/${slug}`,
+    image: ogImage,
     type: 'article',
     publishedTime: article.created_at,
     modifiedTime: article.updated_at || article.created_at,

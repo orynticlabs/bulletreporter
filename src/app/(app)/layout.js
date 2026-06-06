@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import './globals.css'
 import Providers from './providers'
 import JsonLd from '@/components/JsonLd'
@@ -38,9 +39,14 @@ export const viewport = {
   themeColor: '#dc2626',
 }
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  // Read locale set by middleware (cookie is set when URL starts with /en/)
+  const cookieStore = await cookies()
+  const locale = cookieStore.get('NEXT_LOCALE')?.value || 'hi'
+  const htmlLang = locale === 'en' ? 'en' : 'hi'
+
   return (
-    <html lang="hi" suppressHydrationWarning data-scroll-behavior="smooth">
+    <html lang={htmlLang} suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         {/* Preconnect to external origins for speed */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -60,6 +66,8 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Bullet Reporter" />
+        {/* Disable Google auto-translate on Hindi pages — English pages translate naturally */}
+        {htmlLang === 'hi' && <meta name="google" content="notranslate" />}
       </head>
       <body suppressHydrationWarning>
         <JsonLd data={organizationJsonLd()} />

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 const SearchContext = createContext()
 
@@ -15,6 +16,7 @@ export const useSearch = () => {
 }
 
 export const SearchProvider = ({ children }) => {
+  const { lang } = useLanguage()
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
@@ -34,10 +36,10 @@ export const SearchProvider = ({ children }) => {
   }, [searchQuery])
 
   const { data: searchData, isLoading: searchLoading, error: searchError } = useQuery({
-    queryKey: ['search', trimmedDebouncedQuery],
+    queryKey: ['search', trimmedDebouncedQuery, lang],
     queryFn: async () => {
       if (!trimmedDebouncedQuery) return { articles: [] }
-      return fetchPayloadArticles({ search: trimmedDebouncedQuery, limit: 8 })
+      return fetchPayloadArticles({ search: trimmedDebouncedQuery, limit: 8, lang })
     },
     enabled: isQueryReady,
     staleTime: 5 * 60 * 1000,

@@ -9,6 +9,8 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { fetchPayloadCategories } from '@/utils/payloadCategories'
 import SearchResults from './SearchResults'
 
+const MENU_CATEGORY_LIMIT = 12
+
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSocialOpen, setIsSocialOpen] = useState(false)
@@ -17,7 +19,7 @@ function Header() {
   const [currentDate, setCurrentDate] = useState('')
   const router = useRouter()
   const pathname = usePathname()
-  const { t, lang } = useLanguage()
+  const { t, lang, toggleLanguage } = useLanguage()
   const menuRef = useRef(null)
 
   const { searchQuery, handleSearchInputChange, handleSearchSubmit, searchLoading } = useSearch()
@@ -56,8 +58,8 @@ function Header() {
   useEffect(() => { setIsMenuOpen(false) }, [pathname])
 
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
-    queryKey: ['categories'],
-    queryFn: fetchPayloadCategories,
+    queryKey: ['categories', 'header-menu', MENU_CATEGORY_LIMIT],
+    queryFn: () => fetchPayloadCategories({ limit: MENU_CATEGORY_LIMIT }),
     staleTime: 10 * 60 * 1000,
   })
 
@@ -65,8 +67,8 @@ function Header() {
 
   const mainCategories = [
     { name: t.header.mainNews, href: getLangPath('/') },
-    ...categories.map(cat => ({
-      name: cat.nameHindi || cat.name,
+    ...categories.slice(0, MENU_CATEGORY_LIMIT).map(cat => ({
+      name: lang === 'en' ? (cat.name || cat.nameHindi) : (cat.nameHindi || cat.name),
       href: getLangPath(`/category/${encodeURIComponent(cat.name)}`)
     }))
   ]
@@ -114,6 +116,16 @@ function Header() {
 
             {/* Right: Actions */}
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleLanguage}
+                className="inline-flex items-center rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-[11px] font-bold leading-none text-white transition-colors hover:bg-white/20 sm:text-xs"
+                aria-label={lang === 'en' ? 'Switch to Hindi' : 'Switch to English'}
+                title={lang === 'en' ? 'Switch to Hindi' : 'Switch to English'}
+              >
+                {lang === 'en' ? 'हिंदी' : 'English'}
+              </button>
+
               {/* News Alert */}
               <button className="flex items-center gap-1 hover:bg-red-800 px-2 py-1 rounded transition-colors">
                 <Bell className="w-3.5 h-3.5" />

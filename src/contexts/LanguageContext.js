@@ -10,10 +10,10 @@ export function LanguageProvider({ children }) {
   const router = useRouter()
   const pathname = usePathname()
 
-  // Detect language from URL (/en/... = English, else Hindi)
+  // Detect language only from the URL. Hindi is the default for every non-/en route.
   const getLangFromPath = useCallback((path) => {
     if (!path) return 'hi'
-    return path.startsWith('/en') ? 'en' : 'hi'
+    return path === '/en' || path.startsWith('/en/') ? 'en' : 'hi'
   }, [])
 
   const [lang, setLang] = useState(() => getLangFromPath(pathname))
@@ -48,7 +48,7 @@ export function LanguageProvider({ children }) {
   const t = getTranslations(lang)
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, toggleLanguage, t, isEnglish: lang === 'en' }}>
+    <LanguageContext.Provider value={{ lang, toggleLanguage, t, isEnglish: lang === 'en' }}>
       {children}
     </LanguageContext.Provider>
   )

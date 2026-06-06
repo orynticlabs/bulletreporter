@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Cloud, Wind, Droplets, RefreshCw, TrendingUp } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
+import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
 
 function Sidebar() {
   const router = useRouter()
@@ -54,12 +55,14 @@ function Sidebar() {
   }, [fetchWeatherData])
 
   const { data: trendingData = [], isLoading: trendingLoading } = useQuery({
-    queryKey: ['trending'],
+    queryKey: ['trending', lang],
     queryFn: async () => {
-      const result = await fetchPayloadArticles({ limit: 10 })
+      const result = await fetchPayloadArticles({ limit: 10, lang })
       return result.articles || []
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: CONTENT_STALE_TIME,
+    refetchInterval: CONTENT_REFETCH_INTERVAL,
+    refetchIntervalInBackground: false,
     retry: 1,
   })
 
@@ -118,7 +121,7 @@ function Sidebar() {
       <div className="bg-white rounded-xl shadow-md p-4">
         <h3 className="font-bold text-lg text-primary mb-3 flex items-center gap-2 border-b pb-2">
           <TrendingUp className="w-5 h-5 text-red-500 flex-shrink-0" />
-          {lang === 'en' ? 'Top 10 Trending News' : 'टॉप 10 ट्रेंडिंग न्यूज़'}
+          {t.sidebar.topTrending}
         </h3>
         {trendingLoading ? (
           <div className="space-y-2">

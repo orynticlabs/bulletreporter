@@ -22,17 +22,54 @@ export function absoluteUrl(path = '/') {
   return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`
 }
 
-// For Cloudinary URLs, inject a w_1280,h_720,c_fill,f_jpg,q_auto transformation
-// so the OG image is always exactly 1280×720 regardless of the original upload size.
+const OG_TRANSFORM = 'w_1200,h_630,c_fill,f_jpg,q_auto'
+
+/**
+ * Ensures a Cloudinary image URL has the correct OG dimensions (1200×630 JPEG).
+ *
+ * If the URL already carries the OG transform it is returned unchanged (no
+ * double-application). Non-Cloudinary URLs pass through as-is.
+ * HTTP is always upgraded to HTTPS.
+ *
+ * Handled shapes:
+ *   .../upload/public_id
+ *   .../upload/f_auto,q_auto/public_id
+ *   .../upload/folder/subdir/public_id
+ *   .../upload/v1234567890/public_id
+ */
 function toOgImageUrl(url = '') {
   if (!url) return url
-  const cloudinaryRe = /^(https?:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)([^/]+\/)?(.+)$/
-  const match = url.match(cloudinaryRe)
-  if (!match) return url
-  const [, base, existingTransform, publicId] = match
-  // Replace any existing transform segment with the OG-specific one
-  void existingTransform
-  return `${base}w_1280,h_720,c_fill,f_jpg,q_auto/${publicId}`
+
+  // Always force HTTPS for social crawlers
+  const httpsUrl = url.replace(/^http:\/\//, 'https://')
+
+  // Only rewrite Cloudinary image URLs
+  const uploadMarker = '/image/upload/'
+  const uploadIdx    = httpsUrl.indexOf(uploadMarker)
+  if (uploadIdx === -1 || !httpsUrl.includes('res.cloudinary.com')) return httpsUrl
+
+  const base = httpsUrl.slice(0, uploadIdx + uploadMarker.length) // …/image/upload/
+  const rest  = httpsUrl.slice(base.length)                        // everything after
+
+  // If the OG transform is already present, return as-is
+  if (rest.startsWith(OG_TRANSFORM + '/') || rest === OG_TRANSFORM) return httpsUrl
+
+  // Strip any existing transform segments (segments that contain commas)
+  const segments    = rest.split('/')
+  let publicIdStart = 0
+  for (let i = 0; i < segments.length; i++) {
+    if (segments[i].includes(',')) {
+      publicIdStart = i + 1 // skip transform chunk
+    } else {
+      publicIdStart = i
+      break
+    }
+  }
+
+  const publicId = segments.slice(publicIdStart).join('/')
+  if (!publicId) return httpsUrl
+
+  return `${base}${OG_TRANSFORM}/${publicId}`
 }
 
 export function stripHtml(value = '') {
@@ -63,19 +100,24 @@ export function buildMetadata({
   noIndex = false,
 } = {}) {
   const canonical = absoluteUrl(path)
-  const rawImageUrl = absoluteUrl(image || DEFAULT_IMAGE)
-  const ogImageUrl = toOgImageUrl(rawImageUrl)
+
+  // Always produce an absolute HTTPS OG image URL
+  const rawImageUrl  = absoluteUrl(image || DEFAULT_IMAGE)
+  const ogImageUrl   = toOgImageUrl(rawImageUrl) // applies 1200×630 JPEG transform for Cloudinary
+  const secureImgUrl = ogImageUrl.replace(/^http:\/\//, 'https://')
+
   const cleanDescription = truncate(description || SITE_DESCRIPTION)
   const plainTitle = typeof title === 'string' ? title : title?.default || SITE_TITLE
 
+  // Full OpenGraph image object — Next.js maps these to og:image:* tags
   const ogImages = [
     {
-      url: ogImageUrl,
-      secureUrl: ogImageUrl,
-      width: 1280,
-      height: 720,
-      alt: plainTitle,
-      type: 'image/jpeg',
+      url:       secureImgUrl,
+      secureUrl: secureImgUrl,   // → og:image:secure_url
+      width:     1200,           // → og:image:width
+      height:    630,            // → og:image:height
+      alt:       plainTitle,     // → og:image:alt
+      type:      'image/jpeg',   // → og:image:type
     },
   ]
 
@@ -116,11 +158,7 @@ export function buildMetadata({
       siteName: SITE_NAME,
       title: plainTitle,
       description: cleanDescription,
-      ...(type === 'article' && {
-        publishedTime,
-        modifiedTime,
-        authors,
-      }),
+      ...(type === 'article' && { publishedTime, modifiedTime, authors }),
       images: ogImages,
     },
     twitter: {
@@ -129,7 +167,7 @@ export function buildMetadata({
       creator: '@bulletreporter',
       title: plainTitle,
       description: cleanDescription,
-      images: [ogImageUrl],
+      images: [{ url: secureImgUrl, alt: plainTitle }],
     },
     other: {
       'news_keywords': [...SITE_KEYWORDS, ...keywords].slice(0, 10).join(', '),

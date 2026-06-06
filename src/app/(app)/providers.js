@@ -7,16 +7,23 @@ import { LanguageProvider } from '@/contexts/LanguageContext'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
+import { CONTENT_STALE_TIME } from '@/utils/queryConfig'
 
 export default function Providers({ children }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 3 * 60 * 1000,    // 3 minutes
-        gcTime: 10 * 60 * 1000,       // 10 minutes cache
+        // Data becomes stale after 30 s — shorter than the 2-min refetch
+        // interval so the interval actually triggers new network requests.
+        staleTime: CONTENT_STALE_TIME,
+        gcTime: 10 * 60 * 1000,        // keep unused cache for 10 min
         retry: 1,
         retryDelay: 2000,
-        refetchOnWindowFocus: false,  // Performance: no refetch on tab switch
+        // Refetch when the user returns to the tab after being away
+        refetchOnWindowFocus: true,
+        // Never refetch when the browser tab is hidden/backgrounded —
+        // avoids wasting API quota while the user isn't looking
+        refetchIntervalInBackground: false,
       },
     },
   }))

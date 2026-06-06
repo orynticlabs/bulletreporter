@@ -81,6 +81,7 @@ export async function GET(request) {
   if (search) {
     where.or = [
       { title: { like: search } },
+      { titleEnglish: { like: search } },
       { excerpt: { like: search } },
       { 'tags.tag': { like: search } },
     ]

@@ -35,6 +35,9 @@ const en = {
     errorBreaking: 'Failed to load breaking news',
     errorNews: 'Failed to load news',
     serverTimeout: 'Backend server connection timeout',
+    specialArticles: 'Special Articles',
+    featured: 'Featured',
+    more: 'More',
   },
 
   // News pages
@@ -67,6 +70,24 @@ const en = {
     noImage: 'No image available',
     articleNotFound: 'Article not found',
     articleNotFoundDesc: 'Sorry, the article you requested is not available.',
+    goHome: 'Go Home',
+    breaking: 'Breaking',
+    views: 'views',
+    helpfulQuestion: 'Was this helpful?',
+    leaveComment: 'Leave a comment',
+    emailOptional: 'Email (optional)',
+    more: 'more',
+    linkCopied: 'Link copied!',
+    copyLink: 'Copy Link',
+  },
+
+  // News cards
+  newsCard: {
+    watchVideo: 'Watch Video',
+    topStory: 'Top Story',
+    min: 'min',
+    sharing: 'Sharing...',
+    opening: 'opening',
   },
 
   // Comments
@@ -82,6 +103,24 @@ const en = {
     beFirst: 'Be the first to comment!',
     loadingComments: 'Loading comments...',
     errorComments: 'Error loading comments',
+    showAll: 'Show all comments',
+    showLess: 'Show less',
+    pending: 'Your comment will be published after review.',
+    submitted: 'Comment submitted!',
+  },
+
+  // Reactions
+  reactions: {
+    likes: 'Likes',
+    dislikes: 'Dislikes',
+    youLiked: 'You liked this',
+    youDisliked: 'You disliked this',
+  },
+
+  // Suggested articles
+  suggested: {
+    title: 'Suggested News',
+    readMore: 'Read More',
   },
 
   // Sidebar
@@ -94,6 +133,7 @@ const en = {
     weatherError: 'Could not load weather data',
     retryWeather: 'Try again',
     trending: 'Trending News',
+    topTrending: 'Top 10 Trending News',
     noTrending: 'No trending news available',
     categories: 'Categories',
     noCategories: 'No categories available',
@@ -116,7 +156,12 @@ const en = {
     noResults: 'No results found',
     noArticleFound: 'No article found for',
     typeWord: 'Type a complete word or press space',
+    typeChars: 'Type at least 2 characters for suggestions',
+    suggestionsFor: 'Suggestions for',
     searchError: 'Search error',
+    searchFailed: 'Search failed',
+    tryAgain: 'Please try again shortly',
+    noSuggestions: 'No suggestions found',
     results: 'results found',
     clickToRead: 'Click to read',
     searching: 'Searching...',
@@ -127,6 +172,7 @@ const en = {
     loading: 'Loading...',
     error: 'Error',
     retry: 'Retry',
+    fillRequired: 'Please fill required fields',
     noData: 'No data available',
     save: 'Save',
     cancel: 'Cancel',
