@@ -1,82 +1,373 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Search, Menu, Bell, Share2, Youtube, Facebook, Twitter, Instagram, Loader2, X, Phone, Mail } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Search, Menu, Bell, BellOff, Share2, Youtube, Facebook, Twitter, Instagram, Loader2, X, Phone, Mail, Clock, ChevronRight, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSearch } from '@/contexts/SearchContext'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { fetchPayloadCategories } from '@/utils/payloadCategories'
+import { fetchPayloadArticles } from '@/utils/payloadArticles'
+import { getRelativeTime } from '@/utils/dateUtils'
 import SearchResults from './SearchResults'
 
 const MENU_CATEGORY_LIMIT = 12
+const ALERTS_LIMIT = 10
+const ALERTS_POLL_INTERVAL = 2 * 60 * 1000   // 2 min — matches global refetch
+const LAST_SEEN_KEY  = 'br_alert_last_seen'   // localStorage key
+const MUTED_KEY      = 'br_alert_muted'        // localStorage key for mute pref
 
-function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isSocialOpen, setIsSocialOpen] = useState(false)
-  const [isScrolled, setIsScrolled] = useState(false)
-  const [currentTime, setCurrentTime] = useState('')
-  const [currentDate, setCurrentDate] = useState('')
+// ── Sound engine (Web Audio API — no external files needed) ──────────────────
+// Generates a pleasant two-tone "ding-dong" chime.
+// Only plays AFTER the first user interaction (satisfies browser autoplay policy).
+let _userInteracted = false
+if (typeof window !== 'undefined') {
+  const markInteracted = () => { _userInteracted = true }
+  window.addEventListener('click',     markInteracted, { once: true, passive: true })
+  window.addEventListener('keydown',   markInteracted, { once: true, passive: true })
+  window.addEventListener('touchstart',markInteracted, { once: true, passive: true })
+  window.addEventListener('scroll',    markInteracted, { once: true, passive: true })
+}
+
+function playAlertSound() {
+  if (!_userInteracted) return                  // browser blocks audio before interaction
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext
+    if (!AudioCtx) return
+    const ctx  = new AudioCtx()
+    const now  = ctx.currentTime
+
+    // Helper: schedule one tone burst
+    const tone = (freq, startAt, duration, peakGain = 0.25) => {
+      const osc  = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, startAt)
+      gain.gain.setValueAtTime(0, startAt)
+      gain.gain.linearRampToValueAtTime(peakGain, startAt + 0.02)  // quick attack
+      gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration) // smooth decay
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(startAt)
+      osc.stop(startAt + duration + 0.05)
+    }
+
+    // "Ding" — high note
+    tone(1047, now,        0.45, 0.28)   // C6
+    tone(1319, now + 0.02, 0.40, 0.15)   // E6  (subtle harmony)
+    // "Dong" — lower note, slight delay
+    tone(784,  now + 0.28, 0.55, 0.22)   // G5
+
+    // Close the AudioContext once the sound finishes
+    setTimeout(() => ctx.close().catch(() => {}), 1200)
+  } catch { /* silently ignore: unsupported browser */ }
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+const getLastSeen = () => {
+  if (typeof window === 'undefined') return null
+  try { return localStorage.getItem(LAST_SEEN_KEY) } catch { return null }
+}
+const setLastSeen = (id) => {
+  if (typeof window === 'undefined') return
+  try { localStorage.setItem(LAST_SEEN_KEY, String(id)) } catch {}
+}
+
+// ── Alert dropdown panel ──────────────────────────────────────────────────────
+function AlertPanel({ articles, lang, isMuted, onToggleMute, onClose, onRead }) {
   const router = useRouter()
+  const getLangPath = useCallback((p) => lang === 'en' ? `/en${p}` : p, [lang])
+
+  const handleArticleClick = (slug) => {
+    onRead()
+    onClose()
+    router.push(getLangPath(`/news/${encodeURIComponent(slug)}`))
+  }
+
+  return (
+    <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-100 z-[60] overflow-hidden">
+      {/* Panel header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-red-600 text-white">
+        <div className="flex items-center gap-2">
+          <Bell className="w-4 h-4 fill-white" />
+          <span className="font-bold text-sm">
+            {lang === 'en' ? 'News Alerts' : 'समाचार अलर्ट'}
+          </span>
+          {articles.length > 0 && (
+            <span className="bg-white text-red-600 text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">
+              {articles.length}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onToggleMute}
+            className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-[11px] font-bold text-white transition-colors hover:bg-white/20"
+            title={isMuted
+              ? (lang === 'en' ? 'Unmute alert sound' : 'अलर्ट साउंड चालू करें')
+              : (lang === 'en' ? 'Mute alert sound' : 'अलर्ट साउंड बंद करें')
+            }
+            aria-label={isMuted
+              ? (lang === 'en' ? 'Unmute alert sound' : 'अलर्ट साउंड चालू करें')
+              : (lang === 'en' ? 'Mute alert sound' : 'अलर्ट साउंड बंद करें')
+            }
+          >
+            {isMuted ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+            <span>{isMuted ? (lang === 'en' ? 'Muted' : 'म्यूट') : (lang === 'en' ? 'Sound' : 'साउंड')}</span>
+          </button>
+          <button
+            onClick={onClose}
+            className="hover:bg-white/20 p-1 rounded-full transition-colors"
+            aria-label="Close alerts"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Articles list */}
+      {articles.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-10 px-4 text-center">
+          <Bell className="w-10 h-10 text-gray-200" />
+          <p className="text-gray-500 text-sm font-medium">
+            {lang === 'en' ? 'No new alerts' : 'कोई नया अलर्ट नहीं'}
+          </p>
+          <p className="text-gray-400 text-xs">
+            {lang === 'en' ? 'You\'re all caught up!' : 'सभी खबरें पढ़ ली हैं!'}
+          </p>
+        </div>
+      ) : (
+        <div className="max-h-[70vh] overflow-y-auto divide-y divide-gray-50">
+          {articles.map((article, idx) => (
+            <button
+              key={article.id}
+              type="button"
+              onClick={() => handleArticleClick(article.slug)}
+              className="w-full flex items-start gap-3 px-4 py-3 hover:bg-red-50 transition-colors text-left group"
+            >
+              {/* Thumbnail */}
+              <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-100 mt-0.5">
+                {article.image_url ? (
+                  <img
+                    src={article.image_url}
+                    alt={article.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-red-400" />
+                  </div>
+                )}
+              </div>
+
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                  {idx === 0 && (
+                    <span className="inline-flex items-center gap-0.5 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide leading-none animate-pulse">
+                      <span className="w-1 h-1 bg-white rounded-full inline-block" />
+                      {lang === 'en' ? 'New' : 'नई'}
+                    </span>
+                  )}
+                  {article.category && (
+                    <span className="text-[10px] font-semibold text-red-600 uppercase tracking-wide">
+                      {article.category}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[13px] font-semibold text-gray-800 line-clamp-2 leading-snug group-hover:text-red-600 transition-colors">
+                  {article.title}
+                </p>
+                <div className="flex items-center gap-1 mt-1.5 text-gray-400">
+                  <Clock className="w-3 h-3 flex-shrink-0" />
+                  <span className="text-[11px]">{getRelativeTime(article.created_at)}</span>
+                </div>
+              </div>
+
+              <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-red-500 flex-shrink-0 mt-4 transition-colors" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="border-t border-gray-100 px-4 py-2.5 bg-gray-50 flex items-center justify-between">
+        <button
+          onClick={() => { onRead(); onClose() }}
+          className="text-xs text-gray-500 hover:text-red-600 transition-colors font-medium"
+        >
+          {lang === 'en' ? 'Mark all read' : 'सभी पढ़ा हुआ मार्क करें'}
+        </button>
+        <button
+          onClick={() => {
+            onRead()
+            onClose()
+            router.push(lang === 'en' ? '/en/news' : '/news')
+          }}
+          className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 transition-colors"
+        >
+          {lang === 'en' ? 'View all news' : 'सभी समाचार देखें'}
+          <ChevronRight className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Header ───────────────────────────────────────────────────────────────
+function Header() {
+  const [isMenuOpen,   setIsMenuOpen]   = useState(false)
+  const [isSocialOpen, setIsSocialOpen] = useState(false)
+  const [isAlertOpen,  setIsAlertOpen]  = useState(false)
+  const [unreadCount,  setUnreadCount]  = useState(0)
+  const [isMuted,      setIsMuted]      = useState(false)
+  const [isScrolled,   setIsScrolled]   = useState(false)
+  const [currentTime,  setCurrentTime]  = useState('')
+  const [currentDate,  setCurrentDate]  = useState('')
+  const prevUnreadRef  = useRef(0)   // tracks previous count to detect increases
+
+  const router   = useRouter()
   const pathname = usePathname()
   const { t, lang, toggleLanguage } = useLanguage()
-  const menuRef = useRef(null)
+
+  const menuRef  = useRef(null)
+  const alertRef = useRef(null)
 
   const { searchQuery, handleSearchInputChange, handleSearchSubmit, searchLoading } = useSearch()
 
-  // Live clock + date — both set client-side only to avoid SSR mismatch
+  // ── Restore mute pref from localStorage ───────────────────────────────────
+  useEffect(() => {
+    try { setIsMuted(localStorage.getItem(MUTED_KEY) === '1') } catch {}
+  }, [])
+
+  const toggleMute = useCallback(() => {
+    setIsMuted(prev => {
+      const next = !prev
+      try { localStorage.setItem(MUTED_KEY, next ? '1' : '0') } catch {}
+      return next
+    })
+  }, [])
+
+  // ── Play sound when new articles arrive (unreadCount increases) ────────────
+  useEffect(() => {
+    const prev = prevUnreadRef.current
+    prevUnreadRef.current = unreadCount
+    // Only fire when count grows (new articles detected), not on first load (prev===0)
+    if (unreadCount > prev && prev > 0 && !isMuted) {
+      playAlertSound()
+    }
+  }, [unreadCount, isMuted])
+
+  // ── Live clock ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const locale = lang === 'en' ? 'en-IN' : 'hi-IN'
-    const updateTime = () => {
-      setCurrentTime(new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
-    }
+    const updateTime = () => setCurrentTime(
+      new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    )
     setCurrentDate(new Date().toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }))
     updateTime()
     const timer = setInterval(updateTime, 1000)
     return () => clearInterval(timer)
   }, [lang])
 
-  // Sticky shadow on scroll
+  // ── Sticky shadow ──────────────────────────────────────────────────────────
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10)
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Close menu on outside click
+  // ── Close menus on outside click ───────────────────────────────────────────
   useEffect(() => {
     const handleClick = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setIsMenuOpen(false)
+      }
+      if (alertRef.current && !alertRef.current.contains(e.target)) {
+        setIsAlertOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Close menu on route change
-  useEffect(() => { setIsMenuOpen(false) }, [pathname])
+  // ── Close menu on route change ─────────────────────────────────────────────
+  useEffect(() => { setIsMenuOpen(false); setIsAlertOpen(false) }, [pathname])
 
+  // ── Category nav ──────────────────────────────────────────────────────────
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories', 'header-menu', MENU_CATEGORY_LIMIT],
     queryFn: () => fetchPayloadCategories({ limit: MENU_CATEGORY_LIMIT }),
     staleTime: 10 * 60 * 1000,
   })
 
+  // ── Alert articles — polled every 2 min ────────────────────────────────────
+  const { data: alertArticles = [] } = useQuery({
+    queryKey: ['header-alerts', lang],
+    queryFn: async () => {
+      const result = await fetchPayloadArticles({
+        limit: ALERTS_LIMIT,
+        sort: '-publishedAt',
+        lang,
+      })
+      return result.articles || []
+    },
+    staleTime: 60 * 1000,
+    refetchInterval: ALERTS_POLL_INTERVAL,
+    refetchIntervalInBackground: false,
+    retry: 1,
+  })
+
+  // ── Compute unread count ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!alertArticles.length) return
+    const lastSeen = getLastSeen()
+    if (!lastSeen) {
+      // First visit — mark all as read silently so badge only shows NEW ones
+      setLastSeen(alertArticles[0].id)
+      setUnreadCount(0)
+      return
+    }
+    const idx = alertArticles.findIndex(a => String(a.id) === String(lastSeen))
+    // idx === -1 means all 10 are new; idx === 0 means nothing new
+    const count = idx === -1 ? alertArticles.length : idx
+    setUnreadCount(count)
+  }, [alertArticles])
+
+  // ── Open alert panel → mark all read ──────────────────────────────────────
+  const handleOpenAlerts = () => {
+    setIsAlertOpen(prev => !prev)
+    if (!isAlertOpen && alertArticles.length) {
+      markAllRead()
+    }
+    setIsMenuOpen(false)
+    setIsSocialOpen(false)
+  }
+
+  const markAllRead = useCallback(() => {
+    if (alertArticles.length) {
+      setLastSeen(alertArticles[0].id)
+      setUnreadCount(0)
+    }
+  }, [alertArticles])
+
+  // ── Nav helpers ────────────────────────────────────────────────────────────
   const getLangPath = (path) => lang === 'en' ? `/en${path}` : path
 
   const mainCategories = [
     { name: t.header.mainNews, href: getLangPath('/') },
     ...categories.slice(0, MENU_CATEGORY_LIMIT).map(cat => ({
       name: lang === 'en' ? (cat.name || cat.nameHindi) : (cat.nameHindi || cat.name),
-      href: getLangPath(`/category/${encodeURIComponent(cat.name)}`)
+      href: getLangPath(`/category/${encodeURIComponent(cat.name)}`),
     }))
   ]
 
   const socialLinks = [
-    { name: 'YouTube', icon: Youtube, href: '#', color: 'text-red-600' },
-    { name: 'Facebook', icon: Facebook, href: '#', color: 'text-blue-600' },
-    { name: 'Twitter', icon: Twitter, href: '#', color: 'text-sky-500' },
+    { name: 'YouTube',   icon: Youtube,   href: '#', color: 'text-red-600' },
+    { name: 'Facebook',  icon: Facebook,  href: '#', color: 'text-blue-600' },
+    { name: 'Twitter',   icon: Twitter,   href: '#', color: 'text-sky-500' },
     { name: 'Instagram', icon: Instagram, href: '#', color: 'text-pink-600' },
   ]
 
@@ -116,6 +407,7 @@ function Header() {
 
             {/* Right: Actions */}
             <div className="flex items-center gap-2">
+              {/* Language Toggle */}
               <button
                 type="button"
                 onClick={toggleLanguage}
@@ -126,11 +418,42 @@ function Header() {
                 {lang === 'en' ? 'हिंदी' : 'English'}
               </button>
 
-              {/* News Alert */}
-              <button className="flex items-center gap-1 hover:bg-red-800 px-2 py-1 rounded transition-colors">
-                <Bell className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{t.header.newsAlerts}</span>
-              </button>
+              {/* ── News Alert Bell ── */}
+              <div className="relative flex items-center" ref={alertRef}>
+                {/* Bell button */}
+                <button
+                  type="button"
+                  onClick={handleOpenAlerts}
+                  className={`relative flex items-center gap-1 rounded px-2 py-1 transition-colors ${
+                    isAlertOpen ? 'bg-red-800' : 'hover:bg-red-800'
+                  }`}
+                  aria-label={lang === 'en' ? 'News Alerts' : 'समाचार अलर्ट'}
+                >
+                  {/* Bell with wiggle animation when there are unreads */}
+                  <span className={`relative inline-flex ${unreadCount > 0 ? 'animate-[wiggle_0.8s_ease-in-out]' : ''}`}>
+                    <Bell className={`w-3.5 h-3.5 ${unreadCount > 0 ? 'fill-white' : ''}`} />
+                    {/* Unread count badge */}
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-yellow-400 text-[9px] font-black text-red-800 leading-none shadow">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </span>
+                  <span className="hidden sm:inline">{t.header.newsAlerts}</span>
+                </button>
+
+                {/* Alert dropdown */}
+                {isAlertOpen && (
+                  <AlertPanel
+                    articles={alertArticles}
+                    lang={lang}
+                    isMuted={isMuted}
+                    onToggleMute={toggleMute}
+                    onClose={() => setIsAlertOpen(false)}
+                    onRead={markAllRead}
+                  />
+                )}
+              </div>
 
               {/* Social Share Dropdown */}
               <div className="relative">
@@ -242,7 +565,7 @@ function Header() {
                   >
                     {category.name}
                     {isActive(category.href) && (
-                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"></span>
+                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />
                     )}
                   </button>
                 </li>
@@ -312,6 +635,11 @@ function Header() {
       {/* Overlay to close social dropdown */}
       {isSocialOpen && (
         <div className="fixed inset-0 z-30" onClick={() => setIsSocialOpen(false)} />
+      )}
+
+      {/* Full-page overlay to close alert panel on mobile */}
+      {isAlertOpen && (
+        <div className="fixed inset-0 z-[55] sm:hidden" onClick={() => setIsAlertOpen(false)} />
       )}
     </header>
   )

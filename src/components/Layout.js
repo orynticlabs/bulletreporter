@@ -5,6 +5,7 @@ import NewsHeader from '@/components/header'
 import BreakingNews from '@/components/BreakingNews'
 import { MessageSquareMore, ChevronUp } from 'lucide-react'
 import Footer from '@/components/footer'
+import YouTubeShorts from '@/components/YouTubeShorts'
 
 const WHATSAPP_LINK = 'https://wa.me/919425470033'
 
@@ -26,6 +27,7 @@ function Layout({ children, showBreakingNews = true }) {
         {children}
       </main>
 
+      <YouTubeShorts />
       <Footer />
 
       {/* WhatsApp floating button */}

@@ -12,6 +12,7 @@ import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
+import Sidebar from '@/components/Sidebar'
 
 const LIMIT = 12
 
@@ -58,45 +59,59 @@ export default function CategoryNews() {
           </button>
         </div>
 
-        {isLoading ? (
-          <LoadingSpinner message={t.news.loadingNews} size="lg" variant="skeleton" />
-        ) : error ? (
-          <div className="text-center py-16">
-            <p className="text-red-500 mb-4">{t.news.errorLoading}</p>
-            <button onClick={() => window.location.reload()} className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-              {t.news.retry}
-            </button>
-          </div>
-        ) : articles.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">{category} — {t.news.noNewsFound}</div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {articles.map(article => (
-                <NewsCard key={article.id} id={article.id} title={article.title}
-                  excerpt={(article.description || '').slice(0, 100) + '...'}
-                  category={article.category} categorySlug={article.category_slug} author={article.editor_name || article.author_name}
-                  publishedAt={article.created_at} readTime={getReadingTime(article.contentText || article.description)}
-                  views={article.views || 0} imageUrl={article.image_url}
-                  youtubeUrl={article.youtube_url} slug={article.slug} />
-              ))}
-            </div>
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-10">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                  className="flex items-center gap-2 px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-40">
-                  <ChevronLeft className="w-4 h-4" /> {t.news.previous}
-                </button>
-                <span>{page} / {totalPages}</span>
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40">
-                  {t.news.next} <ChevronRight className="w-4 h-4" />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Articles */}
+          <div className="lg:col-span-3">
+            {isLoading ? (
+              <LoadingSpinner message={t.news.loadingNews} size="lg" variant="skeleton" />
+            ) : error ? (
+              <div className="text-center py-16">
+                <p className="text-red-500 mb-4">{t.news.errorLoading}</p>
+                <button onClick={() => window.location.reload()} className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                  {t.news.retry}
                 </button>
               </div>
+            ) : articles.length === 0 ? (
+              <div className="text-center py-16 text-gray-500">{category} — {t.news.noNewsFound}</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {articles.map(article => (
+                    <NewsCard key={article.id} id={article.id} title={article.title}
+                      excerpt={(article.description || '').slice(0, 100) + '...'}
+                      category={article.category} categorySlug={article.category_slug}
+                      author={article.editor_name || article.author_name}
+                      publishedAt={article.created_at}
+                      readTime={getReadingTime(article.contentText || article.description)}
+                      views={article.views || 0} imageUrl={article.image_url}
+                      youtubeUrl={article.youtube_url} slug={article.slug} />
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-4 mt-10">
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                      className="flex items-center gap-2 px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-40">
+                      <ChevronLeft className="w-4 h-4" /> {t.news.previous}
+                    </button>
+                    <span>{page} / {totalPages}</span>
+                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40">
+                      {t.news.next} <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
-        <div className="mt-8"><AdBanner size="large" position="bottom_banner" /></div>
+            <div className="mt-8"><AdBanner size="large" position="bottom_banner" /></div>
+          </div>
+
+          {/* Sidebar */}
+          <aside className="hidden lg:block lg:col-span-1">
+            <div className="sticky top-24">
+              <Sidebar />
+            </div>
+          </aside>
+        </div>
       </main>
     </Layout>
   )

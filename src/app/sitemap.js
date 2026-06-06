@@ -5,11 +5,15 @@ export default async function sitemap() {
     '',
     '/news',
     '/news/breaking',
+    '/about',
+    '/contact',
+    '/terms',
+    '/privacy-policy',
   ].map((path) => ({
     url: absoluteUrl(path || '/'),
     lastModified: new Date(),
-    changeFrequency: path === '' ? 'hourly' : 'daily',
-    priority: path === '' ? 1 : 0.85,
+    changeFrequency: path === '' ? 'hourly' : path.startsWith('/news') ? 'daily' : 'monthly',
+    priority: path === '' ? 1 : path.startsWith('/news') ? 0.85 : 0.65,
   }))
 
   const liveNews = await fetchNewsList({ limit: 100, page: 1 })
