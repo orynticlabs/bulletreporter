@@ -103,6 +103,35 @@ const ensureNewsPublishedAt = ({ data, operation }: { data?: Record<string, any>
   return data
 }
 
+// ── Role-Based Access Control helpers ────────────────────────────────────────
+//
+// Role hierarchy (highest → lowest privilege):
+//   admin   – full access to every collection, field, and operation
+//   editor  – create / edit / publish all news; manage categories, comments, ads
+//   author  – create news; edit/delete only their own draft articles
+//   viewer  – read-only access inside the admin panel (no mutations)
+//
+// Public (unauthenticated) visitors can read published news and approved comments
+// through the frontend API, but cannot touch the admin panel at all.
+
+type User = { id: string | number; role?: string } | null | undefined
+
+const isAdmin  = (user: User): boolean => user?.role === 'admin'
+const isEditor = (user: User): boolean => user?.role === 'editor'
+const isAuthor = (user: User): boolean => user?.role === 'author'
+const isViewer = (user: User): boolean => user?.role === 'viewer'
+
+/** Admin or Editor */
+const isAdminOrEditor = (user: User): boolean => isAdmin(user) || isEditor(user)
+
+/** Admin, Editor, or Author (any staff role) */
+const isStaff = (user: User): boolean => isAdmin(user) || isEditor(user) || isAuthor(user)
+
+/** Any authenticated user (including viewer) */
+const isAuthenticated = (user: User): boolean => Boolean(user)
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const ensureCloudinaryUploadConfigured = ({ data, req }: { data?: Record<string, any>, req?: any }) => {
   if (requireCloudinaryStorage && req?.file && !hasCloudinaryCredentials) {
     throw new Error(
@@ -299,13 +328,28 @@ export default buildConfig({
         },
       },
       access: {
-        read: () => true,
-        create: () => false,
-        update: ({ req }) => Boolean(req.user),
-        delete: ({ req }) => req.user?.role === 'admin',
+        // Admins see all users; others see only their own profile
+        read: ({ req }) => {
+          if (isAdmin(req.user)) return true
+          if (isAuthenticated(req.user)) return { id: { equals: req.user!.id } }
+          return false
+        },
+        // New user accounts are created only by admins (registration is disabled)
+        create: ({ req }) => isAdmin(req.user),
+        // Admins update anyone; everyone else can update only themselves
+        update: ({ req }) => {
+          if (isAdmin(req.user)) return true
+          if (isAuthenticated(req.user)) return { id: { equals: req.user!.id } }
+          return false
+        },
+        // Only admins can delete users
+        delete: ({ req }) => isAdmin(req.user),
       },
       admin: {
         useAsTitle: 'name',
+        defaultColumns: ['name', 'email', 'role'],
+        // Only admins see the Users list in the sidebar
+        hidden: ({ user }: { user: any }) => !isAdmin(user),
       },
       fields: [
         { name: 'name', type: 'text', required: true },
@@ -313,12 +357,17 @@ export default buildConfig({
           name: 'role',
           type: 'select',
           options: [
-            { label: 'Admin', value: 'admin' },
-            { label: 'Editor', value: 'editor' },
-            { label: 'Author', value: 'author' },
+            { label: 'Admin',   value: 'admin' },
+            { label: 'Editor',  value: 'editor' },
+            { label: 'Author',  value: 'author' },
+            { label: 'Viewer',  value: 'viewer' },
           ],
           defaultValue: 'author',
           required: true,
+          // Only admins can change someone's role
+          access: {
+            update: ({ req }) => isAdmin(req.user),
+          },
         },
         { name: 'bio', type: 'textarea' },
         { name: 'avatar', type: 'upload', relationTo: 'media' },
@@ -327,7 +376,18 @@ export default buildConfig({
     {
       slug: 'media',
       access: {
+        // Media files are always public (images appear on the frontend)
         read: () => true,
+        // Admin, Editor, and Author can upload media
+        create: ({ req }) => isStaff(req.user),
+        // Admin and Editor can edit any media; Authors can edit only media they uploaded
+        update: ({ req }) => {
+          if (isAdminOrEditor(req.user)) return true
+          if (isAuthor(req.user)) return { uploadedBy: { equals: req.user!.id } }
+          return false
+        },
+        // Only Admin and Editor can delete media
+        delete: ({ req }) => isAdminOrEditor(req.user),
       },
       hooks: {
         beforeOperation: [
@@ -349,6 +409,8 @@ export default buildConfig({
       },
       admin: {
         useAsTitle: 'alt',
+        // Authors and above can see the Media library; Viewers cannot upload
+        hidden: ({ user }: { user: any }) => !isStaff(user),
       },
       fields: [
         { name: 'alt', type: 'text', required: true },
@@ -358,11 +420,19 @@ export default buildConfig({
     {
       slug: 'categories',
       access: {
+        // Categories are public — used in nav and article filters
         read: () => true,
+        // Admin and Editor can manage categories
+        create: ({ req }) => isAdminOrEditor(req.user),
+        update: ({ req }) => isAdminOrEditor(req.user),
+        // Only Admin can delete categories (prevents breaking existing articles)
+        delete: ({ req }) => isAdmin(req.user),
       },
       admin: {
         useAsTitle: 'name',
         defaultColumns: ['name', 'slug', 'order'],
+        // Admin and Editor manage categories; Authors and Viewers only see them as read-only
+        hidden: ({ user }: { user: any }) => !isAdminOrEditor(user),
       },
       fields: [
         { name: 'name', type: 'text', required: true },
@@ -376,7 +446,22 @@ export default buildConfig({
     {
       slug: 'news',
       access: {
-        read: ({ req }) => req.user ? true : { status: { equals: 'published' } },
+        // Public: only published articles; logged-in staff: all (including drafts)
+        read: ({ req }) => {
+          if (isStaff(req.user) || isViewer(req.user)) return true
+          return { status: { equals: 'published' } }
+        },
+        // Admin, Editor, and Author can create news
+        create: ({ req }) => isStaff(req.user),
+        // Admin and Editor can edit any article;
+        // Author can edit only articles they authored (and only while draft)
+        update: ({ req }) => {
+          if (isAdminOrEditor(req.user)) return true
+          if (isAuthor(req.user)) return { author: { equals: req.user!.id } }
+          return false
+        },
+        // Admin and Editor can delete; Authors cannot
+        delete: ({ req }) => isAdminOrEditor(req.user),
       },
       hooks: {
         beforeValidate: [ensureNewsSlug, ensureNewsPublishedAt],
@@ -462,6 +547,8 @@ export default buildConfig({
           type: 'relationship',
           relationTo: 'users',
           required: true,
+          // Only Admin/Editor can assign who reviewed/edited a piece
+          access: { update: ({ req }) => isAdminOrEditor(req.user) },
         },
         {
           name: 'tags',
@@ -473,12 +560,16 @@ export default buildConfig({
           type: 'checkbox',
           label: 'Breaking News',
           defaultValue: false,
+          // Only Admin and Editor can mark as breaking
+          access: { update: ({ req }) => isAdminOrEditor(req.user) },
         },
         {
           name: 'isFeatured',
           type: 'checkbox',
           label: 'Featured Article',
           defaultValue: false,
+          // Only Admin and Editor can feature articles
+          access: { update: ({ req }) => isAdminOrEditor(req.user) },
         },
         {
           name: 'status',
@@ -489,6 +580,11 @@ export default buildConfig({
           ],
           defaultValue: 'draft',
           required: true,
+          // Authors can create articles but cannot publish — only Admin/Editor can
+          access: { update: ({ req }) => isAdminOrEditor(req.user) },
+          admin: {
+            description: 'Authors can save as Draft only. Editors and Admins can publish.',
+          },
         },
         {
           name: 'publishedAt',
@@ -543,12 +639,24 @@ export default buildConfig({
     {
       slug: 'comments',
       access: {
+        // Anyone on the frontend can post a comment (goes to pending review)
         create: () => true,
-        read: ({ req }) => req.user ? true : { status: { equals: 'approved' } },
+        // Admin and Editor see all comments; public sees only approved ones
+        read: ({ req }) => {
+          if (isAdminOrEditor(req.user) || isViewer(req.user)) return true
+          if (isAuthor(req.user)) return true          // authors can read all for context
+          return { status: { equals: 'approved' } }
+        },
+        // Only Admin and Editor can update comments (approve / reject / edit)
+        update: ({ req }) => isAdminOrEditor(req.user),
+        // Only Admin and Editor can delete comments
+        delete: ({ req }) => isAdminOrEditor(req.user),
       },
       admin: {
         useAsTitle: 'authorName',
         defaultColumns: ['authorName', 'article', 'status', 'createdAt'],
+        // Authors cannot moderate comments; only Admin and Editor see the comment queue
+        hidden: ({ user }: { user: any }) => !isAdminOrEditor(user),
       },
       fields: [
         { name: 'authorName', type: 'text', required: true },
@@ -575,11 +683,22 @@ export default buildConfig({
     {
       slug: 'advertisements',
       access: {
-        read: ({ req }) => req.user ? true : { isActive: { equals: true } },
+        // Public sees only active ads; staff sees all
+        read: ({ req }) => {
+          if (isAuthenticated(req.user)) return true
+          return { isActive: { equals: true } }
+        },
+        // Only Admin and Editor can manage advertisements
+        create: ({ req }) => isAdminOrEditor(req.user),
+        update: ({ req }) => isAdminOrEditor(req.user),
+        // Only Admin can delete advertisements
+        delete: ({ req }) => isAdmin(req.user),
       },
       admin: {
         useAsTitle: 'title',
         defaultColumns: ['title', 'bannerType', 'size', 'isActive', 'startsAt', 'endsAt'],
+        // Only Admin and Editor manage advertisements
+        hidden: ({ user }: { user: any }) => !isAdminOrEditor(user),
       },
       hooks: {
         beforeValidate: [ensureAdvertisementTypeAndSize],

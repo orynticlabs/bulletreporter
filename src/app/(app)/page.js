@@ -13,7 +13,6 @@ import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { getReadingTime } from '@/utils/timeUtils'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { Star, Zap, ChevronRight } from 'lucide-react'
-import AutoRefreshBadge from '@/components/AutoRefreshBadge'
 import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME, STATIC_STALE_TIME } from '@/utils/queryConfig'
 
 const fetchArticles = async ({ queryKey }) => {
@@ -217,7 +216,6 @@ export default function Home() {
                       <span className="h-1.5 w-1.5 rounded-full bg-red-600"></span>
                       LIVE
                     </span>
-                    <AutoRefreshBadge className="hidden sm:inline-flex" />
                   </div>
                   <button
                     onClick={() => router.push(getLangPath('/news/breaking'))}
@@ -265,7 +263,6 @@ export default function Home() {
                   <h2 className="text-xl font-black text-gray-950 md:text-2xl">
                     {t.home.latestNews}
                   </h2>
-                  <AutoRefreshBadge className="hidden sm:inline-flex" />
                 </div>
                 <button
                   onClick={() => router.push(getLangPath('/news'))}

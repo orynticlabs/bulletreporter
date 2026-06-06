@@ -129,13 +129,17 @@ export default function Footer() {
           {/* Brand column */}
           <div>
             <div className="mb-4">
-              <img
-                src="/logo.png"
-                alt="Bullet Reporter"
-                className="h-14 w-auto object-contain"
-              />
+              <a href="/" aria-label="Bullet Reporter — Home">
+                <img
+                  src="/logo.png"
+                  alt="Bullet Reporter"
+                  className="h-14 w-auto object-contain"
+                />
+              </a>
             </div>
-            <p className="text-[#888] text-sm leading-7 mb-5">{t.tagline}</p>
+            <p className="text-[#888] text-sm leading-7 mb-5 text-justify hyphens-auto">
+              {t.tagline}
+            </p>
             <div className="flex flex-wrap gap-2">
               {socialLinks.map(link => (
                 <a
