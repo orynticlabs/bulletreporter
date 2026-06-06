@@ -10,12 +10,23 @@ let cachedAt = 0
 
 async function queryAdvertisements() {
   const payload = await getPayload({ config })
-  return payload.find({
+  const data = await payload.find({
     collection: 'advertisements',
     depth: 1,
     limit: 50,
     where: { isActive: { equals: true } },
+    sort: '-updatedAt',
   })
+
+  const now = Date.now()
+  return {
+    ...data,
+    docs: (data.docs || []).filter((ad) => {
+      const startsAt = ad.startsAt ? new Date(ad.startsAt).getTime() : null
+      const endsAt = ad.endsAt ? new Date(ad.endsAt).getTime() : null
+      return (!startsAt || startsAt <= now) && (!endsAt || endsAt >= now)
+    }),
+  }
 }
 
 export async function GET() {

@@ -16,17 +16,28 @@ export const useSearch = () => {
 
 export const SearchProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState([])
   const [showResults, setShowResults] = useState(false)
 
-  const isQueryReady = isSearching && (searchQuery.trim().includes(' ') || searchQuery.trim().length >= 3)
+  const trimmedQuery = searchQuery.trim()
+  const trimmedDebouncedQuery = debouncedQuery.trim()
+  const isQueryReady = isSearching && trimmedDebouncedQuery.length >= 2
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery)
+    }, 250)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   const { data: searchData, isLoading: searchLoading, error: searchError } = useQuery({
-    queryKey: ['search', searchQuery],
+    queryKey: ['search', trimmedDebouncedQuery],
     queryFn: async () => {
-      if (!searchQuery.trim()) return { articles: [] }
-      return fetchPayloadArticles({ search: searchQuery.trim(), limit: 20 })
+      if (!trimmedDebouncedQuery) return { articles: [] }
+      return fetchPayloadArticles({ search: trimmedDebouncedQuery, limit: 8 })
     },
     enabled: isQueryReady,
     staleTime: 5 * 60 * 1000,
@@ -38,6 +49,12 @@ export const SearchProvider = ({ children }) => {
     }
   }, [searchData])
 
+  useEffect(() => {
+    if (trimmedQuery.length < 2) {
+      setSearchResults([])
+    }
+  }, [trimmedQuery])
+
   const handleSearch = (query) => {
     setSearchQuery(query)
     setIsSearching(true)
@@ -46,6 +63,7 @@ export const SearchProvider = ({ children }) => {
 
   const clearSearch = () => {
     setSearchQuery('')
+    setDebouncedQuery('')
     setSearchResults([])
     setShowResults(false)
     setIsSearching(false)
@@ -54,8 +72,7 @@ export const SearchProvider = ({ children }) => {
   const handleSearchInputChange = (e) => {
     const query = e.target.value
     setSearchQuery(query)
-    const hasCompleteWord = query.trim().includes(' ') || query.trim().length >= 3
-    if (hasCompleteWord && query.trim().length > 0) {
+    if (query.trim().length >= 2) {
       setIsSearching(true)
       setShowResults(true)
     } else {

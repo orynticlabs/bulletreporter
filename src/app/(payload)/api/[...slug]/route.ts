@@ -2,6 +2,8 @@ import { REST_DELETE, REST_GET, REST_OPTIONS, REST_PATCH, REST_POST, REST_PUT } 
 import type { SanitizedConfig } from 'payload'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+export const dynamicParams = true
 
 const configPromise = import('@payload-config').then(
   ({ default: config }) => config,

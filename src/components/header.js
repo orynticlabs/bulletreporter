@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Menu, Bell, Globe, Share2, Youtube, Facebook, Twitter, Instagram, Loader2, Languages, X, Phone, Mail } from 'lucide-react'
+import { Search, Menu, Bell, Share2, Youtube, Facebook, Twitter, Instagram, Loader2, X, Phone, Mail } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSearch } from '@/contexts/SearchContext'
@@ -17,7 +17,7 @@ function Header() {
   const [currentDate, setCurrentDate] = useState('')
   const router = useRouter()
   const pathname = usePathname()
-  const { t, lang, toggleLanguage } = useLanguage()
+  const { t, lang } = useLanguage()
   const menuRef = useRef(null)
 
   const { searchQuery, handleSearchInputChange, handleSearchSubmit, searchLoading } = useSearch()
@@ -96,19 +96,17 @@ function Header() {
       {/* ── Top Bar ── */}
       <div className="bg-red-700 text-white text-xs">
         <div className="container mx-auto px-4 py-1.5">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-3">
 
             {/* Left: Date + Time */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 opacity-80" />
-                <span className="font-medium">{t.header.language}</span>
-              </div>
+            <div className="flex min-w-0 items-center gap-2 text-[11px] font-medium leading-none sm:gap-3 sm:text-xs">
               {currentDate && (
-                <span className="hidden sm:block opacity-80">{currentDate}</span>
+                <span className="hidden max-w-[52vw] truncate opacity-85 sm:inline">
+                  {currentDate}
+                </span>
               )}
               {currentTime && (
-                <span className="hidden md:flex items-center gap-1 font-mono opacity-90">
+                <span className="inline-flex shrink-0 items-center rounded-full bg-white/10 px-2 py-1 tracking-normal text-white/95">
                   {currentTime}
                 </span>
               )}
@@ -116,16 +114,6 @@ function Header() {
 
             {/* Right: Actions */}
             <div className="flex items-center gap-2">
-              {/* Language Toggle */}
-              <button
-                onClick={toggleLanguage}
-                className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-full transition-all font-bold border border-white/30 text-xs"
-                title={`Switch to ${t.header.switchTo}`}
-              >
-                <Languages className="w-3 h-3" />
-                <span>{lang === 'hi' ? 'अ→A' : 'A→अ'}</span>
-              </button>
-
               {/* News Alert */}
               <button className="flex items-center gap-1 hover:bg-red-800 px-2 py-1 rounded transition-colors">
                 <Bell className="w-3.5 h-3.5" />
@@ -184,20 +172,6 @@ function Header() {
                 alt="Bullet Reporter"
                 className="h-16 md:h-20 w-auto rounded-lg border-2 border-red-600 shadow-md bg-white object-contain"
               />
-            </div>
-
-            {/* Center: Breaking news marquee — desktop only */}
-            <div className="hidden lg:flex flex-1 items-center overflow-hidden mx-4">
-              <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded mr-2 flex-shrink-0 animate-pulse">
-                LIVE
-              </span>
-              <div className="overflow-hidden flex-1">
-                <p className="text-sm text-gray-600 truncate">
-                  {lang === 'en'
-                    ? 'Welcome to Bullet Reporter — Your trusted source for fast Hindi news'
-                    : 'बुलेट रिपोर्टर में आपका स्वागत है — सबसे तेज़ और विश्वसनीय हिंदी समाचार'}
-                </p>
-              </div>
             </div>
 
             {/* Right: Search */}
@@ -306,9 +280,9 @@ function Header() {
             </div>
           </nav>
 
-          {/* Mobile Social + Language */}
+          {/* Mobile Social */}
           <div className="px-4 pb-4 border-t border-gray-100 pt-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center">
               <div className="flex gap-3">
                 {socialLinks.map((s) => (
                   <a key={s.name} href={s.href}
@@ -317,13 +291,6 @@ function Header() {
                   </a>
                 ))}
               </div>
-              <button
-                onClick={toggleLanguage}
-                className="flex items-center gap-1.5 bg-red-600 text-white px-3 py-2 rounded-xl text-sm font-bold transition-colors hover:bg-red-700"
-              >
-                <Languages className="w-4 h-4" />
-                {lang === 'hi' ? 'English' : 'हिंदी'}
-              </button>
             </div>
           </div>
         </div>

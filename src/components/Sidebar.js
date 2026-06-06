@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Cloud, Wind, Droplets, RefreshCw, TrendingUp, Tag } from 'lucide-react'
+import { Cloud, Wind, Droplets, RefreshCw, TrendingUp } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
-import { fetchPayloadCategories } from '@/utils/payloadCategories'
 
 function Sidebar() {
   const router = useRouter()
@@ -57,17 +56,10 @@ function Sidebar() {
   const { data: trendingData = [], isLoading: trendingLoading } = useQuery({
     queryKey: ['trending'],
     queryFn: async () => {
-      const result = await fetchPayloadArticles({ limit: 6 })
+      const result = await fetchPayloadArticles({ limit: 10 })
       return result.articles || []
     },
     staleTime: 5 * 60 * 1000,
-    retry: 1,
-  })
-
-  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
-    queryKey: ['categories'],
-    queryFn: fetchPayloadCategories,
-    staleTime: 10 * 60 * 1000,
     retry: 1,
   })
 
@@ -124,15 +116,15 @@ function Sidebar() {
 
       {/* Trending News */}
       <div className="bg-white rounded-xl shadow-md p-4">
-        <h3 className="font-bold text-xl text-primary mb-4 flex items-center gap-2 border-b pb-2">
-          <TrendingUp className="w-5 h-5 text-red-500" />
-          {t.sidebar.trending}
+        <h3 className="font-bold text-lg text-primary mb-3 flex items-center gap-2 border-b pb-2">
+          <TrendingUp className="w-5 h-5 text-red-500 flex-shrink-0" />
+          {lang === 'en' ? 'Top 10 Trending News' : 'टॉप 10 ट्रेंडिंग न्यूज़'}
         </h3>
         {trendingLoading ? (
-          <div className="space-y-3">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="animate-pulse flex gap-3">
-                <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0"></div>
+          <div className="space-y-2">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="animate-pulse flex gap-2.5 rounded-lg p-1.5">
+                <div className="w-14 h-14 bg-gray-200 rounded-md flex-shrink-0"></div>
                 <div className="flex-1 space-y-2">
                   <div className="h-3 bg-gray-200 rounded"></div>
                   <div className="h-3 bg-gray-200 rounded w-2/3"></div>
@@ -143,59 +135,31 @@ function Sidebar() {
         ) : trendingData.length === 0 ? (
           <p className="text-gray-500 text-sm text-center py-4">{t.sidebar.noTrending}</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {trendingData.map((news, index) => (
               <div key={news.id}
-                className="flex gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors group"
+                className="flex gap-2.5 cursor-pointer hover:bg-red-50 p-1.5 rounded-lg transition-colors group"
                 onClick={() => router.push(getLangPath(`/news/${encodeURIComponent(news.slug)}`))}
               >
-                <div className="relative w-16 h-16 flex-shrink-0">
+                <div className="relative w-14 h-14 flex-shrink-0">
                   {news.image_url ? (
                     <img src={news.image_url} alt={news.title}
-                      className="w-16 h-16 object-cover rounded-lg"
+                      className="w-14 h-14 object-cover rounded-md"
                       loading="lazy"
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center">
-                      <span className="text-red-600 font-bold text-lg">{index + 1}</span>
+                    <div className="w-14 h-14 bg-gradient-to-br from-red-100 to-red-200 rounded-md flex items-center justify-center">
+                      <span className="text-red-600 font-bold text-base">{index + 1}</span>
                     </div>
                   )}
-                  <div className="absolute -top-1 -left-1 bg-red-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  <div className="absolute -top-1 -left-1 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
                     {index + 1}
                   </div>
                 </div>
-                <p className="text-sm font-medium text-gray-700 line-clamp-3 group-hover:text-red-600 transition-colors">
+                <p className="text-[13px] font-semibold text-gray-700 line-clamp-3 leading-snug group-hover:text-red-600 transition-colors">
                   {news.title}
                 </p>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Categories */}
-      <div className="bg-white rounded-xl shadow-md p-4">
-        <h3 className="font-bold text-xl text-primary mb-4 flex items-center gap-2 border-b pb-2">
-          <Tag className="w-5 h-5 text-red-500" />
-          {t.sidebar.categories}
-        </h3>
-        {categoriesLoading ? (
-          <div className="space-y-2">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-8 bg-gray-100 animate-pulse rounded-lg"></div>
-            ))}
-          </div>
-        ) : categories.length === 0 ? (
-          <p className="text-gray-500 text-sm">{t.sidebar.noCategories}</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {categories.map(cat => (
-              <button key={cat.id || cat.name}
-                className="px-3 py-1.5 bg-red-50 hover:bg-red-600 text-red-700 hover:text-white text-sm font-medium rounded-full transition-colors border border-red-200"
-                onClick={() => router.push(getLangPath(`/category/${encodeURIComponent(cat.name)}`))}
-              >
-                {cat.nameHindi || cat.name}
-              </button>
             ))}
           </div>
         )}

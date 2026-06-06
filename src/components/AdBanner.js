@@ -26,18 +26,34 @@ const getCloudinaryCloudName = (image) => {
   }
 }
 
-const buildCloudinaryUrl = (image) => {
+const SIZE_TRANSFORMS = {
+  large: 'f_auto,q_auto,w_1280,h_320,c_fit',
+  medium: 'f_auto,q_auto,w_1024,h_256,c_fit',
+  small: 'f_auto,q_auto,w_640,h_180,c_fit',
+  square: 'f_auto,q_auto,w_512,h_512,c_fit',
+}
+
+const LEGACY_POSITION_TO_TYPE = {
+  top_banner: 'header_banner',
+  middle_banner: 'middle_banner',
+  bottom_banner: 'footer_banner',
+  sidebar: 'sidebar_banner',
+  bottom_sidebar: 'sidebar_banner',
+}
+
+const buildCloudinaryUrl = (image, size) => {
   if (!image?.cloudinaryPublicId) return null
 
   const cloudName = getCloudinaryCloudName(image)
   if (!cloudName) return null
 
+  const transform = SIZE_TRANSFORMS[size] || 'f_auto,q_auto'
   const publicId = String(image.cloudinaryPublicId)
     .split('/')
     .map((part) => encodeURIComponent(part))
     .join('/')
 
-  return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${publicId}`
+  return `https://res.cloudinary.com/${cloudName}/image/upload/${transform}/${publicId}`
 }
 
 const getMediaUrl = (ad) => {
@@ -46,7 +62,7 @@ const getMediaUrl = (ad) => {
   if (typeof image === 'string') return image
   if (isCloudinaryUrl(image.url)) return image.url
   if (image.cloudinaryPublicId) {
-    const cloudinaryUrl = buildCloudinaryUrl(image)
+    const cloudinaryUrl = buildCloudinaryUrl(image, ad.size)
     if (cloudinaryUrl) return cloudinaryUrl
   }
   return image.sizes?.card?.url || image.url || null
@@ -56,31 +72,19 @@ const normalizeAd = (ad) => ({
   ...ad,
   imageUrl: getMediaUrl(ad),
   isActive: ad.isActive ?? true,
-  linkUrl: ad.link || '#',
+  linkUrl: ad.link || '',
   placement: ad.position,
+  bannerType: ad.bannerType || LEGACY_POSITION_TO_TYPE[ad.position],
+  size: ad.size || 'large',
 })
 
-const Placeholder = ({ size, getSizeClasses }) => (
-  <div className={`bg-gradient-to-r from-primary/10 to-accent/10 border-2 border-dashed border-primary/30 rounded-lg flex items-center justify-center ${getSizeClasses()}`}>
-    <div className="text-center">
-      <div className="text-primary font-bold text-lg mb-2">विज्ञापन स्थान</div>
-      <div className="text-muted-foreground text-sm">
-        {size === 'large' && 'बड़ा बैनर विज्ञापन'}
-        {size === 'medium' && 'मध्यम बैनर विज्ञापन'}
-        {size === 'small' && 'छोटा बैनर विज्ञापन'}
-        {size === 'square' && 'वर्गाकार विज्ञापन'}
-      </div>
-    </div>
-  </div>
-)
-
 const AdBanner = ({ size, position }) => {
-  // Suppress SSR entirely — render consistent placeholder until client mounts
+  // Suppress SSR entirely; banner data is client-fetched from Payload.
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
   const { data: advertisements } = useQuery({
-    queryKey: ['advertisements'],
+    queryKey: ['advertisements', position, size],
     queryFn: async () => {
       const res = await fetch(`${PAYLOAD_API_BASE}/api/public/advertisements`, { credentials: 'omit' })
       if (!res.ok) return []
@@ -101,34 +105,56 @@ const AdBanner = ({ size, position }) => {
     }
   }
 
-  // Before mount: render placeholder — same on server and client, no mismatch
-  if (!mounted) return <Placeholder size={size} getSizeClasses={getSizeClasses} />
+  const getTargetTypes = () => {
+    const targetType = LEGACY_POSITION_TO_TYPE[position]
+    return [
+      targetType,
+      size === 'large' ? 'large_ad_banner' : null,
+    ].filter(Boolean)
+  }
 
-  const currentAd = advertisements
+  const matchesSlot = (ad) => {
+    const targetTypes = getTargetTypes()
+    const typeMatch = targetTypes.includes(ad.bannerType)
+    const legacyMatch = position && ad.placement === position
+    return ad.isActive && ad.imageUrl && ad.size === size && (typeMatch || legacyMatch)
+  }
+
+  // Before mount: render nothing to avoid hardcoded banner artwork or hydration mismatch.
+  if (!mounted) return null
+
+  const specificAd = advertisements
     ?.map(normalizeAd)
-    .find((ad) => ad.placement === position && ad.isActive)
+    .find(matchesSlot)
 
-  if (!currentAd) return <Placeholder size={size} getSizeClasses={getSizeClasses} />
+  const currentAd = specificAd || advertisements
+    ?.map(normalizeAd)
+    .find((ad) => ad.isActive && ad.imageUrl && ad.size === size && ad.bannerType === 'large_ad_banner')
+
+  if (!currentAd) return null
+
+  const content = (
+    <img
+      src={currentAd.imageUrl}
+      alt={currentAd.title}
+      className="w-full h-full object-contain bg-white"
+    />
+  )
+
+  const className = `flex items-center justify-center overflow-hidden rounded-lg border border-red-100 bg-white shadow-sm ${getSizeClasses()}`
+
+  if (!currentAd.linkUrl) {
+    return <div className={className}>{content}</div>
+  }
 
   return (
     <a
       href={currentAd.linkUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className={`flex items-center justify-center overflow-hidden rounded-lg ${getSizeClasses()} ${currentAd.imageUrl ? '' : 'bg-gradient-to-r from-primary/10 to-accent/10 border-2 border-dashed border-primary/30'}`}
+      className={className}
     >
-      {currentAd.imageUrl ? (
-        <img
-          src={currentAd.imageUrl}
-          alt={currentAd.title}
-          className="w-full h-full object-contain bg-gray-50"
-        />
-      ) : (
-        <div className="text-center text-muted-foreground p-4">
-          <div className="text-primary font-bold text-lg">{currentAd.title}</div>
-          <div>विज्ञापन</div>
-        </div>
-      )}
+      {content}
     </a>
   )
 }

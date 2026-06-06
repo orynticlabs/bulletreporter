@@ -235,7 +235,7 @@ export const normalizePayloadArticle = (doc) => {
 
   const contentHtml = lexicalToHtml(doc.contentHindi || doc.content)
   const contentText = lexicalToPlainText(doc.contentHindi || doc.content)
-  const excerpt = doc.excerptHindi || doc.excerpt || contentText.slice(0, 180)
+  const excerpt = doc.excerpt || contentText.slice(0, 180)
   const imageUrl = getMediaUrl(doc.featuredImage)
 
   // category_slug  → used in URLs (always the English `name` field so the API

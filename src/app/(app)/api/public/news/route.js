@@ -78,7 +78,13 @@ export async function GET(request) {
   if (typeof isBreaking === 'boolean') where.isBreaking = { equals: isBreaking }
   if (typeof isFeatured === 'boolean') where.isFeatured = { equals: isFeatured }
   if (slug) where.slug = { equals: slug }
-  if (search) where.title = { like: search }
+  if (search) {
+    where.or = [
+      { title: { like: search } },
+      { excerpt: { like: search } },
+      { 'tags.tag': { like: search } },
+    ]
+  }
 
   // Resolve category name → ID so the JOIN works reliably regardless of
   // whether nameHindi or name ended up in the URL.
@@ -103,6 +109,11 @@ export async function GET(request) {
     sort: searchParams.get('sort') || '-createdAt',
     where,
   })
+
+  data.docs = data.docs.map((doc) => ({
+    ...doc,
+    publishedAt: doc.publishedAt || doc.createdAt,
+  }))
 
   cache.set(cacheKey, { data, timestamp: now })
 

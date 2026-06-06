@@ -93,11 +93,87 @@ const ensureNewsSlug = ({ data, operation }: { data?: Record<string, any>, opera
   return data
 }
 
+const ensureNewsPublishedAt = ({ data, operation }: { data?: Record<string, any>, operation?: string }) => {
+  if (!data) return data || {}
+
+  if (operation === 'create' && !data.publishedAt) {
+    data.publishedAt = new Date().toISOString()
+  }
+
+  return data
+}
+
 const ensureCloudinaryUploadConfigured = ({ data, req }: { data?: Record<string, any>, req?: any }) => {
   if (requireCloudinaryStorage && req?.file && !hasCloudinaryCredentials) {
     throw new Error(
       `Cloudinary credentials are required for media uploads. Missing: ${missingCloudinaryKeys.join(', ')}. Save them in ${path.resolve(dirname, '.env.local')} and restart the dev server.`,
     )
+  }
+
+  return data
+}
+
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024
+
+const bannerSizeLabels: Record<string, string> = {
+  large: 'Large - 1280 x 320 px',
+  medium: 'Medium - 1024 x 256 px',
+  small: 'Small - 640 x 180 px',
+  square: 'Square / Sidebar - 512 x 512 px',
+}
+
+const bannerTypeLabels: Record<string, string> = {
+  header_banner: 'Header Banner',
+  footer_banner: 'Footer Banner',
+  sidebar_banner: 'Sidebar Banner',
+  large_ad_banner: 'Large Advertisement Banner',
+  middle_banner: 'Middle Content Banner',
+}
+
+const bannerTypeAllowedSizes: Record<string, string[]> = {
+  header_banner: ['large'],
+  footer_banner: ['large', 'medium'],
+  sidebar_banner: ['square', 'small'],
+  large_ad_banner: ['large'],
+  middle_banner: ['medium'],
+}
+
+const bannerTypeDefaultSize: Record<string, string> = {
+  header_banner: 'large',
+  footer_banner: 'large',
+  sidebar_banner: 'square',
+  large_ad_banner: 'large',
+  middle_banner: 'medium',
+}
+
+const legacyAdDefaults: Record<string, { bannerType: string; size: string }> = {
+  top_banner: { bannerType: 'header_banner', size: 'large' },
+  middle_banner: { bannerType: 'middle_banner', size: 'medium' },
+  bottom_banner: { bannerType: 'footer_banner', size: 'large' },
+  sidebar: { bannerType: 'sidebar_banner', size: 'square' },
+  bottom_sidebar: { bannerType: 'sidebar_banner', size: 'square' },
+}
+
+const ensureAdvertisementTypeAndSize = ({ data }: { data?: Record<string, any> }) => {
+  if (!data) return data || {}
+
+  const defaults = data.position ? legacyAdDefaults[data.position] : null
+
+  if (!data.bannerType) {
+    data.bannerType = defaults?.bannerType || 'large_ad_banner'
+  }
+
+  if (!data.size) {
+    data.size = defaults?.size || bannerTypeDefaultSize[data.bannerType] || 'large'
+  }
+
+  const allowedSizes = bannerTypeAllowedSizes[data.bannerType] || Object.keys(bannerSizeLabels)
+
+  if (!allowedSizes.includes(data.size)) {
+    const bannerLabel = bannerTypeLabels[data.bannerType] || 'This banner type'
+    const sizeList = allowedSizes.map((size) => bannerSizeLabels[size] || size).join(', ')
+
+    throw new Error(`${bannerLabel} supports only: ${sizeList}. Please select the correct Banner Size.`)
   }
 
   return data
@@ -257,8 +333,7 @@ export default buildConfig({
         beforeOperation: [
           ({ req, operation }: { req: any; operation: string }) => {
             if (operation === 'create' && req?.file) {
-              const MAX = 2 * 1024 * 1024 // 2 MB
-              if (req.file.size > MAX) {
+              if (req.file.size > MAX_UPLOAD_BYTES) {
                 throw new Error(`फ़ाइल का आकार 2 MB से अधिक नहीं होना चाहिए। (File size must not exceed 2 MB.)`)
               }
             }
@@ -304,7 +379,7 @@ export default buildConfig({
         read: ({ req }) => req.user ? true : { status: { equals: 'published' } },
       },
       hooks: {
-        beforeValidate: [ensureNewsSlug],
+        beforeValidate: [ensureNewsSlug, ensureNewsPublishedAt],
       },
       admin: {
         useAsTitle: 'title',
@@ -324,8 +399,15 @@ export default buildConfig({
             readOnly: true,
           },
         },
-        { name: 'excerpt', type: 'textarea', label: 'Excerpt / Summary', required: true },
-        { name: 'excerptHindi', type: 'textarea', label: 'Excerpt / Summary (Hindi)' },
+        {
+          name: 'excerpt',
+          type: 'textarea',
+          label: 'Summary / Excerpt (Hindi)',
+          required: true,
+          admin: {
+            description: 'Enter the short Hindi summary shown on news cards, search suggestions, and social previews.',
+          },
+        },
         {
           name: 'content',
           type: 'richText',
@@ -391,7 +473,12 @@ export default buildConfig({
         {
           name: 'publishedAt',
           type: 'date',
-          admin: { date: { pickerAppearance: 'dayAndTime' } },
+          defaultValue: () => new Date().toISOString(),
+          admin: {
+            date: { pickerAppearance: 'dayAndTime' },
+            description: 'Automatically set to the exact date and time when the news item is created.',
+            readOnly: true,
+          },
         },
         {
           name: 'views',
@@ -450,23 +537,70 @@ export default buildConfig({
       },
       admin: {
         useAsTitle: 'title',
-        defaultColumns: ['title', 'position', 'isActive', 'startsAt', 'endsAt'],
+        defaultColumns: ['title', 'bannerType', 'size', 'isActive', 'startsAt', 'endsAt'],
+      },
+      hooks: {
+        beforeValidate: [ensureAdvertisementTypeAndSize],
       },
       fields: [
         { name: 'title', type: 'text', required: true },
-        { name: 'image', type: 'upload', relationTo: 'media' },
-        { name: 'link', type: 'text' },
         {
-          name: 'position',
+          name: 'image',
+          type: 'upload',
+          relationTo: 'media',
+          required: true,
+          admin: {
+            description: 'Upload banner artwork here. Maximum file size: 2 MB. Use the recommended dimensions from Banner Size. Media uploads are stored in Cloudinary.',
+          },
+        },
+        { name: 'link', type: 'text', label: 'Click URL' },
+        {
+          name: 'bannerType',
+          label: 'Banner Type',
           type: 'select',
           options: [
-            { label: 'Top Banner', value: 'top_banner' },
-            { label: 'Middle Banner', value: 'middle_banner' },
-            { label: 'Bottom Banner', value: 'bottom_banner' },
+            { label: 'Header Banner - top wide slot', value: 'header_banner' },
+            { label: 'Footer Banner - bottom wide slot', value: 'footer_banner' },
+            { label: 'Sidebar Banner - right column slot', value: 'sidebar_banner' },
+            { label: 'Large Advertisement Banner - full width slot', value: 'large_ad_banner' },
+            { label: 'Middle Content Banner - between content rows', value: 'middle_banner' },
+          ],
+          required: true,
+          defaultValue: 'large_ad_banner',
+          admin: {
+            description: 'Choose where this banner should be displayed on the website.',
+          },
+        },
+        {
+          name: 'size',
+          label: 'Banner Size',
+          type: 'select',
+          options: [
+            { label: bannerSizeLabels.large, value: 'large' },
+            { label: bannerSizeLabels.medium, value: 'medium' },
+            { label: bannerSizeLabels.small, value: 'small' },
+            { label: bannerSizeLabels.square, value: 'square' },
+          ],
+          required: true,
+          defaultValue: 'large',
+          admin: {
+            description: 'Allowed sizes: Header/Large Ad = Large, Middle = Medium, Sidebar = Square or Small, Footer = Large or Medium.',
+          },
+        },
+        {
+          name: 'position',
+          label: 'Legacy Position',
+          type: 'select',
+          options: [
+            { label: 'Top / Header Banner', value: 'top_banner' },
+            { label: 'Middle Content Banner', value: 'middle_banner' },
+            { label: 'Bottom / Footer Banner', value: 'bottom_banner' },
             { label: 'Sidebar', value: 'sidebar' },
             { label: 'Bottom Sidebar', value: 'bottom_sidebar' },
           ],
-          required: true,
+          admin: {
+            description: 'Optional compatibility field for existing frontend placements. New banners should use Banner Type + Banner Size.',
+          },
         },
         { name: 'isActive', type: 'checkbox', defaultValue: true },
         { name: 'startsAt', type: 'date' },
