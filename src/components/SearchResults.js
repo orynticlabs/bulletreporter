@@ -19,7 +19,7 @@ const SearchResults = () => {
 
   if (searchQuery.trim().length < 2) {
     return (
-      <div className="absolute top-full left-0 right-0 z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-4">
+      <div className="absolute left-0 right-0 top-full z-50 rounded-lg border border-gray-200 bg-white p-4 shadow-xl">
         <p className="text-gray-600 text-sm text-center">{t.search.typeChars}</p>
       </div>
     )
@@ -32,12 +32,12 @@ const SearchResults = () => {
   }
 
   return (
-    <div className="absolute top-full left-0 right-0 z-50 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-hidden">
+    <div className="absolute left-0 right-0 top-full z-50 max-h-[min(24rem,calc(100vh-9rem))] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
-        <div className="flex items-center space-x-2">
-          <Search className="w-4 h-4 text-gray-500" />
-          <span className="font-medium text-gray-700 text-sm">
+        <div className="flex min-w-0 items-center space-x-2">
+          <Search className="h-4 w-4 shrink-0 text-gray-500" />
+          <span className="min-w-0 truncate text-sm font-medium text-gray-700">
             &ldquo;{searchQuery}&rdquo; {t.search.suggestionsFor}
           </span>
         </div>
@@ -47,7 +47,7 @@ const SearchResults = () => {
       </div>
 
       {/* Results */}
-      <div className="max-h-80 overflow-y-auto">
+      <div className="max-h-[min(20rem,calc(100vh-13rem))] overflow-y-auto">
         {searchLoading ? (
           <div className="p-6">
             <LoadingSpinner message={t.search.searching} size="sm" />
@@ -75,7 +75,7 @@ const SearchResults = () => {
                 onClick={() => handleResultClick(article.slug)}
                 className="block w-full p-3 text-left hover:bg-red-50 cursor-pointer transition-colors focus:outline-none focus:bg-red-50"
               >
-                <div className="flex items-start space-x-3">
+                <div className="flex min-w-0 items-start space-x-3">
                   {article.image_url && (
                     <img src={article.image_url} alt={article.title}
                       className="w-12 h-9 object-cover rounded-lg flex-shrink-0" />
@@ -83,7 +83,7 @@ const SearchResults = () => {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">{article.title}</h3>
                     <p className="text-xs text-gray-500 line-clamp-1">{article.description}</p>
-                    <div className="flex items-center space-x-2 mt-1">
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {article.category && (
                         <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded">{article.category}</span>
                       )}

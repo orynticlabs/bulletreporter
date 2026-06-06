@@ -85,7 +85,7 @@ function AlertPanel({ articles, lang, isMuted, onToggleMute, onClose, onRead }) 
   }
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-100 z-[60] overflow-hidden">
+    <div className="fixed inset-x-3 top-10 z-[60] max-h-[calc(100vh-3.5rem)] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:max-w-[calc(100vw-2rem)]">
       {/* Panel header */}
       <div className="flex items-center justify-between px-4 py-3 bg-red-600 text-white">
         <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ function AlertPanel({ articles, lang, isMuted, onToggleMute, onClose, onRead }) 
           </p>
         </div>
       ) : (
-        <div className="max-h-[70vh] overflow-y-auto divide-y divide-gray-50">
+        <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-50 sm:max-h-[70vh]">
           {articles.map((article, idx) => (
             <button
               key={article.id}
@@ -388,8 +388,8 @@ function Header() {
 
       {/* ── Top Bar ── */}
       <div className="bg-red-700 text-white text-xs">
-        <div className="container mx-auto px-4 py-1.5">
-          <div className="flex items-center justify-between gap-3">
+        <div className="container mx-auto px-3 py-1.5 sm:px-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
 
             {/* Left: Date + Time */}
             <div className="flex min-w-0 items-center gap-2 text-[11px] font-medium leading-none sm:gap-3 sm:text-xs">
@@ -406,7 +406,7 @@ function Header() {
             </div>
 
             {/* Right: Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               {/* Language Toggle */}
               <button
                 type="button"
@@ -494,19 +494,19 @@ function Header() {
 
       {/* ── Main Header (Logo + Search) ── */}
       <div className={`bg-white sticky top-0 z-40 transition-shadow duration-300 ${isScrolled ? 'shadow-lg' : ''}`}>
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
+        <div className="container mx-auto px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex items-center justify-between gap-3 sm:gap-4">
 
             {/* Logo — always navigates to home */}
             <a
               href={getLangPath('/')}
-              className="flex items-center gap-3 flex-shrink-0 focus:outline-none"
+              className="flex min-w-0 flex-shrink-0 items-center gap-3 focus:outline-none"
               aria-label="Bullet Reporter — Home"
             >
               <img
                 src="/logo.png"
                 alt="Bullet Reporter"
-                className="h-16 md:h-20 w-auto rounded-lg border-2 border-red-600 shadow-md bg-white object-contain"
+                className="h-12 w-auto rounded-lg border-2 border-red-600 bg-white object-contain shadow-md sm:h-16 md:h-20"
               />
             </a>
 
@@ -544,7 +544,7 @@ function Header() {
       </div>
 
       {/* ── Desktop Navigation ── */}
-      <div className="bg-red-600 hidden md:block outline-none border-0">
+      <div className="hidden border-0 bg-red-600 outline-none md:block">
         <div className="container mx-auto px-4">
           {categoriesLoading ? (
             <div className="flex items-center justify-center py-3 gap-2">
@@ -552,12 +552,12 @@ function Header() {
               <span className="text-white text-sm">{t.header.loadingCategories}</span>
             </div>
           ) : (
-            <ul className="flex flex-wrap">
+            <ul className="scrollbar-hide flex overflow-x-auto whitespace-nowrap">
               {mainCategories.map((category) => (
                 <li key={category.name}>
                   <button
                     onClick={() => handleNavClick(category.href)}
-                    className={`px-5 py-3 text-white text-sm font-medium transition-all relative group ${
+                    className={`relative px-4 py-3 text-sm font-medium text-white transition-all group lg:px-5 ${
                       isActive(category.href)
                         ? 'bg-red-700 border-b-2 border-white'
                         : 'hover:bg-red-700'
@@ -577,9 +577,9 @@ function Header() {
 
       {/* ── Mobile Menu ── */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-red-100 shadow-2xl absolute w-full z-50">
+        <div className="absolute z-50 max-h-[calc(100vh-7.5rem)] w-full overflow-y-auto border-t border-red-100 bg-white shadow-2xl md:hidden">
           {/* Mobile Search */}
-          <div className="px-4 pt-4 pb-2">
+          <div className="relative px-4 pb-2 pt-4">
             <form onSubmit={handleSearchSubmit} className="relative">
               <input
                 type="search"
@@ -604,13 +604,13 @@ function Header() {
                 <button
                   key={category.name}
                   onClick={() => handleNavClick(category.href)}
-                  className={`text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                  className={`min-w-0 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
                     isActive(category.href)
                       ? 'bg-red-600 text-white'
                       : 'bg-gray-50 text-gray-700 hover:bg-red-50 hover:text-red-600'
                   }`}
                 >
-                  {category.name}
+                  <span className="line-clamp-2">{category.name}</span>
                 </button>
               ))}
             </div>

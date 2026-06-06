@@ -128,6 +128,16 @@
     @apply bg-background text-foreground font-hindi antialiased;
   }
 
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    text-wrap: pretty;
+  }
+
   /* Font family setup */
   .font-hindi {
     font-family: 'Noto Sans Devanagari', 'Inter', sans-serif;
@@ -203,6 +213,36 @@ html {
 img {
   max-width: 100%;
   height: auto;
+}
+
+video,
+iframe,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+table {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
+}
+
+.prose {
+  overflow-wrap: anywhere;
+}
+
+.prose img,
+.prose video,
+.prose iframe {
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+}
+
+.prose iframe {
+  aspect-ratio: 16 / 9;
 }
 
 /* Line clamp utilities */

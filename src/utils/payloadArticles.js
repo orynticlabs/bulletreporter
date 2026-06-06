@@ -159,6 +159,27 @@ const getAuthorName = (value) => {
   return value.name || value.email || 'Bullet Reporter'
 }
 
+export const getYouTubeVideoId = (value = '') => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw
+
+  try {
+    const url = new URL(raw)
+    if (url.hostname.includes('youtu.be')) return url.pathname.split('/').filter(Boolean)[0] || ''
+    if (url.searchParams.get('v')) return url.searchParams.get('v') || ''
+
+    const parts = url.pathname.split('/').filter(Boolean)
+    const markerIndex = parts.findIndex((part) => ['embed', 'shorts', 'live'].includes(part))
+    if (markerIndex >= 0 && parts[markerIndex + 1]) return parts[markerIndex + 1]
+  } catch {
+    // Raw IDs are handled above.
+  }
+
+  return ''
+}
+
 const renderLexicalText = (node) => {
   let text = escapeHtml(node.text || '')
   const format = Number(node.format || 0)
@@ -299,6 +320,53 @@ export const normalizePayloadArticle = (doc, lang = 'hi') => {
   }
 }
 
+export const normalizePayloadVideoNews = (doc, lang = 'hi') => {
+  if (!doc) return null
+
+  const contentHtml = lexicalToHtml(doc.content)
+  const contentText = lexicalToPlainText(doc.content)
+  const videoId = doc.youtubeVideoId || getYouTubeVideoId(doc.youtubeVideo)
+  const thumbnailUrl = getMediaUrl(doc.thumbnail) || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null)
+
+  const categoryObj = (doc.category && typeof doc.category === 'object') ? doc.category : null
+  const categoryDisplay = categoryObj
+    ? getRelationshipTitle(categoryObj, 'Video News', lang)
+    : (typeof doc.category === 'string' ? doc.category : 'Video News')
+  const categorySlug = categoryObj
+    ? (categoryObj.name || categoryObj.nameHindi || categoryDisplay)
+    : categoryDisplay
+
+  const tags = Array.isArray(doc.tags)
+    ? doc.tags.map((item) => item.tag).filter(Boolean)
+    : []
+
+  return {
+    ...doc,
+    id: doc.id,
+    title: doc.title || 'Untitled',
+    description: doc.description || contentText.slice(0, 180),
+    content: contentHtml,
+    contentText,
+    category: categoryDisplay,
+    category_slug: categorySlug,
+    author_name: getAuthorName(doc.author),
+    editor_name: getAuthorName(doc.editor),
+    created_at: doc.publishedAt || doc.createdAt || doc.created_at,
+    updated_at: doc.updatedAt || doc.updated_at,
+    image_url: thumbnailUrl,
+    thumbnail_url: thumbnailUrl,
+    youtube_video: doc.youtubeVideo || '',
+    youtube_video_id: videoId,
+    youtube_embed_url: videoId ? `https://www.youtube.com/embed/${videoId}` : '',
+    youtube_url: videoId ? `https://www.youtube.com/watch?v=${videoId}` : doc.youtubeVideo || '',
+    language: doc.language || 'hi',
+    views: Number(doc.views || 0),
+    tags,
+    slug: doc.slug || '',
+    type: 'video-news',
+  }
+}
+
 const buildPayloadNewsUrl = (options = {}) => {
   const {
     limit = 10,
@@ -356,4 +424,48 @@ export async function fetchPayloadArticles(options = {}) {
 export async function fetchPayloadArticleBySlug(slug, options = {}) {
   const data = await fetchPayloadArticles({ ...options, slug, limit: 1, ttl: 60 * 1000 })
   return data.articles[0] || null
+}
+
+const buildPayloadVideoNewsUrl = (options = {}) => {
+  const {
+    limit = 6,
+    page = 1,
+    depth = 1,
+    sort = '-createdAt',
+    category,
+    lang,
+  } = options
+  const slug = normalizeRouteSlug(options.slug)
+
+  const params = new URLSearchParams()
+  params.set('depth', String(depth))
+  params.set('limit', String(limit))
+  params.set('page', String(page))
+  params.set('sort', sort)
+
+  if (slug) params.set('slug', slug)
+  if (category) params.set('category', category)
+  if (lang) params.set('lang', lang)
+  if (options.search) params.set('search', options.search)
+
+  return `${PAYLOAD_API_BASE}/api/public/video-news?${params.toString()}`
+}
+
+export async function fetchPayloadVideoNews(options = {}) {
+  const data = await getCachedJson(buildPayloadVideoNewsUrl(options), options.ttl)
+  const videos = (data.docs || [])
+    .map((doc) => normalizePayloadVideoNews(doc, options.lang || 'hi'))
+    .filter(Boolean)
+
+  return {
+    ...data,
+    videos,
+    total: data.totalDocs || videos.length,
+    totalPages: data.totalPages || 1,
+  }
+}
+
+export async function fetchPayloadVideoNewsBySlug(slug, options = {}) {
+  const data = await fetchPayloadVideoNews({ ...options, slug, limit: 1, ttl: 60 * 1000 })
+  return data.videos[0] || null
 }

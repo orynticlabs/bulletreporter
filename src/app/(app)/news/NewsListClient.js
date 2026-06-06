@@ -45,18 +45,18 @@ export default function AllNews() {
         <AdBanner size="large" position="top_banner" />
       </div>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-3 py-6 sm:px-4 sm:py-8">
         {/* Page header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-primary">{t.news.allNews}</h1>
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-primary sm:text-3xl">{t.news.allNews}</h1>
             {total > 0 && (
               <p className="text-gray-500 mt-1">{total} {t.news.newsFound}</p>
             )}
           </div>
           <button
             onClick={() => router.push(getLangPath('/'))}
-            className="flex items-center gap-2 text-red-600 hover:text-red-700 font-medium"
+            className="flex shrink-0 items-center gap-2 font-medium text-red-600 hover:text-red-700"
           >
             <ChevronLeft className="w-4 h-4" />
             {t.news.goBack}
@@ -104,11 +104,11 @@ export default function AllNews() {
                 </div>
 
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-4 mt-10">
+                  <div className="mt-10 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                     <button
                       onClick={() => setPage(p => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="flex items-center gap-2 px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex items-center gap-2 rounded-lg border border-red-600 px-4 py-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ChevronLeft className="w-4 h-4" /> {t.news.previous}
                     </button>
@@ -116,7 +116,7 @@ export default function AllNews() {
                     <button
                       onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                       disabled={page === totalPages}
-                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {t.news.next} <ChevronRight className="w-4 h-4" />
                     </button>

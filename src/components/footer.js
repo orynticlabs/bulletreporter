@@ -124,7 +124,7 @@ export default function Footer() {
     <footer className="bg-[#0a0a0a] text-[#e5e5e5] border-t-2 border-[#e84118] font-[Mukta,sans-serif]">
       {/* Main grid */}
       <div className="container mx-auto px-6 lg:px-8 py-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[260px_1fr_1fr_1fr] gap-8 lg:gap-10">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] lg:gap-10">
 
           {/* Brand column */}
           <div>
@@ -137,7 +137,7 @@ export default function Footer() {
                 />
               </a>
             </div>
-            <p className="text-[#888] text-sm leading-7 mb-5 text-justify hyphens-auto">
+            <p className="mb-5 text-sm leading-7 text-[#888] sm:text-justify">
               {t.tagline}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -159,15 +159,15 @@ export default function Footer() {
           {/* Categories */}
           <div>
             <ColTitle>{t.col1}</ColTitle>
-            <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
+            <ul className="grid grid-cols-1 gap-x-3 gap-y-1 min-[420px]:grid-cols-2">
               {categoryLinks.map(cat => (
                 <li key={cat.name}>
                   <a
                     href={cat.href}
-                    className="text-[#aaa] hover:text-[#e84118] text-sm leading-8 flex items-center gap-1.5 transition-colors duration-150"
+                    className="flex min-w-0 items-center gap-1.5 text-sm leading-8 text-[#aaa] transition-colors duration-150 hover:text-[#e84118]"
                   >
                     <span className="text-[#e84118] text-base opacity-70">›</span>
-                    {cat.name}
+                    <span className="truncate">{cat.name}</span>
                   </a>
                 </li>
               ))}
@@ -200,7 +200,7 @@ export default function Footer() {
                 <span className="mt-1 w-2 h-2 rounded-full bg-[#2ecc71] flex-shrink-0 animate-pulse" />
                 <div>
                   <span className="block text-[11px] text-[#666] uppercase tracking-wider mb-0.5">{t.newsDesk}</span>
-                  <span className="text-[#ccc] text-sm">bulletreporter1@gmail.com</span>
+                  <span className="break-all text-sm text-[#ccc]">bulletreporter1@gmail.com</span>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -231,10 +231,10 @@ export default function Footer() {
       <div className="h-px mx-6 lg:mx-8" style={{ background: 'linear-gradient(to right, transparent, #2a2a2a 20%, #2a2a2a 80%, transparent)' }} />
 
       {/* Bottom bar */}
-      <div className="container mx-auto px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[#666] text-xs">{t.copyright}</p>
+      <div className="container mx-auto flex flex-col items-center justify-between gap-3 px-6 py-4 text-center sm:flex-row sm:text-left lg:px-8">
+        <p className="text-xs text-[#666]">{t.copyright}</p>
 
-        <div className="flex gap-5">
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-5">
           {t.bottomLinks.map(link => (
             <a key={link.name} href={link.href} className="text-[#666] hover:text-[#e84118] text-xs transition-colors duration-150">
               {link.name}
