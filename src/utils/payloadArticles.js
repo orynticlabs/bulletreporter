@@ -101,10 +101,11 @@ const buildCloudinaryUrl = (media, transform = 'f_auto,q_auto') => {
   const cloudName = getCloudinaryCloudName(media)
   if (!cloudName) return null
 
+  // Cloudinary public IDs use raw path separators — do NOT encodeURIComponent.
+  // Only encode spaces (rare but possible in filenames); leave slashes, dots,
+  // hyphens and underscores as-is so the URL resolves correctly.
   const publicId = String(media.cloudinaryPublicId)
-    .split('/')
-    .map((part) => encodeURIComponent(part))
-    .join('/')
+    .replace(/\s+/g, '%20')          // only encode whitespace
   const transformPath = transform ? `${transform}/` : ''
 
   return `https://res.cloudinary.com/${cloudName}/image/upload/${transformPath}${publicId}`
@@ -112,26 +113,44 @@ const buildCloudinaryUrl = (media, transform = 'f_auto,q_auto') => {
 
 const getMediaUrl = (media) => {
   if (!media || typeof media !== 'object') return null
-  if (isCloudinaryUrl(media.url)) return media.url
+
+  // Prefer building from cloudinaryPublicId — gives us full control over the
+  // transformation and avoids the raw stored URL which may lack dimensions.
   if (media.cloudinaryPublicId) {
-    const cloudinaryUrl = buildCloudinaryUrl(media, 'f_auto,q_auto')
-    if (cloudinaryUrl) return cloudinaryUrl
+    const built = buildCloudinaryUrl(media, 'f_auto,q_auto,w_800')
+    if (built) return built
   }
 
+  // Fallback: use the stored URL (may be absolute Cloudinary or relative local)
   const url =
+    media.url ||
     media.sizes?.hero?.url ||
     media.sizes?.card?.url ||
-    media.url ||
     media.thumbnailURL
 
   if (!url) return null
   return url
 }
 
-const getRelationshipTitle = (value, fallback = '') => {
+/**
+ * Returns a Cloudinary URL pre-sized for Open Graph (1200×630, JPEG).
+ * Used exclusively by generateMetadata — never for <img> tags.
+ */
+export const getOgImageUrl = (media) => {
+  if (!media || typeof media !== 'object') return null
+  if (media.cloudinaryPublicId) {
+    return buildCloudinaryUrl(media, 'w_1200,h_630,c_fill,f_jpg,q_auto')
+  }
+  // For non-Cloudinary media fall back to the stored URL as-is
+  return media.url || null
+}
+
+const getRelationshipTitle = (value, fallback = '', lang = 'hi') => {
   if (!value) return fallback
   if (typeof value === 'string') return value
-  return value.nameHindi || value.name || value.title || fallback
+  return lang === 'en'
+    ? (value.name || value.nameHindi || value.title || fallback)
+    : (value.nameHindi || value.name || value.title || fallback)
 }
 
 const getAuthorName = (value) => {
@@ -230,11 +249,15 @@ export const lexicalToPlainText = (value) => {
     .trim()
 }
 
-export const normalizePayloadArticle = (doc) => {
+export const normalizePayloadArticle = (doc, lang = 'hi') => {
   if (!doc) return null
 
-  const contentHtml = lexicalToHtml(doc.contentHindi || doc.content)
-  const contentText = lexicalToPlainText(doc.contentHindi || doc.content)
+  const isEnglish = lang === 'en'
+  const localizedTitle = isEnglish ? (doc.titleEnglish || doc.title) : doc.title
+  // Single content field (previously English duplicate removed)
+  const localizedContent = doc.content
+  const contentHtml = lexicalToHtml(localizedContent)
+  const contentText = lexicalToPlainText(localizedContent)
   const excerpt = doc.excerpt || contentText.slice(0, 180)
   const imageUrl = getMediaUrl(doc.featuredImage)
 
@@ -243,7 +266,7 @@ export const normalizePayloadArticle = (doc) => {
   // category       → display label (nameHindi when available, otherwise name)
   const categoryObj = (doc.category && typeof doc.category === 'object') ? doc.category : null
   const categoryDisplay = categoryObj
-    ? (categoryObj.nameHindi || categoryObj.name || 'News')
+    ? getRelationshipTitle(categoryObj, 'News', lang)
     : (typeof doc.category === 'string' ? doc.category : 'News')
   const categorySlug = categoryObj
     ? (categoryObj.name || categoryObj.nameHindi || categoryDisplay)
@@ -256,7 +279,7 @@ export const normalizePayloadArticle = (doc) => {
   return {
     ...doc,
     id: doc.id,
-    title: doc.title || 'Untitled',
+    title: localizedTitle || 'Untitled',
     description: excerpt,
     content: contentHtml,
     contentText,
@@ -271,6 +294,8 @@ export const normalizePayloadArticle = (doc) => {
     is_breaking: Boolean(doc.isBreaking),
     is_featured: Boolean(doc.isFeatured),
     views: Number(doc.views || 0),
+    likes: Number(doc.likes || 0),
+    dislikes: Number(doc.dislikes || 0),
     tags,
     slug: doc.slug || '',
   }
@@ -318,7 +343,9 @@ const buildPayloadNewsUrl = (options = {}) => {
 
 export async function fetchPayloadArticles(options = {}) {
   const data = await getCachedJson(buildPayloadNewsUrl(options), options.ttl)
-  const articles = (data.docs || []).map(normalizePayloadArticle).filter(Boolean)
+  const articles = (data.docs || [])
+    .map((doc) => normalizePayloadArticle(doc, options.lang || 'hi'))
+    .filter(Boolean)
 
   return {
     ...data,
@@ -328,7 +355,7 @@ export async function fetchPayloadArticles(options = {}) {
   }
 }
 
-export async function fetchPayloadArticleBySlug(slug) {
-  const data = await fetchPayloadArticles({ slug, limit: 1, ttl: 60 * 1000 })
+export async function fetchPayloadArticleBySlug(slug, options = {}) {
+  const data = await fetchPayloadArticles({ ...options, slug, limit: 1, ttl: 60 * 1000 })
   return data.articles[0] || null
 }

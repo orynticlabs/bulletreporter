@@ -9,18 +9,18 @@ let cachedCategories = null
 let cachedAt = 0
 let pendingCategories = null
 
-export async function fetchPayloadCategories() {
+export async function fetchPayloadCategories({ limit = 12 } = {}) {
   const now = Date.now()
 
   if (cachedCategories && now - cachedAt < CATEGORIES_TTL) {
-    return cachedCategories
+    return cachedCategories.slice(0, limit)
   }
 
   if (pendingCategories) {
-    return pendingCategories
+    return pendingCategories.then((categories) => categories.slice(0, limit))
   }
 
-  pendingCategories = fetch(`${PAYLOAD_API_BASE}/api/public/categories`, {
+  pendingCategories = fetch(`${PAYLOAD_API_BASE}/api/public/categories?limit=${encodeURIComponent(limit)}`, {
     cache: 'force-cache',
     credentials: 'omit',
     next: { revalidate: CATEGORIES_TTL / 1000 },

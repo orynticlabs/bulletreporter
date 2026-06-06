@@ -1,5 +1,11 @@
 import JsonLd from '@/components/JsonLd'
-import { buildMetadata, newsArticleJsonLd, SITE_DESCRIPTION, SITE_TITLE, truncate } from '@/lib/seo'
+import {
+  buildMetadata,
+  newsArticleJsonLd,
+  SITE_DESCRIPTION,
+  SITE_TITLE,
+  truncate,
+} from '@/lib/seo'
 import { fetchArticleBySlug } from '@/lib/payload-direct'
 import { normalizeRouteSlug } from '@/utils/payloadArticles'
 import NewsDetailClient from './NewsDetailClient'
@@ -18,11 +24,14 @@ export async function generateMetadata({ params }) {
     })
   }
 
+  // og_image_url = Cloudinary URL pre-built at 1200×630 JPEG by payload-direct.js
+  const ogImage = article.og_image_url || article.image_url || '/logo.png'
+
   return buildMetadata({
     title: article.title || SITE_TITLE,
-    description: truncate(article.meta_description || article.description || article.contentText || SITE_DESCRIPTION),
-    path: `/news/${slug}`,
-    image: article.image_url || '/logo.png',
+    description: truncate(article.description || article.contentText || SITE_DESCRIPTION),
+    path: `/news/${slug}`,   // canonical always uses /news/ (not /en/news/)
+    image: ogImage,
     type: 'article',
     publishedTime: article.created_at,
     modifiedTime: article.updated_at || article.created_at,
@@ -34,7 +43,6 @@ export async function generateMetadata({ params }) {
 export default async function NewsDetailPage({ params }) {
   const { slug: rawSlug } = await params
   const slug = normalizeRouteSlug(rawSlug)
-  // React cache() deduplicates — same object returned from generateMetadata, no second DB query
   const article = await fetchArticleBySlug(slug)
 
   return (

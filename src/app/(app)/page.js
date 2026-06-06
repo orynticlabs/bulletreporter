@@ -13,6 +13,8 @@ import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { getReadingTime } from '@/utils/timeUtils'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { Star, Zap, ChevronRight } from 'lucide-react'
+import AutoRefreshBadge from '@/components/AutoRefreshBadge'
+import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME, STATIC_STALE_TIME } from '@/utils/queryConfig'
 
 const fetchArticles = async ({ queryKey }) => {
   const [, options] = queryKey
@@ -144,23 +146,29 @@ export default function Home() {
   const goToArticle = useCallback((slug) => () => router.push(getLangPath(`/news/${encodeURIComponent(slug)}`)), [lang, router, getLangPath])
 
   const { data: breakingData, isLoading: breakingLoading, error: breakingError, refetch: refetchBreaking } = useQuery({
-    queryKey: ['articles', { isBreaking: true, limit: 20, page: 1 }],
+    queryKey: ['articles', { isBreaking: true, limit: 20, page: 1, lang }],
     queryFn: fetchArticles,
-    staleTime: 2 * 60 * 1000,
+    staleTime: CONTENT_STALE_TIME,
+    refetchInterval: CONTENT_REFETCH_INTERVAL,
+    refetchIntervalInBackground: false,
     retry: 1,
   })
 
   const { data: articlesData, isLoading: articlesLoading, error: articlesError, refetch: refetchArticles } = useQuery({
-    queryKey: ['articles', { limit: 10, page: 1 }],
+    queryKey: ['articles', { limit: 10, page: 1, lang }],
     queryFn: fetchArticles,
-    staleTime: 2 * 60 * 1000,
+    staleTime: CONTENT_STALE_TIME,
+    refetchInterval: CONTENT_REFETCH_INTERVAL,
+    refetchIntervalInBackground: false,
     retry: 1,
   })
 
   const { data: featuredData, isLoading: featuredLoading } = useQuery({
-    queryKey: ['articles', { isFeatured: true, limit: 6, page: 1 }],
+    queryKey: ['articles', { isFeatured: true, limit: 6, page: 1, lang }],
     queryFn: fetchArticles,
-    staleTime: 2 * 60 * 1000,
+    staleTime: CONTENT_STALE_TIME,
+    refetchInterval: CONTENT_REFETCH_INTERVAL,
+    refetchIntervalInBackground: false,
     retry: 1,
   })
 
@@ -209,6 +217,7 @@ export default function Home() {
                       <span className="h-1.5 w-1.5 rounded-full bg-red-600"></span>
                       LIVE
                     </span>
+                    <AutoRefreshBadge className="hidden sm:inline-flex" />
                   </div>
                   <button
                     onClick={() => router.push(getLangPath('/news/breaking'))}
@@ -256,6 +265,7 @@ export default function Home() {
                   <h2 className="text-xl font-black text-gray-950 md:text-2xl">
                     {t.home.latestNews}
                   </h2>
+                  <AutoRefreshBadge className="hidden sm:inline-flex" />
                 </div>
                 <button
                   onClick={() => router.push(getLangPath('/news'))}
@@ -300,7 +310,7 @@ export default function Home() {
                     onArticleClick={goToArticle}
                     onViewAll={() => router.push(getLangPath('/news'))}
                     title={t.home.latestNews}
-                    viewAllLabel={lang === 'en' ? 'More' : 'और भी'}
+                    viewAllLabel={t.home.more}
                   />
                 </div>
               ) : (
@@ -318,12 +328,12 @@ export default function Home() {
                       <span className="w-1 h-5 bg-red-400 rounded-full inline-block"></span>
                     </div>
                     <h2 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
-                      {lang === 'en' ? 'Special Articles' : 'विशेष लेख'}
+                      {t.home.specialArticles}
                     </h2>
                   </div>
                   <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1">
                     <Star className="w-3 h-3 text-yellow-500" />
-                    {lang === 'en' ? 'Featured' : 'फीचर्ड'}
+                    {t.home.featured}
                   </span>
                 </div>
 

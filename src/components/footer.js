@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchPayloadCategories } from '@/utils/payloadCategories'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 const CONTENT = {
   hi: {
@@ -27,8 +27,8 @@ const CONTENT = {
       { name: 'T&C', href: '/terms' },
     ],
     copyright: (
-      <>© 2026 बुलेट रिपोर्टर। Built by{' '}
-        <a href="https://orynticlabs.com/" target="_blank" rel="noopener noreferrer" className="text-[#e84118] hover:underline">OrynticLabs</a>
+      <>© 2026 बुलेट रिपोर्टर। Developed By{' '}
+        <a href="https://orynticlabs.com/" target="_blank" rel="noopener noreferrer" className="text-[#e84118] hover:underline">OrynticLabs Pvt. Ltd.</a>
       </>
     ),
     mainCatName: 'मुख्य समाचार',
@@ -101,7 +101,7 @@ function ColTitle({ children }) {
 }
 
 export default function Footer() {
-  const [lang, setLang] = useState('hi')
+  const { lang } = useLanguage()
   const t = CONTENT[lang]
 
   const { data: categories = [] } = useQuery({
@@ -229,22 +229,6 @@ export default function Footer() {
       {/* Bottom bar */}
       <div className="container mx-auto px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[#666] text-xs">{t.copyright}</p>
-
-        {/* Language Toggle */}
-        <div className="flex rounded overflow-hidden border border-[#2a2a2a]" role="group" aria-label="Language toggle">
-          <button
-            onClick={() => setLang('hi')}
-            className={`px-3 py-1 text-xs font-semibold transition-all duration-150 ${lang === 'hi' ? 'bg-[#e84118] text-white' : 'bg-[#141414] text-[#666] hover:text-[#ccc] hover:bg-[#1e1e1e]'}`}
-          >
-            हिं
-          </button>
-          <button
-            onClick={() => setLang('en')}
-            className={`px-3 py-1 text-xs font-semibold transition-all duration-150 ${lang === 'en' ? 'bg-[#e84118] text-white' : 'bg-[#141414] text-[#666] hover:text-[#ccc] hover:bg-[#1e1e1e]'}`}
-          >
-            EN
-          </button>
-        </div>
 
         <div className="flex gap-5">
           {t.bottomLinks.map(link => (

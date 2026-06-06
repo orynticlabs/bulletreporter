@@ -11,6 +11,7 @@ import { getReadingTime } from '@/utils/timeUtils'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
 
 const LIMIT = 12
 
@@ -20,13 +21,15 @@ export default function AllNews() {
   const { t, lang } = useLanguage()
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['all-news', page],
+    queryKey: ['all-news', page, lang],
     queryFn: async () => {
-      return fetchPayloadArticles({ limit: LIMIT, page })
+      return fetchPayloadArticles({ limit: LIMIT, page, lang })
     },
-    staleTime: 2 * 60 * 1000,
+    staleTime: CONTENT_STALE_TIME,
+    refetchInterval: CONTENT_REFETCH_INTERVAL,
+    refetchIntervalInBackground: false,
     retry: 1,
-    keepPreviousData: true,
+    placeholderData: (prev) => prev, // v5: keeps old data visible during refetch
   })
 
   const articles = data?.articles || []

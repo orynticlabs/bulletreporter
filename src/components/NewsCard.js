@@ -32,7 +32,7 @@ function NewsCard({ id, title, excerpt, category, categorySlug, author, publishe
   const handleShare = useCallback((e, platform) => {
     e.stopPropagation()
     shareOnPlatform(platform, { title, description: excerpt, image_url: imageUrl, slug })
-    toast({ title: lang === 'en' ? 'Sharing...' : 'शेयर हो रहा है...', description: `${platform} ${lang === 'en' ? 'opening' : 'खुल रहा है'}` })
+    toast({ title: t.newsCard.sharing, description: `${platform} ${t.newsCard.opening}` })
   }, [title, excerpt, imageUrl, slug, toast, lang])
 
   return (
@@ -50,7 +50,7 @@ function NewsCard({ id, title, excerpt, category, categorySlug, author, publishe
               <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-2">
                 <svg className="w-8 h-8 fill-white ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
               </div>
-              <p className="text-sm">{lang === 'en' ? 'Watch Video' : 'वीडियो देखें'}</p>
+              <p className="text-sm">{t.newsCard.watchVideo}</p>
             </div>
           </div>
         ) : (
@@ -71,7 +71,7 @@ function NewsCard({ id, title, excerpt, category, categorySlug, author, publishe
         {featured && (
           <Badge className="absolute top-3 right-3 bg-yellow-500 text-white text-xs flex items-center gap-1">
             <Zap className="w-3 h-3" />
-            {lang === 'en' ? 'Top Story' : 'मुख्य समाचार'}
+            {t.newsCard.topStory}
           </Badge>
         )}
       </div>
@@ -99,7 +99,7 @@ function NewsCard({ id, title, excerpt, category, categorySlug, author, publishe
           {readTime && (
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3 text-red-500" />
-              {readTime} {lang === 'en' ? 'min' : 'मिनट'}
+              {readTime} {t.newsCard.min}
             </span>
           )}
           {views > 0 && (

@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Zap, ChevronRight } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
+import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
 
 function BreakingNews() {
   const router = useRouter()
@@ -13,12 +14,14 @@ function BreakingNews() {
   const { t, lang } = useLanguage()
 
   const { data: breakingNews = [], isLoading } = useQuery({
-    queryKey: ['breaking-ticker'],
+    queryKey: ['breaking-ticker', lang],
     queryFn: async () => {
-      const result = await fetchPayloadArticles({ isBreaking: true, limit: 10 })
+      const result = await fetchPayloadArticles({ isBreaking: true, limit: 10, lang })
       return result.articles || []
     },
-    staleTime: 2 * 60 * 1000,
+    staleTime: CONTENT_STALE_TIME,
+    refetchInterval: CONTENT_REFETCH_INTERVAL,
+    refetchIntervalInBackground: false,
     retry: 1,
   })
 

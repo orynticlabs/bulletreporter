@@ -35,6 +35,9 @@ const hi = {
     errorBreaking: 'ब्रेकिंग न्यूज़ लोड नहीं हुई',
     errorNews: 'खबरें लोड नहीं हुईं',
     serverTimeout: 'बैकएंड सर्वर से कनेक्शन टाइमआउट',
+    specialArticles: 'विशेष लेख',
+    featured: 'फीचर्ड',
+    more: 'और भी',
   },
 
   // News pages
@@ -67,6 +70,24 @@ const hi = {
     noImage: 'कोई छवि उपलब्ध नहीं',
     articleNotFound: 'लेख नहीं मिला',
     articleNotFoundDesc: 'क्षमा करें, आपके द्वारा अनुरोधित लेख उपलब्ध नहीं है।',
+    goHome: 'होम पर जाएं',
+    breaking: 'ब्रेकिंग',
+    views: 'व्यूज़',
+    helpfulQuestion: 'क्या यह खबर उपयोगी थी?',
+    leaveComment: 'टिप्पणी करें',
+    emailOptional: 'ईमेल (वैकल्पिक)',
+    more: 'और',
+    linkCopied: 'लिंक कॉपी हो गया!',
+    copyLink: 'लिंक कॉपी',
+  },
+
+  // News cards
+  newsCard: {
+    watchVideo: 'वीडियो देखें',
+    topStory: 'मुख्य समाचार',
+    min: 'मिनट',
+    sharing: 'शेयर हो रहा है...',
+    opening: 'खुल रहा है',
   },
 
   // Comments
@@ -82,6 +103,24 @@ const hi = {
     beFirst: 'पहली टिप्पणी करने वाले बनें!',
     loadingComments: 'टिप्पणियां लोड हो रही हैं...',
     errorComments: 'टिप्पणियां लोड करने में त्रुटि हुई',
+    showAll: 'सभी टिप्पणियां देखें',
+    showLess: 'कम दिखाएं',
+    pending: 'आपकी टिप्पणी समीक्षा के बाद प्रकाशित होगी।',
+    submitted: 'टिप्पणी सबमिट हो गई!',
+  },
+
+  // Reactions
+  reactions: {
+    likes: 'पसंद',
+    dislikes: 'नापसंद',
+    youLiked: 'आपने पसंद किया',
+    youDisliked: 'आपने नापसंद किया',
+  },
+
+  // Suggested articles
+  suggested: {
+    title: 'सुझाई गई खबरें',
+    readMore: 'और पढ़ें',
   },
 
   // Sidebar
@@ -94,6 +133,7 @@ const hi = {
     weatherError: 'मौसम डेटा लोड नहीं हो सका',
     retryWeather: 'फिर से कोशिश करें',
     trending: 'ट्रेंडिंग न्यूज़',
+    topTrending: 'टॉप 10 ट्रेंडिंग न्यूज़',
     noTrending: 'कोई ट्रेंडिंग न्यूज़ उपलब्ध नहीं',
     categories: 'श्रेणियां',
     noCategories: 'कोई श्रेणी उपलब्ध नहीं',
@@ -116,7 +156,12 @@ const hi = {
     noResults: 'कोई परिणाम नहीं मिला',
     noArticleFound: 'के लिए कोई लेख नहीं मिला',
     typeWord: 'एक पूरा शब्द टाइप करें या स्पेस दबाएं',
+    typeChars: 'सुझाव देखने के लिए कम से कम 2 अक्षर टाइप करें',
+    suggestionsFor: 'के लिए सुझाव',
     searchError: 'खोज में त्रुटि हुई',
+    searchFailed: 'खोज विफल हुई',
+    tryAgain: 'कृपया कुछ देर बाद पुनः प्रयास करें',
+    noSuggestions: 'कोई सुझाव नहीं मिला',
     results: 'परिणाम मिले',
     clickToRead: 'क्लिक करें',
     searching: 'खोज रहे हैं...',
@@ -127,6 +172,7 @@ const hi = {
     loading: 'लोड हो रहा है...',
     error: 'त्रुटि',
     retry: 'पुनः प्रयास करें',
+    fillRequired: 'सभी ज़रूरी फ़ील्ड भरें',
     noData: 'कोई डेटा उपलब्ध नहीं',
     save: 'सहेजें',
     cancel: 'रद्द करें',

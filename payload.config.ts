@@ -380,16 +380,41 @@ export default buildConfig({
       },
       hooks: {
         beforeValidate: [ensureNewsSlug, ensureNewsPublishedAt],
+        afterDelete: [
+          async ({ doc, req }: { doc: any; req: any }) => {
+            // Delete the featured image from media (Cloudinary plugin removes it from Cloudinary)
+            const imageId =
+              doc?.featuredImage && typeof doc.featuredImage === 'object'
+                ? doc.featuredImage.id
+                : doc?.featuredImage
+
+            if (imageId) {
+              try {
+                await req.payload.delete({ collection: 'media', id: imageId, req })
+              } catch (_) {
+                // Non-fatal: image may already be gone or unreachable
+              }
+            }
+          },
+        ],
       },
       admin: {
         useAsTitle: 'title',
-        defaultColumns: ['title', 'category', 'status', 'publishedAt'],
+        defaultColumns: ['title', 'category', 'status', 'publishedAt', 'deleteAt'],
       },
       versions: {
         drafts: true,
       },
       fields: [
         { name: 'title', type: 'text', label: 'Title (Hindi)', required: true },
+        {
+          name: 'titleEnglish',
+          type: 'text',
+          label: 'Title (English)',
+          admin: {
+            description: 'Optional English title shown when the user switches the website to English.',
+          },
+        },
         {
           name: 'slug',
           type: 'text',
@@ -402,10 +427,10 @@ export default buildConfig({
         {
           name: 'excerpt',
           type: 'textarea',
-          label: 'Summary / Excerpt (Hindi)',
+          label: 'Summary / Excerpt',
           required: true,
           admin: {
-            description: 'Enter the short Hindi summary shown on news cards, search suggestions, and social previews.',
+            description: 'Short summary shown on news cards, search results, and social previews.',
           },
         },
         {
@@ -413,11 +438,6 @@ export default buildConfig({
           type: 'richText',
           label: 'Content Editor',
           required: true,
-        },
-        {
-          name: 'contentHindi',
-          type: 'richText',
-          label: 'Content Editor (Hindi)',
         },
         {
           name: 'featuredImage',
@@ -481,7 +501,29 @@ export default buildConfig({
           },
         },
         {
+          name: 'deleteAt',
+          type: 'date',
+          label: 'Auto-Delete At',
+          admin: {
+            date: { pickerAppearance: 'dayAndTime' },
+            description: 'Optional. Set a future date & time to automatically delete this article (and its image from Cloudinary) when the scheduled cron runs.',
+            position: 'sidebar',
+          },
+        },
+        {
           name: 'views',
+          type: 'number',
+          defaultValue: 0,
+          admin: { readOnly: true },
+        },
+        {
+          name: 'likes',
+          type: 'number',
+          defaultValue: 0,
+          admin: { readOnly: true },
+        },
+        {
+          name: 'dislikes',
           type: 'number',
           defaultValue: 0,
           admin: { readOnly: true },
