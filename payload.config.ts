@@ -993,6 +993,18 @@ export default buildConfig({
           admin: { readOnly: true },
         },
         {
+          name: 'likes',
+          type: 'number',
+          defaultValue: 0,
+          admin: { readOnly: true },
+        },
+        {
+          name: 'dislikes',
+          type: 'number',
+          defaultValue: 0,
+          admin: { readOnly: true },
+        },
+        {
           name: 'seo',
           type: 'group',
           label: 'SEO',
@@ -1034,7 +1046,15 @@ export default buildConfig({
           name: 'article',
           type: 'relationship',
           relationTo: 'news',
-          required: true,
+          required: false,
+          admin: { description: 'Link to a news article (leave blank for video news comments).' },
+        },
+        {
+          name: 'videoArticle',
+          type: 'relationship',
+          relationTo: 'video-news',
+          required: false,
+          admin: { description: 'Link to a video news item (leave blank for regular news comments).' },
         },
         {
           name: 'status',

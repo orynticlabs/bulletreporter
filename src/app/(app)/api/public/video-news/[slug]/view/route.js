@@ -1,0 +1,39 @@
+import config from '@payload-config'
+import { getPayload } from 'payload'
+
+export const dynamic = 'force-dynamic'
+
+export async function POST(request, { params }) {
+  try {
+    const { slug: rawSlug } = await params
+    const slug = decodeURIComponent(rawSlug)
+    const payload = await getPayload({ config })
+
+    const result = await payload.find({
+      collection: 'video-news',
+      where: { slug: { equals: slug } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+
+    const video = result.docs[0]
+    if (!video) {
+      return Response.json({ error: 'Video not found' }, { status: 404 })
+    }
+
+    const newViews = (video.views || 0) + 1
+
+    await payload.update({
+      collection: 'video-news',
+      id: video.id,
+      data: { views: newViews },
+      overrideAccess: true,
+    })
+
+    return Response.json({ views: newViews })
+  } catch (err) {
+    console.error('[video-news view] Error:', err)
+    return Response.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

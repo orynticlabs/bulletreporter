@@ -11,11 +11,13 @@ import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { getRelativeTime } from '@/utils/dateUtils'
 import SearchResults from './SearchResults'
 
-const MENU_CATEGORY_LIMIT = 12
-const ALERTS_LIMIT = 10
-const ALERTS_POLL_INTERVAL = 2 * 60 * 1000   // 2 min — matches global refetch
-const LAST_SEEN_KEY  = 'br_alert_last_seen'   // localStorage key
-const MUTED_KEY      = 'br_alert_muted'        // localStorage key for mute pref
+const MENU_CATEGORY_LIMIT  = 12
+const ALERTS_LIMIT         = 4               // only latest 4 shown in panel
+const ALERTS_POLL_INTERVAL = 60 * 1000       // 1 min
+const ALERTS_CACHE_TTL     = 55 * 1000       // shorter than poll — guarantees fresh fetch
+const POPUP_DISMISS_DELAY  = 7000
+const LAST_SEEN_KEY  = 'br_alert_last_seen'
+const MUTED_KEY      = 'br_alert_muted'
 
 // ── Sound engine (Web Audio API — no external files needed) ──────────────────
 // Generates a pleasant two-tone "ding-dong" chime.
@@ -73,8 +75,96 @@ const setLastSeen = (id) => {
   try { localStorage.setItem(LAST_SEEN_KEY, String(id)) } catch {}
 }
 
+// ── New-article popup toast ───────────────────────────────────────────────────
+function NewAlertPopup({ count, article, lang, onDismiss, onNavigate }) {
+  return (
+    <div
+      role="alert"
+      aria-live="assertive"
+      className="fixed bottom-5 right-4 z-[100] w-full max-w-xs sm:max-w-sm overflow-hidden rounded-xl border border-red-100 bg-white shadow-2xl"
+      style={{ animation: 'brSlideUp 0.35s cubic-bezier(0.16,1,0.3,1)' }}
+    >
+      <style>{`
+        @keyframes brSlideUp {
+          from { opacity: 0; transform: translateY(24px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes brShrink {
+          from { transform: scaleX(1); }
+          to   { transform: scaleX(0); }
+        }
+      `}</style>
+
+      {/* Header */}
+      <div className="flex items-center justify-between bg-red-600 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <Bell className="w-4 h-4 fill-white text-white" />
+          <span className="text-white text-xs font-bold">
+            {lang === 'en'
+              ? `${count} New ${count === 1 ? 'Article' : 'Articles'}!`
+              : `${count} नई खबर${count > 1 ? 'ें' : ''}!`}
+          </span>
+          <span className="w-2 h-2 rounded-full bg-yellow-400 animate-ping" />
+        </div>
+        <button
+          onClick={onDismiss}
+          className="rounded p-0.5 text-white/80 transition-colors hover:text-white"
+          aria-label="Dismiss notification"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Latest article preview */}
+      {article && (
+        <button
+          onClick={() => { onNavigate(article.slug); onDismiss() }}
+          className="group flex w-full items-start gap-3 p-3 text-left transition-colors hover:bg-red-50"
+        >
+          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+            {article.image_url ? (
+              <img
+                src={article.image_url}
+                alt={article.title}
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-red-100 to-red-200">
+                <Zap className="h-5 w-5 text-red-400" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-red-600">
+              {lang === 'en' ? 'Latest' : 'ताज़ा खबर'}
+            </p>
+            <p className="line-clamp-2 text-sm font-semibold leading-snug text-gray-800 transition-colors group-hover:text-red-600">
+              {article.title}
+            </p>
+            {article.created_at && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-400">
+                <Clock className="h-3 w-3" />
+                {getRelativeTime(article.created_at)}
+              </p>
+            )}
+          </div>
+          <ChevronRight className="mt-5 h-4 w-4 flex-shrink-0 text-gray-300 transition-colors group-hover:text-red-500" />
+        </button>
+      )}
+
+      {/* Auto-dismiss progress bar */}
+      <div className="h-1 bg-red-100">
+        <div
+          className="h-full origin-left bg-red-500"
+          style={{ animation: `brShrink ${POPUP_DISMISS_DELAY}ms linear forwards` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 // ── Alert dropdown panel ──────────────────────────────────────────────────────
-function AlertPanel({ articles, lang, isMuted, onToggleMute, onClose, onRead }) {
+function AlertPanel({ articles, unreadCount, lang, isMuted, onToggleMute, onClose, onRead }) {
   const router = useRouter()
   const getLangPath = useCallback((p) => lang === 'en' ? `/en${p}` : p, [lang])
 
@@ -93,9 +183,9 @@ function AlertPanel({ articles, lang, isMuted, onToggleMute, onClose, onRead }) 
           <span className="font-bold text-sm">
             {lang === 'en' ? 'News Alerts' : 'समाचार अलर्ट'}
           </span>
-          {articles.length > 0 && (
+          {unreadCount > 0 && (
             <span className="bg-white text-red-600 text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">
-              {articles.length}
+              {unreadCount}
             </span>
           )}
         </div>
@@ -165,7 +255,7 @@ function AlertPanel({ articles, lang, isMuted, onToggleMute, onClose, onRead }) 
               {/* Text */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                  {idx === 0 && (
+                  {idx < unreadCount && (
                     <span className="inline-flex items-center gap-0.5 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide leading-none animate-pulse">
                       <span className="w-1 h-1 bg-white rounded-full inline-block" />
                       {lang === 'en' ? 'New' : 'नई'}
@@ -226,7 +316,11 @@ function Header() {
   const [isScrolled,   setIsScrolled]   = useState(false)
   const [currentTime,  setCurrentTime]  = useState('')
   const [currentDate,  setCurrentDate]  = useState('')
-  const prevUnreadRef  = useRef(0)   // tracks previous count to detect increases
+  const [alertPopup,   setAlertPopup]   = useState(null) // { count, article }
+  const latestArticleIdRef = useRef(null)  // newest article ID from last poll
+  const isAlertInitRef     = useRef(false) // true after first data load
+  const isMutedRef         = useRef(false) // sync of isMuted for use inside effects
+  const popupTimerRef      = useRef(null)
 
   const router   = useRouter()
   const pathname = usePathname()
@@ -245,20 +339,11 @@ function Header() {
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
       const next = !prev
+      isMutedRef.current = next
       try { localStorage.setItem(MUTED_KEY, next ? '1' : '0') } catch {}
       return next
     })
   }, [])
-
-  // ── Play sound when new articles arrive (unreadCount increases) ────────────
-  useEffect(() => {
-    const prev = prevUnreadRef.current
-    prevUnreadRef.current = unreadCount
-    // Only fire when count grows (new articles detected), not on first load (prev===0)
-    if (unreadCount > prev && prev > 0 && !isMuted) {
-      playAlertSound()
-    }
-  }, [unreadCount, isMuted])
 
   // ── Live clock ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -303,7 +388,11 @@ function Header() {
     staleTime: 10 * 60 * 1000,
   })
 
-  // ── Alert articles — polled every 2 min ────────────────────────────────────
+  // ── Alert articles — polled every 1 min ────────────────────────────────────
+  // • ALERTS_CACHE_TTL (55 s) < ALERTS_POLL_INTERVAL (60 s) so each timed poll
+  //   bypasses the module-level in-memory cache and hits the network.
+  // • refetchOnWindowFocus: false prevents the query from firing on every click,
+  //   which would race with the bell toggle and cause spurious re-renders.
   const { data: alertArticles = [] } = useQuery({
     queryKey: ['header-alerts', lang],
     queryFn: async () => {
@@ -311,47 +400,90 @@ function Header() {
         limit: ALERTS_LIMIT,
         sort: '-publishedAt',
         lang,
+        ttl: ALERTS_CACHE_TTL,
       })
       return result.articles || []
     },
-    staleTime: 60 * 1000,
+    staleTime: ALERTS_CACHE_TTL,
     refetchInterval: ALERTS_POLL_INTERVAL,
-    refetchIntervalInBackground: false,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: false,
     retry: 1,
   })
 
-  // ── Compute unread count ───────────────────────────────────────────────────
-  useEffect(() => {
-    if (!alertArticles.length) return
-    const lastSeen = getLastSeen()
-    if (!lastSeen) {
-      // First visit — mark all as read silently so badge only shows NEW ones
-      setLastSeen(alertArticles[0].id)
-      setUnreadCount(0)
-      return
-    }
-    const idx = alertArticles.findIndex(a => String(a.id) === String(lastSeen))
-    // idx === -1 means all 10 are new; idx === 0 means nothing new
-    const count = idx === -1 ? alertArticles.length : idx
-    setUnreadCount(count)
-  }, [alertArticles])
-
-  // ── Open alert panel → mark all read ──────────────────────────────────────
-  const handleOpenAlerts = () => {
-    setIsAlertOpen(prev => !prev)
-    if (!isAlertOpen && alertArticles.length) {
-      markAllRead()
-    }
-    setIsMenuOpen(false)
-    setIsSocialOpen(false)
-  }
-
+  // ── markAllRead — defined before handleOpenAlerts so the closure resolves ──
   const markAllRead = useCallback(() => {
     if (alertArticles.length) {
       setLastSeen(alertArticles[0].id)
       setUnreadCount(0)
     }
   }, [alertArticles])
+
+  // ── Toggle alert panel ─────────────────────────────────────────────────────
+  const handleOpenAlerts = useCallback(() => {
+    setIsAlertOpen(prev => {
+      const opening = !prev
+      if (opening && alertArticles.length) markAllRead()
+      return opening
+    })
+    setIsMenuOpen(false)
+    setIsSocialOpen(false)
+  }, [alertArticles, markAllRead])
+
+  // ── Single effect: unread count + new-article detection + sound + popup ────
+  useEffect(() => {
+    if (!alertArticles.length) return
+
+    const newestId = String(alertArticles[0].id)
+
+    if (!isAlertInitRef.current) {
+      // First load — initialise silently, no sound/popup
+      isAlertInitRef.current     = true
+      latestArticleIdRef.current = newestId
+      isMutedRef.current         = isMuted  // capture initial mute state
+
+      const lastSeen = getLastSeen()
+      if (!lastSeen) {
+        setLastSeen(newestId)
+        setUnreadCount(0)
+      } else {
+        const idx = alertArticles.findIndex(a => String(a.id) === String(lastSeen))
+        setUnreadCount(idx === -1 ? alertArticles.length : idx)
+      }
+      return
+    }
+
+    // Subsequent polls — compare newest ID to detect truly new articles
+    const hasNew = newestId !== latestArticleIdRef.current
+    latestArticleIdRef.current = newestId
+
+    const lastSeen = getLastSeen()
+    const idx      = lastSeen
+      ? alertArticles.findIndex(a => String(a.id) === String(lastSeen))
+      : -1
+    const newCount = idx === -1 ? alertArticles.length : idx
+    setUnreadCount(newCount)
+
+    if (hasNew && newCount > 0) {
+      if (!isMutedRef.current) playAlertSound()
+      setAlertPopup({ count: newCount, article: alertArticles[0] })
+      if (popupTimerRef.current) clearTimeout(popupTimerRef.current)
+      popupTimerRef.current = setTimeout(() => setAlertPopup(null), POPUP_DISMISS_DELAY)
+    }
+  }, [alertArticles]) // isMuted read via ref — intentionally not a dependency
+
+  // Cleanup popup timer on unmount
+  useEffect(() => () => { if (popupTimerRef.current) clearTimeout(popupTimerRef.current) }, [])
+
+  const dismissPopup = useCallback(() => {
+    setAlertPopup(null)
+    if (popupTimerRef.current) clearTimeout(popupTimerRef.current)
+  }, [])
+
+  const goToArticle = useCallback((slug) => {
+    router.push(lang === 'en' ? `/en/news/${encodeURIComponent(slug)}` : `/news/${encodeURIComponent(slug)}`)
+    markAllRead()
+  }, [router, lang, markAllRead])
 
   // ── Nav helpers ────────────────────────────────────────────────────────────
   const getLangPath = (path) => lang === 'en' ? `/en${path}` : path
@@ -446,6 +578,7 @@ function Header() {
                 {isAlertOpen && (
                   <AlertPanel
                     articles={alertArticles}
+                    unreadCount={unreadCount}
                     lang={lang}
                     isMuted={isMuted}
                     onToggleMute={toggleMute}
@@ -640,6 +773,17 @@ function Header() {
       {/* Full-page overlay to close alert panel on mobile */}
       {isAlertOpen && (
         <div className="fixed inset-0 z-[55] sm:hidden" onClick={() => setIsAlertOpen(false)} />
+      )}
+
+      {/* New-article popup toast */}
+      {alertPopup && (
+        <NewAlertPopup
+          count={alertPopup.count}
+          article={alertPopup.article}
+          lang={lang}
+          onDismiss={dismissPopup}
+          onNavigate={goToArticle}
+        />
       )}
     </header>
   )

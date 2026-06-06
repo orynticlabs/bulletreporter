@@ -133,6 +133,11 @@ export default function NewsDetail({ initialArticle = null }) {
     retry: 1,
   })
 
+  // Scroll to top on slug change (covers same-route navigation between articles)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [slug])
+
   // Sync counts when article loads
   useEffect(() => {
     if (!article) return
