@@ -252,8 +252,6 @@ export const lexicalToPlainText = (value) => {
 export const normalizePayloadArticle = (doc, lang = 'hi') => {
   if (!doc) return null
 
-  const isEnglish = lang === 'en'
-  const localizedTitle = isEnglish ? (doc.titleEnglish || doc.title) : doc.title
   // Single content field (previously English duplicate removed)
   const localizedContent = doc.content
   const contentHtml = lexicalToHtml(localizedContent)
@@ -279,7 +277,7 @@ export const normalizePayloadArticle = (doc, lang = 'hi') => {
   return {
     ...doc,
     id: doc.id,
-    title: localizedTitle || 'Untitled',
+    title: doc.title || 'Untitled',
     description: excerpt,
     content: contentHtml,
     contentText,

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Lock, Eye, EyeOff } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
+import Layout from '@/components/Layout';
 function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -57,8 +58,9 @@ function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <Layout showBreakingNews={false}>
+      <div className="min-h-[70vh] bg-gradient-to-br from-primary/5 to-accent/5 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
         <CardHeader className="text-center pb-6">
           <CardTitle className="text-2xl font-bold text-primary">पासवर्ड रीसेट करें</CardTitle>
           <CardDescription className="text-muted-foreground">अपना नया पासवर्ड दर्ज करें।</CardDescription>
@@ -121,8 +123,9 @@ function ResetPassword() {
             </Button>
           </form>
         </CardContent>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </Layout>
   );
 }
 

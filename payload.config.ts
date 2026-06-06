@@ -3,6 +3,7 @@ import { postgresAdapter } from '@payloadcms/db-postgres'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { payloadCloudinaryPlugin } from '@jhb.software/payload-cloudinary-plugin'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { v2 as cloudinary } from 'cloudinary'
 import sharp from 'sharp'
 import fs from 'fs'
 import path from 'path'
@@ -70,6 +71,14 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL is required for Payload CMS. Add your Neon Postgres connection string to .env.local.')
 }
 
+if (hasCloudinaryCredentials) {
+  cloudinary.config({
+    cloud_name: cloudinaryCloudName,
+    api_key: cloudinaryApiKey,
+    api_secret: cloudinaryApiSecret,
+  })
+}
+
 const randomSlug = (length = 12) => {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
   let value = ''
@@ -107,6 +116,7 @@ const ensureNewsPublishedAt = ({ data, operation }: { data?: Record<string, any>
 //
 // Role hierarchy (highest → lowest privilege):
 //   admin   – full access to every collection, field, and operation
+//   chief_editor – manage editorial content, latest news, and About page content
 //   editor  – create / edit / publish all news; manage categories, comments, ads
 //   author  – create news; edit/delete only their own draft articles
 //   viewer  – read-only access inside the admin panel (no mutations)
@@ -117,15 +127,19 @@ const ensureNewsPublishedAt = ({ data, operation }: { data?: Record<string, any>
 type User = { id: string | number; role?: string } | null | undefined
 
 const isAdmin  = (user: User): boolean => user?.role === 'admin'
+const isChiefEditor = (user: User): boolean => user?.role === 'chief_editor'
 const isEditor = (user: User): boolean => user?.role === 'editor'
 const isAuthor = (user: User): boolean => user?.role === 'author'
 const isViewer = (user: User): boolean => user?.role === 'viewer'
 
-/** Admin or Editor */
-const isAdminOrEditor = (user: User): boolean => isAdmin(user) || isEditor(user)
+/** Admin, Chief Editor, or Editor */
+const isAdminOrEditor = (user: User): boolean => isAdmin(user) || isChiefEditor(user) || isEditor(user)
 
-/** Admin, Editor, or Author (any staff role) */
-const isStaff = (user: User): boolean => isAdmin(user) || isEditor(user) || isAuthor(user)
+/** Admin or Chief Editor */
+const isAdminOrChiefEditor = (user: User): boolean => isAdmin(user) || isChiefEditor(user)
+
+/** Admin, Chief Editor, Editor, or Author (any staff role) */
+const isStaff = (user: User): boolean => isAdmin(user) || isChiefEditor(user) || isEditor(user) || isAuthor(user)
 
 /** Any authenticated user (including viewer) */
 const isAuthenticated = (user: User): boolean => Boolean(user)
@@ -140,6 +154,20 @@ const ensureCloudinaryUploadConfigured = ({ data, req }: { data?: Record<string,
   }
 
   return data
+}
+
+const deleteCloudinaryAsset = async ({ doc }: { doc?: Record<string, any> }) => {
+  const publicId = doc?.cloudinaryPublicId
+
+  if (!publicId || !hasCloudinaryCredentials) return
+
+  try {
+    await cloudinary.uploader.destroy(publicId, {
+      resource_type: doc?.mimeType?.startsWith('video/') ? 'video' : 'image',
+    })
+  } catch (_) {
+    // Non-fatal: Payload should still remove the media record.
+  }
 }
 
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024
@@ -357,10 +385,11 @@ export default buildConfig({
           name: 'role',
           type: 'select',
           options: [
-            { label: 'Admin',   value: 'admin' },
-            { label: 'Editor',  value: 'editor' },
-            { label: 'Author',  value: 'author' },
-            { label: 'Viewer',  value: 'viewer' },
+            { label: 'Admin',        value: 'admin' },
+            { label: 'Chief Editor', value: 'chief_editor' },
+            { label: 'Editor',       value: 'editor' },
+            { label: 'Author',       value: 'author' },
+            { label: 'Viewer',       value: 'viewer' },
           ],
           defaultValue: 'author',
           required: true,
@@ -400,6 +429,7 @@ export default buildConfig({
           },
         ],
         beforeChange: [ensureCloudinaryUploadConfigured],
+        afterDelete: [deleteCloudinaryAsset],
       },
       upload: {
         mimeTypes: ['image/*', 'video/*'],
@@ -492,14 +522,6 @@ export default buildConfig({
       },
       fields: [
         { name: 'title', type: 'text', label: 'Title (Hindi)', required: true },
-        {
-          name: 'titleEnglish',
-          type: 'text',
-          label: 'Title (English)',
-          admin: {
-            description: 'Optional English title shown when the user switches the website to English.',
-          },
-        },
         {
           name: 'slug',
           type: 'text',
@@ -774,6 +796,10 @@ export default buildConfig({
     {
       slug: 'settings',
       label: 'Site Settings',
+      access: {
+        read: () => true,
+        update: ({ req }) => isAdminOrChiefEditor(req.user),
+      },
       fields: [
         { name: 'siteName', type: 'text', defaultValue: 'Bullet Reporter' },
         { name: 'tagline', type: 'text' },
@@ -791,6 +817,52 @@ export default buildConfig({
         },
         { name: 'footerText', type: 'textarea' },
         { name: 'breakingNewsTicker', type: 'checkbox', defaultValue: true },
+        {
+          name: 'aboutPage',
+          type: 'group',
+          label: 'About Us Page',
+          admin: {
+            description: 'Editable by Admin and Chief Editor. Controls the public About Us page.',
+          },
+          fields: [
+            { name: 'eyebrow', type: 'text', defaultValue: 'About Bullet Reporter' },
+            { name: 'headline', type: 'text', defaultValue: 'साफ, तेज और जिम्मेदार खबरें' },
+            {
+              name: 'summary',
+              type: 'textarea',
+              defaultValue: 'Bullet Reporter is a Hindi-first digital news platform focused on timely reporting, public-interest updates, and useful local coverage.',
+            },
+            { name: 'photo', type: 'upload', relationTo: 'media', label: 'Main Photo' },
+            { name: 'description', type: 'richText', label: 'Description / Content' },
+            { name: 'mission', type: 'textarea', label: 'Mission / Purpose' },
+            { name: 'technologyManagement', type: 'textarea', label: 'Technology Management' },
+            { name: 'ownership', type: 'textarea', label: 'Editorial Ownership' },
+            {
+              name: 'chiefEditor',
+              type: 'group',
+              label: 'Chief Editor Details',
+              fields: [
+                { name: 'name', type: 'text' },
+                { name: 'designation', type: 'text', defaultValue: 'Chief Editor' },
+                { name: 'photo', type: 'upload', relationTo: 'media' },
+                { name: 'bio', type: 'textarea' },
+                { name: 'email', type: 'email' },
+              ],
+            },
+            {
+              name: 'editor',
+              type: 'group',
+              label: 'Editor Details',
+              fields: [
+                { name: 'name', type: 'text' },
+                { name: 'designation', type: 'text', defaultValue: 'Editor' },
+                { name: 'photo', type: 'upload', relationTo: 'media' },
+                { name: 'bio', type: 'textarea' },
+                { name: 'email', type: 'email' },
+              ],
+            },
+          ],
+        },
       ],
     },
   ],

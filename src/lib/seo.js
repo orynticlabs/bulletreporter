@@ -16,6 +16,9 @@ export const SITE_KEYWORDS = [
 ]
 export const CREATOR = 'OrynticLabs'
 export const DEFAULT_IMAGE = '/logo.png'
+export const GEO_REGION = 'IN-MP'
+export const GEO_PLACENAME = 'Rewa, Madhya Pradesh, India'
+export const GEO_POSITION = '24.5362;81.3037'
 export function absoluteUrl(path = '/') {
   if (!path) return SITE_URL
   if (/^https?:\/\//i.test(path)) return path
@@ -173,6 +176,10 @@ export function buildMetadata({
       'news_keywords': [...SITE_KEYWORDS, ...keywords].slice(0, 10).join(', '),
       'article:publisher': SITE_NAME,
       'built-by': CREATOR,
+      'geo.region': GEO_REGION,
+      'geo.placename': GEO_PLACENAME,
+      'geo.position': GEO_POSITION,
+      'ICBM': GEO_POSITION,
     },
   }
 }
@@ -238,6 +245,17 @@ export function organizationJsonLd() {
     founder: {
       '@type': 'Organization',
       name: CREATOR,
+    },
+    areaServed: [
+      { '@type': 'AdministrativeArea', name: 'Madhya Pradesh' },
+      { '@type': 'AdministrativeArea', name: 'Chhattisgarh' },
+      { '@type': 'Country', name: 'India' },
+    ],
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Rewa',
+      addressRegion: 'Madhya Pradesh',
+      addressCountry: 'IN',
     },
     sameAs: [SITE_URL],
   }

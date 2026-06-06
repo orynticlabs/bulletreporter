@@ -22,6 +22,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { getRelativeTime } from '@/utils/dateUtils'
 import { getReadingTime } from '@/utils/timeUtils'
 import { fetchPayloadArticleBySlug, fetchPayloadArticles, normalizeRouteSlug } from '@/utils/payloadArticles'
+import Sidebar from '@/components/Sidebar'
 
 const STORAGE_KEY = 'br_reactions' // localStorage key for like/dislike state
 
@@ -279,16 +280,21 @@ export default function NewsDetail({ initialArticle = null }) {
     const canonicalUrl  = `${origin}/news/${slug}`                     // /news/abc123 (no /en/)
 
     const shareTitle    = article?.title || ''
+    const boldTitle     = shareTitle ? `*${shareTitle}*` : ''
+    const shareMessage  = [boldTitle, canonicalUrl].filter(Boolean).join('\n\n')
     const encodedUrl    = encodeURIComponent(canonicalUrl)
     const encodedTitle  = encodeURIComponent(shareTitle)
+    const encodedMessage = encodeURIComponent(shareMessage)
 
     const urls = {
-      // WhatsApp scrapes og:title + og:image from canonicalUrl automatically
-      whatsapp: `https://wa.me/?text=${encodedUrl}`,
+      // WhatsApp/Telegram support markdown-style bold in messages.
+      whatsapp: `https://wa.me/?text=${encodedMessage}`,
       // Facebook reads og:* from the URL
-      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedTitle}`,
       // Twitter shows title as tweet text + card image from og:image
-      twitter:  `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
+      twitter: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}&title=${encodedTitle}&summary=${encodedTitle}`,
+      telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedMessage}`,
     }
     window.open(urls[platform], '_blank', 'width=600,height=400')
   }, [article, slug])
@@ -465,6 +471,14 @@ export default function NewsDetail({ initialArticle = null }) {
                       className="flex items-center gap-2 px-3 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm rounded-lg transition-colors">
                       <Twitter className="w-4 h-4" /> Twitter
                     </button>
+                    <button onClick={() => handleShare('linkedin')}
+                      className="flex items-center gap-2 px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm rounded-lg transition-colors">
+                      <span className="font-black leading-none">in</span> LinkedIn
+                    </button>
+                    <button onClick={() => handleShare('telegram')}
+                      className="flex items-center gap-2 px-3 py-2 bg-cyan-500 hover:bg-cyan-600 text-white text-sm rounded-lg transition-colors">
+                      <Send className="w-4 h-4" /> Telegram
+                    </button>
                     <button
                       onClick={() => {
                         const link = `${window.location.origin}/news/${slug}`
@@ -480,25 +494,6 @@ export default function NewsDetail({ initialArticle = null }) {
             </Card>
 
             <AdBanner size="medium" position="middle_banner" />
-
-            {/* ── Suggested Articles (below article, above comments) ── */}
-            {suggestedArticles.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3 border-b">
-                  <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                    <Zap className="w-5 h-5 text-red-500 fill-red-100" />
-                    {t.suggested.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                    {suggestedArticles.map(a => (
-                      <SuggestedCard key={a.id} article={a} onClick={() => goTo(a.slug)} />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* ── Comments ── */}
             <Card>
@@ -580,36 +575,31 @@ export default function NewsDetail({ initialArticle = null }) {
                 )}
               </CardContent>
             </Card>
+
+            {/* ── Suggested Articles (after comments) ── */}
+            {suggestedArticles.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3 border-b">
+                  <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                    <Zap className="w-5 h-5 text-red-500 fill-red-100" />
+                    {t.suggested.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    {suggestedArticles.map(a => (
+                      <SuggestedCard key={a.id} article={a} onClick={() => goTo(a.slug)} />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </article>
 
           {/* ── Sidebar ── */}
           <aside className="hidden lg:block lg:col-span-1">
-            <div className="sticky top-24 space-y-4">
-              {suggestedArticles.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <ChevronRight className="w-4 h-4 text-red-500" />
-                      {t.newsDetail.moreArticles}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 p-3">
-                    {suggestedArticles.slice(0, 4).map(a => (
-                      <div key={a.id} className="flex gap-2 cursor-pointer group"
-                        onClick={() => goTo(a.slug)}>
-                        {a.image_url && (
-                          <img src={a.image_url} alt={a.title}
-                            className="w-14 h-14 object-cover rounded flex-shrink-0" loading="lazy" />
-                        )}
-                        <p className="text-xs text-gray-700 group-hover:text-red-600 line-clamp-3 transition-colors">
-                          {a.title}
-                        </p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-              <AdBanner size="small" position="sidebar" />
+            <div className="sticky top-24">
+              <Sidebar />
             </div>
           </aside>
         </div>
