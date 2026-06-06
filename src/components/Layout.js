@@ -35,7 +35,7 @@ function Layout({ children, showBreakingNews = true }) {
         href={WHATSAPP_LINK}
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white p-3 md:p-4 rounded-full shadow-xl transition-all duration-300 hover:scale-110 active:scale-95"
+        className="fixed bottom-4 right-4 z-50 rounded-full bg-green-500 p-3 text-white shadow-xl transition-all duration-300 hover:scale-110 hover:bg-green-600 active:scale-95 sm:bottom-6 sm:right-6 md:p-4"
         aria-label="Join WhatsApp Group"
       >
         <MessageSquareMore className="w-5 h-5 md:w-6 md:h-6" />
@@ -45,7 +45,7 @@ function Layout({ children, showBreakingNews = true }) {
       {showScrollTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 left-6 z-50 bg-red-600 hover:bg-red-700 text-white p-3 rounded-full shadow-xl transition-all duration-300 hover:scale-110"
+          className="fixed bottom-4 left-4 z-50 rounded-full bg-red-600 p-3 text-white shadow-xl transition-all duration-300 hover:scale-110 hover:bg-red-700 sm:bottom-6 sm:left-6"
           aria-label="Scroll to top"
         >
           <ChevronUp className="w-5 h-5" />

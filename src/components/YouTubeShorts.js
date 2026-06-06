@@ -27,14 +27,14 @@ function ShortsCard({ short, active, onSelect, cardRef }) {
       }}
       role="button"
       tabIndex={0}
-      className={`group relative shrink-0 snap-center overflow-hidden rounded-lg border bg-black text-left shadow-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
+      className={`group relative shrink-0 snap-center overflow-hidden rounded-[10px] border bg-black text-left transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
         active
-          ? 'w-[210px] border-red-500 shadow-xl sm:w-[250px] md:w-[285px]'
-          : 'w-[165px] border-gray-200 opacity-80 hover:opacity-100 sm:w-[190px] md:w-[210px]'
+          ? 'h-[330px] w-[186px] border-red-500 shadow-2xl shadow-red-900/20 sm:h-[388px] sm:w-[218px] lg:h-[430px] lg:w-[242px]'
+          : 'h-[276px] w-[156px] border-gray-200 opacity-80 shadow-md hover:opacity-100 sm:h-[324px] sm:w-[182px] lg:h-[360px] lg:w-[202px]'
       }`}
       aria-label={short.title}
     >
-      <div className="relative aspect-[9/16] w-full bg-gray-950">
+      <div className="relative h-full w-full bg-gray-950">
         {active ? (
           <iframe
             key={short.id}
@@ -59,7 +59,7 @@ function ShortsCard({ short, active, onSelect, cardRef }) {
           </>
         )}
       </div>
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3">
         <p className={`line-clamp-2 font-bold leading-snug text-white ${active ? 'text-sm md:text-base' : 'text-xs md:text-sm'}`}>
           {short.title}
         </p>
@@ -100,11 +100,11 @@ export default function YouTubeShorts() {
   }
 
   return (
-    <section className="border-t border-red-100 bg-white py-8 md:py-10">
+    <section className="border-t border-red-100 bg-gradient-to-b from-white via-red-50/30 to-white py-8 md:py-10">
       <div className="container mx-auto px-4">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-red-600">
+            <div className="inline-flex items-center gap-2 rounded-full border border-red-100 bg-white px-3 py-1 text-xs font-black uppercase tracking-wide text-red-600 shadow-sm">
               <Youtube className="h-4 w-4 fill-red-600" />
               Shorts
             </div>
@@ -135,15 +135,15 @@ export default function YouTubeShorts() {
         </div>
 
         {isLoading ? (
-          <div className="flex gap-4 overflow-hidden">
+          <div className="flex h-[360px] items-center gap-4 overflow-hidden sm:h-[420px] lg:h-[464px]">
             {[0, 1, 2, 3, 4].map((item) => (
-              <div key={item} className="h-[300px] w-[170px] shrink-0 animate-pulse rounded-lg bg-gray-100 sm:h-[360px] sm:w-[205px]" />
+              <div key={item} className="h-[276px] w-[156px] shrink-0 animate-pulse rounded-[10px] bg-gray-100 sm:h-[324px] sm:w-[182px] lg:h-[360px] lg:w-[202px]" />
             ))}
           </div>
         ) : (
           <div
             ref={scrollerRef}
-            className="scrollbar-hide flex snap-x snap-mandatory items-center gap-4 overflow-x-auto scroll-smooth pb-3 pt-2"
+            className="scrollbar-hide flex h-[360px] snap-x snap-mandatory items-center gap-4 overflow-x-auto scroll-smooth pb-3 pt-2 sm:h-[420px] lg:h-[464px]"
           >
             {shorts.map((short, index) => (
               <ShortsCard

@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { buildConfig } from 'payload'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
@@ -47,12 +48,173 @@ const databaseUrl =
   process.env.POSTGRES_PRISMA_URL ||
   process.env.PAYLOAD_DATABASE_URL
 // ── Email (Nodemailer) ──────────────────────────────────────────────────────
-const smtpHost     = process.env.SMTP_HOST
-const smtpPort     = parseInt(process.env.SMTP_PORT || '587', 10)
-const smtpUser     = process.env.SMTP_USER
-const smtpPass     = process.env.SMTP_PASS
-const emailFrom    = process.env.EMAIL_FROM || smtpUser || 'noreply@bulletreporter.in'
-const siteUrl      = process.env.NEXT_PUBLIC_SITE_URL || 'https://bullet-reporter.vercel.app'
+const smtpHost = process.env.SMTP_HOST
+const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10)
+const smtpUser = process.env.SMTP_USER
+const smtpPass = process.env.SMTP_PASS
+const configuredEmailFrom = process.env.EMAIL_FROM || 'noreply@bulletreporter.in'
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bullet-reporter.vercel.app'
+
+const getEmailDomain = (value?: string) => value?.split('@').pop()?.toLowerCase() || ''
+
+const smtpUserDomain = getEmailDomain(smtpUser)
+const configuredEmailFromDomain = getEmailDomain(configuredEmailFrom)
+const emailFromAddress =
+  smtpUserDomain && configuredEmailFromDomain && smtpUserDomain !== configuredEmailFromDomain
+    ? smtpUser || configuredEmailFrom
+    : configuredEmailFrom || smtpUser || 'noreply@bulletreporter.in'
+
+const escapeHtml = (value: unknown) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
+const buildAuthEmailTemplate = ({
+  audience,
+  displayName,
+  intro,
+  ctaLabel,
+  ctaUrl,
+  secondaryLabel,
+  secondaryUrl,
+  expiresText,
+  closingText,
+}: {
+  audience: string
+  displayName: string
+  intro: string
+  ctaLabel: string
+  ctaUrl: string
+  secondaryLabel?: string
+  secondaryUrl?: string
+  expiresText: string
+  closingText: string
+}) => {
+  const safeName = escapeHtml(displayName)
+  const safeIntro = escapeHtml(intro)
+  const safeCtaLabel = escapeHtml(ctaLabel)
+  const safeCtaUrl = escapeHtml(ctaUrl)
+  const safeSecondaryLabel = secondaryLabel ? escapeHtml(secondaryLabel) : ''
+  const safeSecondaryUrl = secondaryUrl ? escapeHtml(secondaryUrl) : ''
+  const safeExpiresText = escapeHtml(expiresText)
+  const safeClosingText = escapeHtml(closingText)
+  const safeAudience = escapeHtml(audience)
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>${safeAudience}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:36px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
+          <tr>
+            <td style="padding:28px 32px;border-bottom:1px solid #e5e7eb;background:#ffffff;">
+              <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;font-weight:700;">Bullet Reporter</div>
+              <h1 style="margin:10px 0 0;font-size:26px;line-height:1.3;color:#111827;">${safeAudience}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#111827;">Hello ${safeName},</p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#374151;">${safeIntro}</p>
+              <p style="margin:0 0 24px;font-size:15px;line-height:1.75;color:#374151;">Use the button below to continue.</p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
+                <tr>
+                  <td style="background:#111827;border-radius:10px;">
+                    <a href="${safeCtaUrl}" style="display:inline-block;padding:14px 22px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">${safeCtaLabel}</a>
+                  </td>
+                </tr>
+              </table>
+              ${secondaryLabel && secondaryUrl ? `
+              <p style="margin:0 0 8px;font-size:13px;line-height:1.7;color:#6b7280;">Alternative link:</p>
+              <p style="margin:0 0 22px;font-size:13px;line-height:1.7;word-break:break-all;">
+                <a href="${safeSecondaryUrl}" style="color:#111827;text-decoration:underline;">${safeSecondaryLabel}</a>
+              </p>
+              ` : ''}
+              <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:6px;">
+                <p style="margin:0 0 8px;font-size:13px;line-height:1.7;color:#6b7280;">${safeExpiresText}</p>
+                <p style="margin:0;font-size:13px;line-height:1.7;color:#6b7280;">${safeClosingText}</p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 32px 28px;border-top:1px solid #e5e7eb;background:#fafafa;">
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;">Bullet Reporter</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+
+  const textLines = [
+    `Hello ${displayName},`,
+    '',
+    intro,
+    '',
+    `${ctaLabel}: ${ctaUrl}`,
+  ]
+
+  if (secondaryLabel && secondaryUrl) {
+    textLines.push('', `${secondaryLabel}: ${secondaryUrl}`)
+  }
+
+  textLines.push('', expiresText, closingText)
+
+  return {
+    html,
+    text: textLines.join('\n'),
+  }
+}
+
+const buildAccountInviteEmail = ({ name, email, loginUrl, resetUrl }: { name?: string; email?: string; loginUrl: string; resetUrl: string }) => {
+  const displayName = name || email || 'there'
+  const subject = 'Your Bullet Reporter account is ready'
+
+  return {
+    subject,
+    ...buildAuthEmailTemplate({
+      audience: 'Your account has been created',
+      displayName,
+      intro: 'Your Bullet Reporter account has been created. You can access the dashboard and set your password using the links below.',
+      ctaLabel: 'Access your account',
+      ctaUrl: loginUrl,
+      secondaryLabel: 'Set your password',
+      secondaryUrl: resetUrl,
+      expiresText: 'The password setup link expires in 10 minutes.',
+      closingText: 'If you did not expect this email, please ignore it and contact an administrator.',
+    }),
+  }
+}
+
+const buildPasswordResetEmail = ({ name, email, resetUrl }: { name?: string; email?: string; resetUrl: string }) => {
+  const displayName = name || email || 'there'
+  const subject = 'Reset your Bullet Reporter password'
+
+  return {
+    subject,
+    ...buildAuthEmailTemplate({
+      audience: 'Reset your password',
+      displayName,
+      intro: 'We received a request to reset your Bullet Reporter password. Use the link below to continue.',
+      ctaLabel: 'Reset password',
+      ctaUrl: resetUrl,
+      expiresText: 'This password reset link expires in 10 minutes.',
+      closingText: 'If you did not request this email, you can safely ignore it.',
+    }),
+  }
+}
 
 const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
 const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY
@@ -110,6 +272,43 @@ const ensureNewsPublishedAt = ({ data, operation }: { data?: Record<string, any>
   }
 
   return data
+}
+
+const extractYouTubeVideoId = (value?: string) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  const directId = raw.match(/^[a-zA-Z0-9_-]{11}$/)
+  if (directId) return raw
+
+  try {
+    const url = new URL(raw)
+    if (url.hostname.includes('youtu.be')) return url.pathname.split('/').filter(Boolean)[0] || ''
+    if (url.searchParams.get('v')) return url.searchParams.get('v') || ''
+
+    const parts = url.pathname.split('/').filter(Boolean)
+    const markerIndex = parts.findIndex((part) => ['embed', 'shorts', 'live'].includes(part))
+    if (markerIndex >= 0 && parts[markerIndex + 1]) return parts[markerIndex + 1]
+  } catch (_) {
+    // The field also accepts a raw YouTube ID, handled above.
+  }
+
+  return ''
+}
+
+const ensureVideoNewsFields = ({ data, operation }: { data?: Record<string, any>, operation?: string }) => {
+  const next = ensureNewsPublishedAt({ data, operation })
+  ensureNewsSlug({ data: next, operation })
+
+  if (next.youtubeVideo) {
+    next.youtubeVideoId = extractYouTubeVideoId(next.youtubeVideo)
+  }
+
+  if (!next.youtubeVideoId) {
+    throw new Error('Please enter a valid YouTube video URL or 11-character YouTube video ID.')
+  }
+
+  return next
 }
 
 // ── Role-Based Access Control helpers ────────────────────────────────────────
@@ -241,7 +440,7 @@ export default buildConfig({
   sharp,
 
   email: nodemailerAdapter({
-    defaultFromAddress: emailFrom,
+    defaultFromAddress: emailFromAddress,
     defaultFromName: 'Bullet Reporter',
     transportOptions: {
       host: smtpHost,
@@ -274,86 +473,60 @@ export default buildConfig({
       slug: 'users',
       auth: {
         forgotPassword: {
+          expiration: 10 * 60 * 1000,
           generateEmailHTML: ({ token, user }: { token?: string; user?: any }) => {
             const resetUrl = `${siteUrl}/reset-password/${token}`
-            return `
-<!DOCTYPE html>
-<html lang="hi">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>पासवर्ड रीसेट करें – Bullet Reporter</title>
-</head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0"
-             style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);max-width:600px;width:100%;">
-
-        <!-- Header -->
-        <tr>
-          <td style="background:#dc2626;padding:28px 40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-.5px;">
-              &#128308; Bullet Reporter
-            </h1>
-            <p style="margin:6px 0 0;color:#fca5a5;font-size:13px;">सब के साथ निष्पक्ष बात</p>
-          </td>
-        </tr>
-
-        <!-- Body -->
-        <tr>
-          <td style="padding:40px;">
-            <h2 style="margin:0 0 12px;color:#111827;font-size:20px;">पासवर्ड रीसेट अनुरोध</h2>
-            <p style="margin:0 0 8px;color:#374151;font-size:15px;line-height:1.6;">
-              नमस्ते <strong>${user?.email ?? ''}</strong>,
-            </p>
-            <p style="margin:0 0 28px;color:#374151;font-size:15px;line-height:1.6;">
-              आपने अपने Bullet Reporter खाते के पासवर्ड रीसेट का अनुरोध किया है।
-              नीचे दिए गए बटन पर क्लिक करें और अपना नया पासवर्ड सेट करें।
-            </p>
-
-            <!-- CTA -->
-            <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
-              <tr>
-                <td style="background:#dc2626;border-radius:8px;">
-                  <a href="${resetUrl}"
-                     style="display:inline-block;padding:14px 36px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:8px;">
-                    पासवर्ड रीसेट करें
-                  </a>
-                </td>
-              </tr>
-            </table>
-
-            <p style="margin:0 0 6px;color:#6b7280;font-size:13px;">या इस लिंक को ब्राउज़र में खोलें:</p>
-            <p style="margin:0 0 28px;word-break:break-all;">
-              <a href="${resetUrl}" style="color:#dc2626;font-size:13px;">${resetUrl}</a>
-            </p>
-
-            <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px;" />
-            <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">
-              यह लिंक <strong>1 घंटे</strong> में समाप्त हो जाएगा।<br />
-              यदि आपने यह अनुरोध नहीं किया, तो इस ईमेल को अनदेखा करें।
-            </p>
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="background:#f9fafb;padding:20px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;color:#9ca3af;font-size:12px;">
-              &copy; ${new Date().getFullYear()} Bullet Reporter &middot; सर्वाधिकार सुरक्षित
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
+            return buildPasswordResetEmail({
+              name: user?.name,
+              email: user?.email,
+              resetUrl,
+            }).html
           },
-          generateEmailSubject: () => 'पासवर्ड रीसेट करें – Bullet Reporter',
+          generateEmailSubject: () => 'Reset your Bullet Reporter password',
         },
+      },
+      hooks: {
+        beforeChange: [
+          ({ data, operation }: { data?: Record<string, any>; operation: string }) => {
+            if (operation !== 'create' || !data?.email) {
+              return data
+            }
+
+            const resetPasswordToken = crypto.randomBytes(20).toString('hex')
+
+            return {
+              ...data,
+              resetPasswordToken,
+              resetPasswordExpiration: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+            }
+          },
+        ],
+        afterChange: [
+          async ({ doc, operation, req }: { doc: any; operation: string; req: any }) => {
+            if (operation !== 'create' || !doc?.email) {
+              return doc
+            }
+
+            const loginUrl = `${siteUrl}/admin`
+            const resetUrl = `${siteUrl}/reset-password/${doc.resetPasswordToken}`
+            const message = buildAccountInviteEmail({
+              name: doc.name,
+              email: doc.email,
+              loginUrl,
+              resetUrl,
+            })
+
+            await req.payload.sendEmail({
+              from: `"Bullet Reporter" <${emailFromAddress}>`,
+              html: message.html,
+              subject: message.subject,
+              text: message.text,
+              to: doc.email,
+            })
+
+            return doc
+          },
+        ],
       },
       access: {
         // Admins see all users; others see only their own profile
@@ -642,6 +815,179 @@ export default buildConfig({
         },
         {
           name: 'dislikes',
+          type: 'number',
+          defaultValue: 0,
+          admin: { readOnly: true },
+        },
+        {
+          name: 'seo',
+          type: 'group',
+          label: 'SEO',
+          fields: [
+            { name: 'metaTitle', type: 'text' },
+            { name: 'metaDescription', type: 'textarea' },
+            { name: 'keywords', type: 'text' },
+          ],
+        },
+      ],
+    },
+    {
+      slug: 'video-news',
+      labels: {
+        singular: 'Video News',
+        plural: 'Video News',
+      },
+      access: {
+        read: ({ req }) => {
+          if (isStaff(req.user) || isViewer(req.user)) return true
+          return { status: { equals: 'published' } }
+        },
+        create: ({ req }) => isStaff(req.user),
+        update: ({ req }) => {
+          if (isAdminOrEditor(req.user)) return true
+          if (isAuthor(req.user)) return { author: { equals: req.user!.id } }
+          return false
+        },
+        delete: ({ req }) => isAdminOrEditor(req.user),
+      },
+      hooks: {
+        beforeValidate: [ensureVideoNewsFields],
+        afterDelete: [
+          async ({ doc, req }: { doc: any; req: any }) => {
+            const thumbnailId =
+              doc?.thumbnail && typeof doc.thumbnail === 'object'
+                ? doc.thumbnail.id
+                : doc?.thumbnail
+
+            if (thumbnailId) {
+              try {
+                await req.payload.delete({ collection: 'media', id: thumbnailId, req })
+              } catch (_) {
+                // Non-fatal: thumbnail may already be removed or shared.
+              }
+            }
+          },
+        ],
+      },
+      admin: {
+        useAsTitle: 'title',
+        defaultColumns: ['title', 'category', 'language', 'status', 'publishedAt'],
+        description: 'Create YouTube-based video news stories for the frontend video section.',
+      },
+      versions: {
+        drafts: true,
+      },
+      fields: [
+        { name: 'title', type: 'text', required: true },
+        {
+          name: 'slug',
+          type: 'text',
+          unique: true,
+          admin: {
+            description: 'Auto-generated as random lowercase letters and numbers.',
+            readOnly: true,
+          },
+        },
+        {
+          name: 'language',
+          type: 'select',
+          options: [
+            { label: 'Hindi', value: 'hi' },
+            { label: 'English', value: 'en' },
+          ],
+          defaultValue: 'hi',
+          required: true,
+        },
+        {
+          name: 'category',
+          type: 'relationship',
+          relationTo: 'categories',
+          required: true,
+        },
+        {
+          name: 'description',
+          type: 'textarea',
+          required: true,
+          admin: {
+            description: 'Short description shown on cards and social previews.',
+          },
+        },
+        {
+          name: 'content',
+          type: 'richText',
+          label: 'Content / Description Editor',
+          required: true,
+        },
+        {
+          name: 'youtubeVideo',
+          type: 'text',
+          label: 'YouTube Video URL or ID',
+          required: true,
+          admin: {
+            description: 'Paste a YouTube watch URL, Shorts URL, embed URL, live URL, youtu.be link, or the 11-character video ID.',
+          },
+        },
+        {
+          name: 'youtubeVideoId',
+          type: 'text',
+          label: 'YouTube Video ID',
+          admin: {
+            readOnly: true,
+            description: 'Auto-filled from the YouTube URL/ID above.',
+          },
+        },
+        {
+          name: 'thumbnail',
+          type: 'upload',
+          relationTo: 'media',
+          admin: {
+            description: 'Optional custom thumbnail. If empty, the frontend uses the YouTube thumbnail automatically.',
+          },
+        },
+        {
+          name: 'author',
+          type: 'relationship',
+          relationTo: 'users',
+          required: true,
+        },
+        {
+          name: 'editor',
+          type: 'relationship',
+          relationTo: 'users',
+          required: true,
+          access: { update: ({ req }) => isAdminOrEditor(req.user) },
+        },
+        {
+          name: 'tags',
+          type: 'array',
+          fields: [{ name: 'tag', type: 'text' }],
+        },
+        {
+          name: 'status',
+          type: 'select',
+          options: [
+            { label: 'Draft', value: 'draft' },
+            { label: 'Published', value: 'published' },
+          ],
+          defaultValue: 'draft',
+          required: true,
+          access: { update: ({ req }) => isAdminOrEditor(req.user) },
+          admin: {
+            description: 'Authors can save as Draft only. Editors and Admins can publish.',
+          },
+        },
+        {
+          name: 'publishedAt',
+          type: 'date',
+          defaultValue: () => new Date().toISOString(),
+          admin: {
+            date: { pickerAppearance: 'dayAndTime' },
+            description: 'Automatically set to the exact date and time when the video news item is created.',
+            readOnly: true,
+          },
+        },
+        {
+          name: 'views',
           type: 'number',
           defaultValue: 0,
           admin: { readOnly: true },

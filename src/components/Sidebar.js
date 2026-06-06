@@ -8,6 +8,9 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
 
+const DEFAULT_WEATHER_CITY = 'Bhopal'
+const DEFAULT_WEATHER_COORDS = { lat: 23.2599, lon: 77.4126 }
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Facebook Page Embed
 // Uses the official Facebook JavaScript SDK + fb-page XFBML element.
@@ -215,45 +218,89 @@ function Sidebar() {
   // ── Weather ─────────────────────────────────────────────────────────────
   const [weatherData, setWeatherData] = useState({
     temperature: null, humidity: null, windSpeed: null,
-    description: '', city: '', loading: true, error: null, lastUpdated: null,
+    description: '', city: DEFAULT_WEATHER_CITY, loading: true, error: null, lastUpdated: null, source: 'default',
   })
+  const weatherCoordsRef = useRef({ ...DEFAULT_WEATHER_COORDS, source: 'default' })
 
-  const fetchWeatherData = useCallback(async () => {
+  const getBrowserPosition = useCallback(() => new Promise((resolve, reject) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      reject(new Error('Geolocation unavailable'))
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve({
+        lat: position.coords.latitude,
+        lon: position.coords.longitude,
+      }),
+      reject,
+      {
+        enableHighAccuracy: false,
+        timeout: 7000,
+        maximumAge: 10 * 60 * 1000,
+      },
+    )
+  }), [])
+
+  const fetchWeatherByCoords = useCallback(async ({ lat, lon, source }) => {
+    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
+    if (!apiKey) throw new Error('Missing weather API key')
+
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=${lang === 'en' ? 'en' : 'hi'}`,
+      { next: { revalidate: 600 } },
+    )
+    if (!res.ok) throw new Error('Weather API error')
+
+    const data = await res.json()
+
+    return {
+      temperature: Math.round(data.main.temp),
+      humidity: data.main.humidity,
+      windSpeed: Math.round(data.wind.speed * 3.6),
+      description: data.weather[0]?.description || '',
+      city: data.name || (source === 'current' ? (lang === 'en' ? 'Current location' : 'वर्तमान स्थान') : DEFAULT_WEATHER_CITY),
+      loading: false,
+      error: null,
+      source,
+      lastUpdated: new Date().toLocaleTimeString(
+        lang === 'en' ? 'en-IN' : 'hi-IN',
+        { hour: '2-digit', minute: '2-digit' },
+      ),
+    }
+  }, [lang])
+
+  const fetchWeatherData = useCallback(async ({ requestLocation = true } = {}) => {
     try {
       setWeatherData(prev => ({ ...prev, loading: true, error: null }))
-      const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
-      if (!apiKey) {
-        setWeatherData(prev => ({ ...prev, loading: false, error: t.sidebar.weatherError }))
-        return
+
+      let coords = {
+        lat: weatherCoordsRef.current.lat,
+        lon: weatherCoordsRef.current.lon,
       }
-      const city = 'Bhopal'
-      const res = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=${lang === 'en' ? 'en' : 'hi'}`,
-        { next: { revalidate: 600 } },
-      )
-      if (!res.ok) throw new Error('Weather API error')
-      const data = await res.json()
-      setWeatherData({
-        temperature: Math.round(data.main.temp),
-        humidity:    data.main.humidity,
-        windSpeed:   Math.round(data.wind.speed * 3.6),
-        description: data.weather[0]?.description || '',
-        city:        data.name,
-        loading:     false,
-        error:       null,
-        lastUpdated: new Date().toLocaleTimeString(
-          lang === 'en' ? 'en-IN' : 'hi-IN',
-          { hour: '2-digit', minute: '2-digit' },
-        ),
-      })
+      let source = weatherCoordsRef.current.source || 'default'
+
+      if (requestLocation) {
+        try {
+          coords = await getBrowserPosition()
+          source = 'current'
+        } catch {
+          coords = DEFAULT_WEATHER_COORDS
+          source = 'default'
+        }
+      }
+
+      weatherCoordsRef.current = { ...coords, source }
+      const nextWeather = await fetchWeatherByCoords({ ...coords, source })
+      setWeatherData(nextWeather)
     } catch {
       setWeatherData(prev => ({ ...prev, loading: false, error: t.sidebar.weatherError }))
     }
-  }, [lang]) // eslint-disable-line
+  }, [fetchWeatherByCoords, getBrowserPosition, t.sidebar.weatherError])
 
   useEffect(() => {
-    fetchWeatherData()
-    const id = setInterval(fetchWeatherData, 10 * 60 * 1000)
+    fetchWeatherData({ requestLocation: true })
+    const id = setInterval(() => fetchWeatherData({ requestLocation: false }), 10 * 60 * 1000)
     return () => clearInterval(id)
   }, [fetchWeatherData])
 
@@ -276,14 +323,14 @@ function Sidebar() {
     <div className="space-y-5">
 
       {/* 1. Weather ──────────────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-xl p-4 shadow-lg">
+      <div className="min-h-[210px] bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-xl p-4 shadow-lg">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-lg flex items-center gap-2">
             <Cloud className="w-5 h-5" />
             {t.sidebar.weather}
           </h3>
           <button
-            onClick={fetchWeatherData}
+            onClick={() => fetchWeatherData({ requestLocation: true })}
             className="hover:bg-white/20 p-1 rounded-full transition-colors"
             title={t.sidebar.refreshWeather}
           >
@@ -292,15 +339,20 @@ function Sidebar() {
         </div>
 
         {weatherData.loading ? (
-          <div className="animate-pulse space-y-2">
-            <div className="h-8 bg-white/30 rounded w-24" />
-            <div className="h-4 bg-white/30 rounded w-32" />
+          <div className="animate-pulse space-y-3 pt-2">
+            <div className="h-10 bg-white/30 rounded w-28" />
+            <div className="h-4 bg-white/25 rounded w-36" />
+            <div className="h-4 bg-white/20 rounded w-24" />
+            <div className="flex gap-3 pt-2">
+              <div className="h-6 bg-white/20 rounded w-24" />
+              <div className="h-6 bg-white/20 rounded w-20" />
+            </div>
           </div>
         ) : weatherData.error ? (
           <div className="text-center">
             <p className="text-sm text-white/80 mb-2">{weatherData.error}</p>
             <button
-              onClick={fetchWeatherData}
+              onClick={() => fetchWeatherData({ requestLocation: true })}
               className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors"
             >
               {t.sidebar.retryWeather}
@@ -312,7 +364,14 @@ function Sidebar() {
               <span className="text-4xl font-bold">{weatherData.temperature}°C</span>
             </div>
             <p className="text-white/90 text-sm capitalize mb-1">{weatherData.description}</p>
-            <p className="text-white/70 text-xs mb-3">{weatherData.city}</p>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <p className="text-white/75 text-xs">{weatherData.city}</p>
+              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white/85">
+                {weatherData.source === 'current'
+                  ? (lang === 'en' ? 'Current location' : 'वर्तमान स्थान')
+                  : (lang === 'en' ? 'Default: Bhopal' : 'डिफॉल्ट: भोपाल')}
+              </span>
+            </div>
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-1">
                 <Droplets className="w-4 h-4 text-blue-200" />

@@ -25,6 +25,7 @@ const hi = {
   home: {
     breakingNews: 'ब्रेकिंग न्यूज़',
     latestNews: 'ताज़ा खबरें',
+    videoNews: 'वीडियो न्यूज़',
     viewAll: 'सभी देखें',
     share: 'शेयर करें',
     noBreaking: 'कोई ब्रेकिंग न्यूज़ उपलब्ध नहीं',

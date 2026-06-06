@@ -25,6 +25,7 @@ const en = {
   home: {
     breakingNews: 'Breaking News',
     latestNews: 'Latest News',
+    videoNews: 'Video News',
     viewAll: 'View All',
     share: 'Share',
     noBreaking: 'No breaking news available',

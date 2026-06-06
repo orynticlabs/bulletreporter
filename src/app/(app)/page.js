@@ -7,6 +7,7 @@ import Sidebar from '@/components/Sidebar'
 import NewsCard from '@/components/NewsCard'
 import AdBanner from '@/components/AdBanner'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import VideoNewsSection from '@/components/VideoNewsSection'
 import { useQuery } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
@@ -196,20 +197,20 @@ export default function Home() {
         <AdBanner size="large" position="top_banner" />
       </div>
 
-      <main className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <main className="container mx-auto px-3 py-5 sm:px-4 sm:py-6">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
           <div className="lg:col-span-3 space-y-12">
 
             {/* ── Breaking News ── */}
             <section>
               <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                 <div className="h-1.5 bg-red-700"></div>
-                <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-4 py-3">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white">
                       <Zap className="h-4 w-4 fill-white" />
                     </span>
-                    <h2 className="text-lg font-black text-gray-950 md:text-xl">
+                    <h2 className="min-w-0 text-lg font-black text-gray-950 md:text-xl">
                       {t.home.breakingNews}
                     </h2>
                     <span className="hidden items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-black text-red-600 sm:flex">
@@ -219,7 +220,7 @@ export default function Home() {
                   </div>
                   <button
                     onClick={() => router.push(getLangPath('/news/breaking'))}
-                    className="flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-bold text-red-600 transition-colors hover:border-red-300 hover:bg-red-100 hover:text-red-700"
+                    className="flex shrink-0 items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-bold text-red-600 transition-colors hover:border-red-300 hover:bg-red-100 hover:text-red-700"
                   >
                     {t.home.viewAll}
                     <ChevronRight className="h-4 w-4" />
@@ -255,10 +256,12 @@ export default function Home() {
             {/* ── Mid Ad ── */}
             <section><AdBanner size="medium" position="middle_banner" /></section>
 
+            <VideoNewsSection />
+
             {/* ── Latest News ── */}
             <section className="bg-white">
-              <div className="mb-5 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <span className="h-4 w-4 rounded-sm bg-red-600 [clip-path:polygon(0_0,100%_0,100%_100%)]"></span>
                   <h2 className="text-xl font-black text-gray-950 md:text-2xl">
                     {t.home.latestNews}
@@ -266,7 +269,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => router.push(getLangPath('/news'))}
-                  className="flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-bold text-gray-900 transition-colors hover:border-red-300 hover:text-red-600"
+                  className="flex shrink-0 items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-bold text-gray-900 transition-colors hover:border-red-300 hover:text-red-600"
                 >
                   {t.home.viewAll}
                   <ChevronRight className="w-4 h-4" />
@@ -292,7 +295,7 @@ export default function Home() {
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {latestFeatureArticles.map((article) => (
                       <LatestFeatureCard
                         key={article.id}
@@ -318,8 +321,8 @@ export default function Home() {
             {/* ── Featured Articles ── */}
             {featuredArticles.length > 0 && (
               <section>
-                <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-3">
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <div className="flex items-center gap-1.5">
                       <span className="w-1 h-7 bg-red-600 rounded-full inline-block"></span>
                       <span className="w-1 h-5 bg-red-400 rounded-full inline-block"></span>
@@ -353,7 +356,7 @@ export default function Home() {
           </div>
 
           {/* ── Sidebar ── */}
-          <div className="lg:col-span-1">
+          <div className="hidden lg:col-span-1 lg:block">
             <div className="sticky top-24">
               <Sidebar />
             </div>

@@ -46,15 +46,15 @@ export default function CategoryNews() {
       <div className="container mx-auto px-4 py-4">
         <AdBanner size="large" position="top_banner" />
       </div>
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
+      <main className="container mx-auto px-3 py-6 sm:px-4 sm:py-8">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-sm text-gray-500 mb-1">{t.news.category}</p>
-            <h1 className="text-4xl font-bold text-primary">{category}</h1>
+            <h1 className="break-words text-2xl font-bold text-primary sm:text-4xl">{category}</h1>
             {total > 0 && <p className="text-gray-500 mt-1">{total} {t.news.newsFound}</p>}
           </div>
           <button onClick={() => router.push(getLangPath('/'))}
-            className="flex items-center gap-2 text-red-600 hover:text-red-700 font-medium">
+            className="flex shrink-0 items-center gap-2 font-medium text-red-600 hover:text-red-700">
             <ChevronLeft className="w-4 h-4" /> {t.news.goBack}
           </button>
         </div>
@@ -88,7 +88,7 @@ export default function CategoryNews() {
                   ))}
                 </div>
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-4 mt-10">
+                  <div className="mt-10 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                       className="flex items-center gap-2 px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-40">
                       <ChevronLeft className="w-4 h-4" /> {t.news.previous}
