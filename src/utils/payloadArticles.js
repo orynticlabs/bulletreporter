@@ -361,6 +361,8 @@ export const normalizePayloadVideoNews = (doc, lang = 'hi') => {
     youtube_url: videoId ? `https://www.youtube.com/watch?v=${videoId}` : doc.youtubeVideo || '',
     language: doc.language || 'hi',
     views: Number(doc.views || 0),
+    likes: Number(doc.likes || 0),
+    dislikes: Number(doc.dislikes || 0),
     tags,
     slug: doc.slug || '',
     type: 'video-news',
