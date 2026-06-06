@@ -174,17 +174,18 @@ function Header() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
 
-            {/* Logo */}
-            <div
-              className="flex items-center gap-3 cursor-pointer flex-shrink-0"
-              onClick={() => router.push(getLangPath('/'))}
+            {/* Logo — always navigates to home */}
+            <a
+              href={getLangPath('/')}
+              className="flex items-center gap-3 flex-shrink-0 focus:outline-none"
+              aria-label="Bullet Reporter — Home"
             >
               <img
                 src="/logo.png"
                 alt="Bullet Reporter"
                 className="h-16 md:h-20 w-auto rounded-lg border-2 border-red-600 shadow-md bg-white object-contain"
               />
-            </div>
+            </a>
 
             {/* Right: Search */}
             <div className="hidden md:flex items-center gap-3">
