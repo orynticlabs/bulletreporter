@@ -19,7 +19,7 @@ export default async function sitemap() {
   }))
 
   const liveNews = await fetchNewsList({ limit: 100, page: 1 })
-  const liveVideoNews = await fetchPayloadVideoNews({ limit: 100, page: 1 })
+  const liveVideoNews = await fetchPayloadVideoNews({ limit: 100, page: 1 }).catch(() => ({ videos: [] }))
   const liveNewsRoutes = (liveNews.articles || []).map((article) => ({
     url: absoluteUrl(`/news/${article.slug}`),
     lastModified: new Date(article.updated_at || article.created_at || Date.now()),
