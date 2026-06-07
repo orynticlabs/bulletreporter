@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Play, Video } from 'lucide-react'
@@ -10,6 +10,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { fetchPayloadVideoNews } from '@/utils/payloadArticles'
 import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
+import { useToast } from '@/hooks/use-toast'
 
 const LIMIT = 12
 
@@ -60,10 +61,15 @@ function VideoCard({ video, onOpen }) {
 export default function VideoNewsListClient() {
   const router = useRouter()
   const { t, lang } = useLanguage()
+  const { toast } = useToast()
   const [page, setPage] = useState(1)
   const getLangPath = useCallback((path) => lang === 'en' ? `/en${path}` : path, [lang])
 
-  const { data, isLoading, error } = useQuery({
+  // Track the top video ID from the previous fetch so we can detect
+  // when a background refetch brings in content that wasn't there before.
+  const prevTopIdRef = useRef(null)
+
+  const { data, isLoading, error, dataUpdatedAt } = useQuery({
     queryKey: ['video-news-list', { limit: LIMIT, page, lang }],
     queryFn: () => fetchPayloadVideoNews({ limit: LIMIT, page, lang }),
     staleTime: CONTENT_STALE_TIME,
@@ -71,6 +77,26 @@ export default function VideoNewsListClient() {
     refetchIntervalInBackground: false,
     retry: 1,
   })
+
+  // Fire a toast whenever a background refetch returns a new top video.
+  // We skip the very first load (prevTopIdRef is null) so the toast only
+  // appears on subsequent refreshes, not on initial page mount.
+  useEffect(() => {
+    const videos = data?.videos
+    if (!videos?.length) return
+
+    const topId = videos[0].id
+
+    if (prevTopIdRef.current !== null && prevTopIdRef.current !== topId) {
+      toast({
+        title: '🎬 नया वीडियो न्यूज़ उपलब्ध है',
+        description: videos[0].title || 'नई वीडियो सामग्री जोड़ी गई है।',
+        duration: 5000,
+      })
+    }
+
+    prevTopIdRef.current = topId
+  }, [dataUpdatedAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const videos = data?.videos || []
   const totalPages = data?.totalPages || 1

@@ -13,7 +13,7 @@ export function LanguageProvider({ children }) {
   // Detect language only from the URL. Hindi is the default for every non-/en route.
   const getLangFromPath = useCallback((path) => {
     if (!path) return 'hi'
-    return path === '/en' || path.startsWith('/en/') ? 'en' : 'hi'
+    return path.startsWith('/en') ? 'en' : 'hi'
   }, [])
 
   const [lang, setLang] = useState(() => getLangFromPath(pathname))
@@ -25,7 +25,6 @@ export function LanguageProvider({ children }) {
 
   const toggleLanguage = useCallback(() => {
     const newLang = lang === 'hi' ? 'en' : 'hi'
-    setLang(newLang)
 
     // Build new URL
     let currentPath = pathname || '/'
