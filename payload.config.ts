@@ -487,12 +487,14 @@ export default buildConfig({
       },
       hooks: {
         beforeChange: [
-          ({ data, operation }: { data?: Record<string, any>; operation: string }) => {
+          ({ data, operation, req }: { data?: Record<string, any>; operation: string; req: any }) => {
             if (operation !== 'create' || !data?.email) {
               return data
             }
 
             const resetPasswordToken = crypto.randomBytes(20).toString('hex')
+
+            req.__newUserResetToken = resetPasswordToken
 
             return {
               ...data,
@@ -508,7 +510,7 @@ export default buildConfig({
             }
 
             const loginUrl = `${siteUrl}/admin`
-            const resetUrl = `${siteUrl}/reset-password/${doc.resetPasswordToken}`
+            const resetUrl = `${siteUrl}/reset-password/${req.__newUserResetToken}`
             const message = buildAccountInviteEmail({
               name: doc.name,
               email: doc.email,

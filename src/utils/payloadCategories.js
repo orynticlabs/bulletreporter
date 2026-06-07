@@ -40,3 +40,41 @@ export async function fetchPayloadCategories({ limit = 12 } = {}) {
 
   return pendingCategories
 }
+
+// ── Site Settings ─────────────────────────────────────────────────────────────
+
+const SETTINGS_TTL = 5 * 60 * 1000
+
+let cachedSettings = null
+let settingsCachedAt = 0
+let pendingSettings = null
+
+export async function fetchPayloadSettings() {
+  const now = Date.now()
+
+  if (cachedSettings && now - settingsCachedAt < SETTINGS_TTL) {
+    return cachedSettings
+  }
+
+  if (pendingSettings) {
+    return pendingSettings
+  }
+
+  pendingSettings = fetch(`${PAYLOAD_API_BASE}/api/globals/settings`, {
+    credentials: 'omit',
+    next: { revalidate: SETTINGS_TTL / 1000 },
+  })
+    .then(async (res) => {
+      if (!res.ok) return null
+      const data = await res.json()
+      cachedSettings = data
+      settingsCachedAt = Date.now()
+      return cachedSettings
+    })
+    .catch(() => null)
+    .finally(() => {
+      pendingSettings = null
+    })
+
+  return pendingSettings
+}
