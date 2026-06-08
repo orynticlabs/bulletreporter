@@ -58,22 +58,6 @@ function NewsImage({ article, className }) {
   )
 }
 
-// ── Reference-style Latest News cards ─────────────────────────────────────
-function LatestHeadlineItem({ article, onClick }) {
-  if (!article) return null
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group w-full border-b border-gray-200 py-3 text-left transition-colors last:border-b-0 hover:text-red-600 focus:outline-none focus:text-red-600"
-    >
-      <h3 className="text-sm font-semibold leading-snug text-gray-700 group-hover:text-red-600 sm:text-base line-clamp-2">
-        {article.title}
-      </h3>
-    </button>
-  )
-}
-
 function LatestFeatureCard({ article, onClick }) {
   if (!article) return null
   return (
@@ -176,9 +160,8 @@ export default function Home() {
   const articles = articlesData?.articles || []
   const featuredArticles = featuredData?.articles || []
   const breakingPreviewArticles = breakingNews.slice(0, 4)
-  const latestHeadlineArticles = articles.slice(0, 4)
-  const latestFeatureArticles = articles.slice(4, 7).length ? articles.slice(4, 7) : articles.slice(0, 3)
-  const latestMoreArticles = articles.slice(7, 10).length ? articles.slice(7, 10) : articles.slice(0, 3)
+  const latestFeatureArticles = articles.slice(0, 6)
+  const latestMoreArticles = articles.slice(6, 9).length ? articles.slice(6, 9) : articles.slice(0, 3)
 
   useEffect(() => {
     if (breakingError) toast({ title: t.home.errorBreaking, description: t.home.serverTimeout, variant: 'destructive' })
@@ -284,17 +267,7 @@ export default function Home() {
                   <button onClick={handleRetry} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">{t.home.retry}</button>
                 </div>
               ) : articles.length > 0 ? (
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_2.1fr_1.25fr]">
-                  <div className="rounded-sm bg-white">
-                    {latestHeadlineArticles.map((article) => (
-                      <LatestHeadlineItem
-                        key={article.id}
-                        article={article}
-                        onClick={article.slug ? goToArticle(article.slug) : undefined}
-                      />
-                    ))}
-                  </div>
-
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1.25fr]">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {latestFeatureArticles.map((article) => (
                       <LatestFeatureCard
