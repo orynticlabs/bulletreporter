@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Search, Menu, Bell, BellOff, Share2, Youtube, Facebook, Twitter, Instagram, Loader2, X, Phone, Mail, Clock, ChevronRight, Zap } from 'lucide-react'
+import { Search, Menu, Bell, BellOff, Share2, Youtube, Facebook, Instagram, Loader2, X, Phone, Mail, Clock, ChevronRight, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSearch } from '@/contexts/SearchContext'
@@ -497,10 +497,9 @@ function Header() {
   ]
 
   const socialLinks = [
-    { name: 'YouTube',   icon: Youtube,   href: '#', color: 'text-red-600' },
-    { name: 'Facebook',  icon: Facebook,  href: '#', color: 'text-blue-600' },
-    { name: 'Twitter',   icon: Twitter,   href: '#', color: 'text-sky-500' },
-    { name: 'Instagram', icon: Instagram, href: '#', color: 'text-pink-600' },
+    { name: 'YouTube',   icon: Youtube,   href: 'https://www.youtube.com/@bulletreporter', color: 'text-red-600' },
+    { name: 'Facebook',  icon: Facebook,  href: 'https://www.facebook.com/61558107293456', color: 'text-blue-600' },
+    { name: 'Instagram', icon: Instagram, href: 'https://instagram.com/bulletreporterofficial', color: 'text-pink-600' },
   ]
 
   const isActive = (href) => {

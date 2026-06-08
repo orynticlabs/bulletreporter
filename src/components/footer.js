@@ -16,8 +16,6 @@ const CONTENT = {
     quickLinks: [
       { name: 'हमारे बारे में', href: '/about' },
       { name: 'संपर्क करें', href: '/contact' },
-      { name: 'विज्ञापन दें', href: '/advertise' },
-      { name: 'करियर', href: '/career' },
       { name: 'प्राइवेसी पॉलिसी', href: '/privacy-policy' },
       { name: 'टर्म्स ऑफ यूज़', href: '/terms' },
     ],
@@ -44,8 +42,6 @@ const CONTENT = {
     quickLinks: [
       { name: 'About Us', href: '/about' },
       { name: 'Contact Us', href: '/contact' },
-      { name: 'Advertise', href: '/advertise' },
-      { name: 'Career', href: '/career' },
       { name: 'Privacy Policy', href: '/privacy-policy' },
       { name: 'Terms of Use', href: '/terms' },
     ],
