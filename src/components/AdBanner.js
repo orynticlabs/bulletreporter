@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { addCacheVersionToUrl, getPublicCacheVersion } from '@/utils/publicCacheState'
 
 const PAYLOAD_API_BASE = typeof window === 'undefined'
   ? process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
@@ -86,7 +87,9 @@ const AdBanner = ({ size, position }) => {
   const { data: advertisements } = useQuery({
     queryKey: ['advertisements', position, size],
     queryFn: async () => {
-      const res = await fetch(`${PAYLOAD_API_BASE}/api/public/advertisements`, { credentials: 'omit' })
+      const version = await getPublicCacheVersion('advertisements')
+      const url = addCacheVersionToUrl(`${PAYLOAD_API_BASE}/api/public/advertisements`, version)
+      const res = await fetch(url, { credentials: 'omit' })
       if (!res.ok) return []
       const data = await res.json()
       return data.docs || []

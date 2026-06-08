@@ -29,10 +29,12 @@ async function queryAdvertisements() {
   }
 }
 
-export async function GET() {
+export async function GET(request) {
+  const { searchParams } = new URL(request.url)
+  const cacheVersion = searchParams.get('_cacheVersion') || '0'
   const now = Date.now()
 
-  if (cachedData && now - cachedAt < CACHE_TTL) {
+  if (cachedData && cachedData.cacheVersion === cacheVersion && now - cachedAt < CACHE_TTL) {
     return Response.json(cachedData, {
       headers: { 'Cache-Control': 'public, max-age=120, stale-while-revalidate=300' },
     })
@@ -40,9 +42,9 @@ export async function GET() {
 
   try {
     const data = await queryAdvertisements()
-    cachedData = data
+    cachedData = { ...data, cacheVersion }
     cachedAt = now
-    return Response.json(data, {
+    return Response.json(cachedData, {
       headers: { 'Cache-Control': 'public, max-age=120, stale-while-revalidate=300' },
     })
   } catch (err) {
@@ -53,9 +55,9 @@ export async function GET() {
       await new Promise((r) => setTimeout(r, 500))
       try {
         const data = await queryAdvertisements()
-        cachedData = data
+        cachedData = { ...data, cacheVersion }
         cachedAt = now
-        return Response.json(data, {
+        return Response.json(cachedData, {
           headers: { 'Cache-Control': 'public, max-age=120, stale-while-revalidate=300' },
         })
       } catch {

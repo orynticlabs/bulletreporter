@@ -1,3 +1,5 @@
+import { addCacheVersionToUrl, getPublicCacheVersion } from '@/utils/publicCacheState'
+
 const PAYLOAD_API_BASE =
   typeof window === 'undefined'
     ? process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
@@ -410,7 +412,8 @@ const buildPayloadNewsUrl = (options = {}) => {
 }
 
 export async function fetchPayloadArticles(options = {}) {
-  const data = await getCachedJson(buildPayloadNewsUrl(options), options.ttl)
+  const version = await getPublicCacheVersion('news')
+  const data = await getCachedJson(addCacheVersionToUrl(buildPayloadNewsUrl(options), version), options.ttl)
   const articles = (data.docs || [])
     .map((doc) => normalizePayloadArticle(doc, options.lang || 'hi'))
     .filter(Boolean)
@@ -454,7 +457,8 @@ const buildPayloadVideoNewsUrl = (options = {}) => {
 }
 
 export async function fetchPayloadVideoNews(options = {}) {
-  const data = await getCachedJson(buildPayloadVideoNewsUrl(options), options.ttl)
+  const version = await getPublicCacheVersion('videoNews')
+  const data = await getCachedJson(addCacheVersionToUrl(buildPayloadVideoNewsUrl(options), version), options.ttl)
   const videos = (data.docs || [])
     .map((doc) => normalizePayloadVideoNews(doc, options.lang || 'hi'))
     .filter(Boolean)
