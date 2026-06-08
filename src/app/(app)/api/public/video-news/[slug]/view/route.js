@@ -1,5 +1,6 @@
 import config from '@payload-config'
 import { getPayload } from 'payload'
+import { verifyRecaptchaFromBody } from '@/lib/recaptcha'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,6 +8,10 @@ export async function POST(request, { params }) {
   try {
     const { slug: rawSlug } = await params
     const slug = decodeURIComponent(rawSlug)
+    const body = await request.json().catch(() => ({}))
+    const captchaError = await verifyRecaptchaFromBody(request, body, 'video_view', { minScore: 0.3 })
+    if (captchaError) return captchaError
+
     const payload = await getPayload({ config })
 
     const result = await payload.find({
