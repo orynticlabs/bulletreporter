@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Mail } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
+import { getRecaptchaToken } from '@/utils/recaptcha';
 function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -18,10 +19,11 @@ function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/users/forgot-password', {
+      const recaptchaToken = await getRecaptchaToken('forgot_password');
+      const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, recaptchaToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed')

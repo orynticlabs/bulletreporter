@@ -26,6 +26,7 @@ import {
   fetchPayloadVideoNews,
   normalizeRouteSlug,
 } from '@/utils/payloadArticles'
+import { getRecaptchaToken } from '@/utils/recaptcha'
 
 const STORAGE_KEY = 'br_vn_reactions'
 
@@ -160,7 +161,12 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
     viewFired.current = true
     sessionStorage.setItem(sessionKey, '1')
 
-    fetch(`/api/public/video-news/${encodeURIComponent(video.slug)}/view`, { method: 'POST' })
+    getRecaptchaToken('video_view')
+      .then((recaptchaToken) => fetch(`/api/public/video-news/${encodeURIComponent(video.slug)}/view`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recaptchaToken }),
+      }))
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data?.views != null) setLiveViews(data.views) })
       .catch(() => {})
@@ -193,10 +199,11 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
   // ── Submit comment ───────────────────────────────────────────────────────
   const commentMutation = useMutation({
     mutationFn: async (data) => {
+      const recaptchaToken = await getRecaptchaToken('video_comment')
       const res = await fetch(`/api/public/video-news/${encodeURIComponent(slug)}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, recaptchaToken }),
       })
       if (!res.ok) throw new Error('Failed')
       return res.json()
@@ -227,10 +234,11 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
   // ── React (like / dislike) ───────────────────────────────────────────────
   const reactMutation = useMutation({
     mutationFn: async ({ type, action }) => {
+      const recaptchaToken = await getRecaptchaToken('video_reaction')
       const res = await fetch(`/api/public/video-news/${encodeURIComponent(slug)}/react`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, action }),
+        body: JSON.stringify({ type, action, recaptchaToken }),
       })
       if (!res.ok) throw new Error('Failed')
       return res.json()
@@ -245,7 +253,7 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
     },
   })
 
-  const handleReact = (type) => {
+  const handleReact = async (type) => {
     if (reactMutation.isPending) return
     const isActive = reaction === type
     const newReaction = isActive ? null : type
@@ -266,10 +274,11 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
     setReactionCounts(updates)
 
     if (reaction && reaction !== type) {
+      const recaptchaToken = await getRecaptchaToken('video_reaction')
       fetch(`/api/public/video-news/${encodeURIComponent(slug)}/react`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: reaction, action: 'remove' }),
+        body: JSON.stringify({ type: reaction, action: 'remove', recaptchaToken }),
       }).catch(() => {})
     }
     reactMutation.mutate({ type, action: isActive ? 'remove' : 'add' })

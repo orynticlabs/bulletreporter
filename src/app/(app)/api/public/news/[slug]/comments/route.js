@@ -1,5 +1,6 @@
 import config from '@payload-config'
 import { getPayload } from 'payload'
+import { verifyRecaptchaFromBody } from '@/lib/recaptcha'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +56,8 @@ export async function POST(request, { params }) {
     const slug = decodeURIComponent(rawSlug)
     const body = await request.json()
     const { authorName, authorEmail, content } = body
+    const captchaError = await verifyRecaptchaFromBody(request, body, 'news_comment')
+    if (captchaError) return captchaError
 
     if (!authorName?.trim() || !content?.trim()) {
       return Response.json({ error: 'Name and comment are required' }, { status: 400 })

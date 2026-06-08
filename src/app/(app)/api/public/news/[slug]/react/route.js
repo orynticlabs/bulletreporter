@@ -1,5 +1,6 @@
 import config from '@payload-config'
 import { getPayload } from 'payload'
+import { verifyRecaptchaFromBody } from '@/lib/recaptcha'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,8 @@ export async function POST(request, { params }) {
     const slug = decodeURIComponent(rawSlug)
     const body = await request.json()
     const { type, action } = body
+    const captchaError = await verifyRecaptchaFromBody(request, body, 'news_reaction', { minScore: 0.3 })
+    if (captchaError) return captchaError
 
     if (!['like', 'dislike'].includes(type) || !['add', 'remove'].includes(action)) {
       return Response.json({ error: 'Invalid request body' }, { status: 400 })

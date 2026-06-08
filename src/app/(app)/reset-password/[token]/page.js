@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Lock, Eye, EyeOff } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
+import { getRecaptchaToken } from '@/utils/recaptcha';
 function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,10 +35,11 @@ function ResetPassword() {
     }
 
     try {
-      const res = await fetch('/api/users/reset-password', {
+      const recaptchaToken = await getRecaptchaToken('reset_password');
+      const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password: newPassword }),
+        body: JSON.stringify({ token, password: newPassword, recaptchaToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed')
