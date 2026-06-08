@@ -15,9 +15,15 @@ const getLimit = (searchParams) => {
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const limit = getLimit(searchParams)
+  const cacheVersion = searchParams.get('_cacheVersion') || '0'
   const now = Date.now()
 
-  if (cachedData && cachedData.limit === limit && now - cachedAt < CACHE_TTL) {
+  if (
+    cachedData &&
+    cachedData.limit === limit &&
+    cachedData.cacheVersion === cacheVersion &&
+    now - cachedAt < CACHE_TTL
+  ) {
     return Response.json(cachedData.data, {
       headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' },
     })
@@ -31,7 +37,7 @@ export async function GET(request) {
     sort: 'order',
   })
 
-  cachedData = { limit, data }
+  cachedData = { limit, cacheVersion, data }
   cachedAt = now
 
   return Response.json(data, {

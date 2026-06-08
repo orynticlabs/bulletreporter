@@ -4,6 +4,7 @@ import { postgresAdapter } from '@payloadcms/db-postgres'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { payloadCloudinaryPlugin } from '@jhb.software/payload-cloudinary-plugin'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { revalidatePath } from 'next/cache'
 import { v2 as cloudinary } from 'cloudinary'
 import sharp from 'sharp'
 import fs from 'fs'
@@ -435,6 +436,90 @@ const ensureAdvertisementTypeAndSize = ({ data }: { data?: Record<string, any> }
   return data
 }
 
+const normalizeForCompare = (value: any): string => {
+  if (value && typeof value === 'object' && 'id' in value) {
+    return String(value.id)
+  }
+
+  return JSON.stringify(value ?? null)
+}
+
+const hasPublicFieldChanged = ({
+  doc,
+  previousDoc,
+  fields,
+}: {
+  doc?: Record<string, any>
+  previousDoc?: Record<string, any>
+  fields: string[]
+}) => {
+  if (!previousDoc) return true
+
+  return fields.some((field) => normalizeForCompare(doc?.[field]) !== normalizeForCompare(previousDoc?.[field]))
+}
+
+const touchPublicCache = async ({
+  scopes,
+}: {
+  req?: any
+  scopes: Array<'news' | 'videoNews' | 'categories' | 'advertisements' | 'comments'>
+}) => {
+  revalidatePath('/', 'layout')
+
+  if (scopes.includes('news') || scopes.includes('categories') || scopes.includes('comments')) {
+    revalidatePath('/news')
+    revalidatePath('/news/breaking')
+  }
+
+  if (scopes.includes('videoNews') || scopes.includes('categories') || scopes.includes('comments')) {
+    revalidatePath('/video-news')
+  }
+}
+
+const NEWS_PUBLIC_FIELDS = [
+  'title',
+  'slug',
+  'excerpt',
+  'content',
+  'featuredImage',
+  'category',
+  'author',
+  'editor',
+  'tags',
+  'isBreaking',
+  'isFeatured',
+  'status',
+  'publishedAt',
+  'deleteAt',
+  'seo',
+]
+
+const VIDEO_NEWS_PUBLIC_FIELDS = [
+  'title',
+  'slug',
+  'language',
+  'category',
+  'description',
+  'content',
+  'youtubeVideo',
+  'youtubeVideoId',
+  'thumbnail',
+  'author',
+  'editor',
+  'tags',
+  'status',
+  'publishedAt',
+  'seo',
+]
+
+const COMMENT_PUBLIC_FIELDS = [
+  'authorName',
+  'content',
+  'article',
+  'videoArticle',
+  'status',
+]
+
 export default buildConfig({
   secret: process.env.PAYLOAD_SECRET || 'change-this-payload-secret-for-production',
   sharp,
@@ -639,6 +724,18 @@ export default buildConfig({
         // Admin and Editor manage categories; Authors and Viewers only see them as read-only
         hidden: ({ user }: { user: any }) => !isAdminOrEditor(user),
       },
+      hooks: {
+        afterChange: [
+          async ({ req }: { req: any }) => {
+            await touchPublicCache({ req, scopes: ['categories'] })
+          },
+        ],
+        afterDelete: [
+          async ({ req }: { req: any }) => {
+            await touchPublicCache({ req, scopes: ['categories', 'news', 'videoNews'] })
+          },
+        ],
+      },
       fields: [
         { name: 'name', type: 'text', required: true },
         { name: 'slug', type: 'text', required: true, unique: true },
@@ -670,6 +767,17 @@ export default buildConfig({
       },
       hooks: {
         beforeValidate: [ensureNewsSlug, ensureNewsPublishedAt],
+        afterChange: [
+          async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
+            if (hasPublicFieldChanged({ doc, previousDoc, fields: NEWS_PUBLIC_FIELDS })) {
+              await touchPublicCache({ req, scopes: ['news'] })
+              if (doc?.slug) {
+                revalidatePath(`/news/${doc.slug}`)
+                revalidatePath(`/article/${doc.slug}`)
+              }
+            }
+          },
+        ],
         afterDelete: [
           async ({ doc, req }: { doc: any; req: any }) => {
             // Delete the featured image from media (Cloudinary plugin removes it from Cloudinary)
@@ -684,6 +792,12 @@ export default buildConfig({
               } catch (_) {
                 // Non-fatal: image may already be gone or unreachable
               }
+            }
+
+            await touchPublicCache({ req, scopes: ['news'] })
+            if (doc?.slug) {
+              revalidatePath(`/news/${doc.slug}`)
+              revalidatePath(`/article/${doc.slug}`)
             }
           },
         ],
@@ -854,6 +968,16 @@ export default buildConfig({
       },
       hooks: {
         beforeValidate: [ensureVideoNewsFields],
+        afterChange: [
+          async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
+            if (hasPublicFieldChanged({ doc, previousDoc, fields: VIDEO_NEWS_PUBLIC_FIELDS })) {
+              await touchPublicCache({ req, scopes: ['videoNews'] })
+              if (doc?.slug) {
+                revalidatePath(`/video-news/${doc.slug}`)
+              }
+            }
+          },
+        ],
         afterDelete: [
           async ({ doc, req }: { doc: any; req: any }) => {
             const thumbnailId =
@@ -867,6 +991,11 @@ export default buildConfig({
               } catch (_) {
                 // Non-fatal: thumbnail may already be removed or shared.
               }
+            }
+
+            await touchPublicCache({ req, scopes: ['videoNews'] })
+            if (doc?.slug) {
+              revalidatePath(`/video-news/${doc.slug}`)
             }
           },
         ],
@@ -1040,6 +1169,20 @@ export default buildConfig({
         // Authors cannot moderate comments; only Admin and Editor see the comment queue
         hidden: ({ user }: { user: any }) => !isAdminOrEditor(user),
       },
+      hooks: {
+        afterChange: [
+          async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
+            if (hasPublicFieldChanged({ doc, previousDoc, fields: COMMENT_PUBLIC_FIELDS })) {
+              await touchPublicCache({ req, scopes: ['comments'] })
+            }
+          },
+        ],
+        afterDelete: [
+          async ({ req }: { req: any }) => {
+            await touchPublicCache({ req, scopes: ['comments'] })
+          },
+        ],
+      },
       fields: [
         { name: 'authorName', type: 'text', required: true },
         { name: 'authorEmail', type: 'email' },
@@ -1092,6 +1235,16 @@ export default buildConfig({
       },
       hooks: {
         beforeValidate: [ensureAdvertisementTypeAndSize],
+        afterChange: [
+          async ({ req }: { req: any }) => {
+            await touchPublicCache({ req, scopes: ['advertisements'] })
+          },
+        ],
+        afterDelete: [
+          async ({ req }: { req: any }) => {
+            await touchPublicCache({ req, scopes: ['advertisements'] })
+          },
+        ],
       },
       fields: [
         { name: 'title', type: 'text', required: true },
