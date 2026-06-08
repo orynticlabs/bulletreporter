@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import { buildConfig } from 'payload'
+import { buildConfig, APIError } from 'payload'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { payloadCloudinaryPlugin } from '@jhb.software/payload-cloudinary-plugin'
@@ -306,7 +306,7 @@ const ensureVideoNewsFields = ({ data, operation }: { data?: Record<string, any>
   }
 
   if (!next.youtubeVideoId) {
-    throw new Error('Please enter a valid YouTube video URL or 11-character YouTube video ID.')
+    throw new APIError('Please enter a valid YouTube video URL or 11-character YouTube video ID.', 400, null, true)
   }
 
   return next
@@ -348,8 +348,11 @@ const isAuthenticated = (user: User): boolean => Boolean(user)
 
 const ensureCloudinaryUploadConfigured = ({ data, req }: { data?: Record<string, any>, req?: any }) => {
   if (requireCloudinaryStorage && req?.file && !hasCloudinaryCredentials) {
-    throw new Error(
-      `Cloudinary credentials are required for media uploads. Missing: ${missingCloudinaryKeys.join(', ')}. Save them in ${path.resolve(dirname, '.env.local')} and restart the dev server.`,
+    throw new APIError(
+      `Cloudinary credentials are required for media uploads. Missing: ${missingCloudinaryKeys.join(', ')}.`,
+      400,
+      null,
+      true,
     )
   }
 
@@ -370,7 +373,11 @@ const deleteCloudinaryAsset = async ({ doc }: { doc?: Record<string, any> }) => 
   }
 }
 
-const MAX_UPLOAD_BYTES = 2 * 1024 * 1024
+const configuredMaxUploadMb = Number(process.env.PAYLOAD_MAX_UPLOAD_MB || 10)
+const MAX_UPLOAD_MB = Number.isFinite(configuredMaxUploadMb) && configuredMaxUploadMb > 0
+  ? configuredMaxUploadMb
+  : 10
+const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
 
 const bannerSizeLabels: Record<string, string> = {
   large: 'Large - 1280 x 320 px',
@@ -430,7 +437,7 @@ const ensureAdvertisementTypeAndSize = ({ data }: { data?: Record<string, any> }
     const bannerLabel = bannerTypeLabels[data.bannerType] || 'This banner type'
     const sizeList = allowedSizes.map((size) => bannerSizeLabels[size] || size).join(', ')
 
-    throw new Error(`${bannerLabel} supports only: ${sizeList}. Please select the correct Banner Size.`)
+    throw new APIError(`${bannerLabel} supports only: ${sizeList}. Please select the correct Banner Size.`, 400, null, true)
   }
 
   return data
@@ -683,7 +690,7 @@ export default buildConfig({
           ({ req, operation }: { req: any; operation: string }) => {
             if (operation === 'create' && req?.file) {
               if (req.file.size > MAX_UPLOAD_BYTES) {
-                throw new Error(`फ़ाइल का आकार 2 MB से अधिक नहीं होना चाहिए। (File size must not exceed 2 MB.)`)
+                throw new APIError(`File size must not exceed ${MAX_UPLOAD_MB} MB.`, 400, null, true)
               }
             }
           },
@@ -1254,7 +1261,7 @@ export default buildConfig({
           relationTo: 'media',
           required: true,
           admin: {
-            description: 'Upload banner artwork here. Maximum file size: 2 MB. Use the recommended dimensions from Banner Size. Media uploads are stored in Cloudinary.',
+            description: `Upload banner artwork here. Maximum file size: ${MAX_UPLOAD_MB} MB. Use the recommended dimensions from Banner Size. Media uploads are stored in Cloudinary.`,
           },
         },
         { name: 'link', type: 'text', label: 'Click URL' },
