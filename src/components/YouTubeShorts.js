@@ -87,9 +87,17 @@ export default function YouTubeShorts() {
 
   useEffect(() => {
     const node = cardRefs.current[activeIndex]
-    if (node) {
-      node.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-    }
+    const scroller = scrollerRef.current
+    if (!node || !scroller) return
+    // Only scroll the horizontal carousel — never the page vertically.
+    // scrollIntoView with block:'nearest' was causing the whole page to jump on load.
+    const nodeLeft = node.offsetLeft
+    const nodeWidth = node.offsetWidth
+    const scrollerWidth = scroller.offsetWidth
+    scroller.scrollTo({
+      left: nodeLeft - (scrollerWidth / 2) + (nodeWidth / 2),
+      behavior: 'smooth',
+    })
   }, [activeIndex])
 
   if (!isLoading && shorts.length === 0) return null
