@@ -193,7 +193,7 @@ export default function Footer() {
                 <span className="mt-1 w-2 h-2 rounded-full bg-[#2ecc71] flex-shrink-0 animate-pulse" />
                 <div>
                   <span className="block text-[11px] text-[#666] uppercase tracking-wider mb-0.5">{t.newsDesk}</span>
-                  <span className="break-all text-sm text-[#ccc]">bulletreporter1@gmail.com</span>
+                  <a href="mailto:bulletreporter1@gmail.com" className="break-all text-sm text-[#ccc] hover:text-white transition-colors">bulletreporter1@gmail.com</a>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -202,7 +202,7 @@ export default function Footer() {
                 </svg>
                 <div>
                   <span className="block text-[11px] text-[#666] uppercase tracking-wider mb-0.5">{t.phone}</span>
-                  <span className="text-[#ccc] text-sm">+91 9425470033</span>
+                  <a href="tel:+919425470033" className="text-[#ccc] text-sm hover:text-white transition-colors">+91 9425470033</a>
                 </div>
               </li>
               <li className="flex items-start gap-3">
