@@ -46,7 +46,7 @@ export default async function RootLayout({ children }) {
   const htmlLang = locale === 'en' ? 'en' : 'hi'
 
   return (
-    <html lang={htmlLang} suppressHydrationWarning data-scroll-behavior="smooth">
+    <html lang={htmlLang} suppressHydrationWarning>
       <head>
         {/* Preconnect to external origins for speed */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

@@ -193,8 +193,10 @@
   }
 }
 
-/* Smooth scrolling */
-html {
+:root {
+  scroll-behavior: auto;
+}
+html:focus-within {
   scroll-behavior: smooth;
 }
 
