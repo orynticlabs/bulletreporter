@@ -19,6 +19,19 @@ export const isValidDate = (dateString) => {
   }
 };
 
+export const getDisplayDateAfterRollover = (date = new Date(), rolloverHour = 0, rolloverMinute = 38) => {
+  const displayDate = new Date(date);
+  const beforeRollover =
+    displayDate.getHours() < rolloverHour ||
+    (displayDate.getHours() === rolloverHour && displayDate.getMinutes() < rolloverMinute);
+
+  if (beforeRollover) {
+    displayDate.setDate(displayDate.getDate() - 1);
+  }
+
+  return displayDate;
+};
+
 /**
  * Format date for display with proper validation
  * @param {string} dateString - The date string to format
