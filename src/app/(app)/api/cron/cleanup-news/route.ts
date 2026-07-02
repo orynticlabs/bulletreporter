@@ -19,6 +19,10 @@ import { getPayload } from 'payload'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+const messageFromError = (err: unknown) => (
+  err instanceof Error ? err.message : String(err)
+)
+
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
 
@@ -61,12 +65,12 @@ export async function GET(req: NextRequest) {
           id: article.id,
         })
         results.push({ id: String(article.id), title: String(article.title), status: 'deleted' })
-      } catch (err: any) {
+      } catch (err: unknown) {
         results.push({
           id: String(article.id),
           title: String(article.title),
           status: 'error',
-          error: err?.message ?? String(err),
+          error: messageFromError(err),
         })
       }
     }
@@ -75,10 +79,10 @@ export async function GET(req: NextRequest) {
     const errors  = results.filter((r) => r.status === 'error').length
 
     return NextResponse.json({ deleted, errors, results })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[cleanup-news] Fatal error:', err)
     return NextResponse.json(
-      { error: 'Internal server error', details: err?.message ?? String(err) },
+      { error: 'Internal server error', details: messageFromError(err) },
       { status: 500 },
     )
   }
