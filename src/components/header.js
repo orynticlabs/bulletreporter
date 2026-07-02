@@ -8,7 +8,7 @@ import { useSearch } from '@/contexts/SearchContext'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { fetchPayloadCategories } from '@/utils/payloadCategories'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
-import { getRelativeTime } from '@/utils/dateUtils'
+import { getDisplayDateAfterRollover, getRelativeTime } from '@/utils/dateUtils'
 import SearchResults from './SearchResults'
 
 const MENU_CATEGORY_LIMIT  = 12
@@ -348,12 +348,22 @@ function Header() {
   // ── Live clock ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const locale = lang === 'en' ? 'en-IN' : 'hi-IN'
-    const updateTime = () => setCurrentTime(
-      new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    )
-    setCurrentDate(new Date().toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }))
-    updateTime()
-    const timer = setInterval(updateTime, 1000)
+    const updateDateTime = () => {
+      const now = new Date()
+      setCurrentTime(
+        now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      )
+      setCurrentDate(
+        getDisplayDateAfterRollover(now).toLocaleDateString(locale, {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      )
+    }
+    updateDateTime()
+    const timer = setInterval(updateDateTime, 1000)
     return () => clearInterval(timer)
   }, [lang])
 
