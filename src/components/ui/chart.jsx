@@ -49,6 +49,8 @@ function ChartStyle({ config }) {
 export const ChartTooltip = RechartsTooltip
 
 export function ChartTooltipContent({ label, payload, labelFormatter, valueFormatter }) {
+  const chartConfig = useChart()
+
   if (!payload?.length) return null
 
   return (
@@ -58,7 +60,7 @@ export function ChartTooltipContent({ label, payload, labelFormatter, valueForma
       </div>
       <div className="grid gap-1">
         {payload.map((entry, index) => {
-          const config = getPayloadConfigFromPayload(entry)
+          const config = getPayloadConfigFromPayload(chartConfig, entry)
           const value = valueFormatter ? valueFormatter(entry.value, entry.name) : entry.value
           return (
             <div key={index} className="flex items-center gap-2">
@@ -78,12 +80,14 @@ export function ChartTooltipContent({ label, payload, labelFormatter, valueForma
 export const ChartLegend = RechartsLegend
 
 export function ChartLegendContent({ payload, className }) {
+  const chartConfig = useChart()
+
   if (!payload?.length) return null
 
   return (
     <div className={cn("flex flex-wrap items-center gap-4 text-sm", className)}>
       {payload.map((entry, index) => {
-        const config = getPayloadConfigFromPayload(entry)
+        const config = getPayloadConfigFromPayload(chartConfig, entry)
         return (
           <div key={index} className="flex items-center gap-1">
             <span
@@ -108,8 +112,7 @@ export function ChartLegendContent({ payload, className }) {
   )
 }
 
-function getPayloadConfigFromPayload(entry) {
-  const config = useChart()
+function getPayloadConfigFromPayload(config, entry) {
   if (!entry?.dataKey || !config) return null
   return config[entry.dataKey] || null
 }
