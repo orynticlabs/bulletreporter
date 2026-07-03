@@ -39,8 +39,7 @@ const SocialSharingTester = ({ article }) => {
       try {
         const optimizedUrl = optimizeImageForSocialSharing(article.image_url);
         window.open(optimizedUrl, '_blank');
-      } catch (error) {
-        console.error('Error opening image:', error);
+      } catch {
       }
     }
   };

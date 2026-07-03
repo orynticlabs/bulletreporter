@@ -1,7 +1,12 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { fetchPayloadCategories, fetchPayloadSettings } from '@/utils/payloadCategories'
+import {
+  fetchPayloadCategories,
+  fetchPayloadSettings,
+  getCategoryDisplayName,
+  getCategoryRouteKey,
+} from '@/utils/payloadCategories'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 const CONTENT = {
@@ -108,8 +113,8 @@ export default function Footer() {
   const categoryLinks = [
     { name: t.mainCatName, href: getLangPath('/') },
     ...categoriesArray.slice(0, 9).map(cat => ({
-      name: lang === 'hi' ? cat.name : (cat.nameEn || cat.name),
-      href: getLangPath(`/category/${encodeURIComponent(cat.name)}`),
+      name: getCategoryDisplayName(cat, lang),
+      href: getLangPath(`/category/${encodeURIComponent(getCategoryRouteKey(cat))}`),
     })),
   ];
 

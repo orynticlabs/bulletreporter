@@ -39,7 +39,7 @@ export const SearchProvider = ({ children }) => {
     queryKey: ['search', trimmedDebouncedQuery, lang],
     queryFn: async () => {
       if (!trimmedDebouncedQuery) return { articles: [] }
-      return fetchPayloadArticles({ search: trimmedDebouncedQuery, limit: 8, lang })
+      return fetchPayloadArticles({ search: trimmedDebouncedQuery, limit: 8, lang, summary: true })
     },
     enabled: isQueryReady,
     staleTime: 5 * 60 * 1000,

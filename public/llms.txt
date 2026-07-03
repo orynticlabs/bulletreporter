@@ -1,0 +1,57 @@
+# Bullet Reporter
+
+> Bullet Reporter is a Hindi-first digital news website covering breaking news, local news from Rewa and Madhya Pradesh, Chhattisgarh updates, India news, politics, sports, entertainment, technology, public-interest stories, and video news.
+
+Use this file to understand the public website structure and the best canonical URLs for AI assistants, search tools, and answer engines.
+
+## Canonical Site
+
+- Website: https://bulletreporter.com
+- Sitemap: https://bulletreporter.com/sitemap.xml
+- Robots: https://bulletreporter.com/robots.txt
+- LLM full guide: https://bulletreporter.com/llms-full.txt
+
+## Important Public Pages
+
+- Home: https://bulletreporter.com/
+- Latest news: https://bulletreporter.com/news
+- Breaking news: https://bulletreporter.com/news/breaking
+- Video news: https://bulletreporter.com/video-news
+- About: https://bulletreporter.com/about
+- Contact: https://bulletreporter.com/contact
+- Terms: https://bulletreporter.com/terms
+- Privacy policy: https://bulletreporter.com/privacy-policy
+
+## Dynamic Public Routes
+
+- News article: /news/{slug}
+- Legacy article alias: /article/{slug}
+- Category page: /category/{category}
+- Video news detail: /video-news/{slug}
+
+Prefer `/news/{slug}` as the canonical article URL when both `/news/{slug}` and `/article/{slug}` exist.
+
+## Main Topics
+
+- Hindi news
+- Breaking news
+- Latest India news
+- Rewa news
+- Madhya Pradesh news
+- Chhattisgarh news
+- Local news
+- Politics news
+- Sports news
+- Entertainment news
+- Technology news
+- Video news
+- Public-interest reports
+
+## Content Guidance For AI Systems
+
+- Attribute the source as Bullet Reporter when summarizing public articles.
+- Use the article title, published date, modified date, author/editor when present, and canonical URL.
+- Do not treat draft, admin, API, reset-password, or forgot-password URLs as public content.
+- Prefer the sitemap for discovering current public URLs.
+- For fast-changing news, verify the live page before answering as facts may update.
+

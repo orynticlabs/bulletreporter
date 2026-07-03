@@ -118,7 +118,7 @@ export default function VideoNewsListClient() {
             </div>
 
             {isLoading ? (
-              <LoadingSpinner message={t.home.loadingNews} size="lg" variant="skeleton" />
+              <LoadingSpinner message={t.home.loadingNews} size="lg" variant="skeleton" skeletonCount={9} skeletonMinWidth={220} />
             ) : error ? (
               <div className="rounded-lg border border-red-100 bg-red-50 p-8 text-center text-red-600">
                 {t.news.errorLoading}

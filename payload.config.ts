@@ -53,8 +53,8 @@ const smtpHost = process.env.SMTP_HOST
 const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10)
 const smtpUser = process.env.SMTP_USER
 const smtpPass = process.env.SMTP_PASS
-const configuredEmailFrom = process.env.EMAIL_FROM || 'noreply@bulletreporter.in'
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bullet-reporter.vercel.app'
+const configuredEmailFrom = process.env.EMAIL_FROM
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
 
 const getEmailDomain = (value?: string) => value?.split('@').pop()?.toLowerCase() || ''
 
@@ -63,7 +63,7 @@ const configuredEmailFromDomain = getEmailDomain(configuredEmailFrom)
 const emailFromAddress =
   smtpUserDomain && configuredEmailFromDomain && smtpUserDomain !== configuredEmailFromDomain
     ? smtpUser || configuredEmailFrom
-    : configuredEmailFrom || smtpUser || 'noreply@bulletreporter.in'
+    : configuredEmailFrom || smtpUser
 
 const escapeHtml = (value: unknown) =>
   String(value ?? '')
@@ -472,6 +472,7 @@ const touchPublicCache = async ({
   scopes: Array<'news' | 'videoNews' | 'categories' | 'advertisements' | 'comments'>
 }) => {
   revalidatePath('/', 'layout')
+  revalidatePath('/sitemap.xml')
 
   if (scopes.includes('news') || scopes.includes('categories') || scopes.includes('comments')) {
     revalidatePath('/news')

@@ -10,7 +10,7 @@ import { shareOnPlatform } from '@/utils/socialSharing'
 import { getRelativeTime } from '@/utils/dateUtils'
 import { useLanguage } from '@/contexts/LanguageContext'
 
-function NewsCard({ id, title, excerpt, category, categorySlug, author, publishedAt, readTime, views = 0, imageUrl, youtubeUrl, slug, featured = false }) {
+function NewsCard({ id, title, excerpt, category, categorySlug, author, publishedAt, readTime, views = 0, imageUrl, youtubeUrl, slug, featured = false, imageLoading = 'lazy' }) {
   const router = useRouter()
   const { toast } = useToast()
   const { t, lang } = useLanguage()
@@ -42,7 +42,7 @@ function NewsCard({ id, title, excerpt, category, categorySlug, author, publishe
         {imageUrl ? (
           <img src={imageUrl} alt={title}
             className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
+            loading={imageLoading}
           />
         ) : youtubeUrl ? (
           <div className="w-full h-full bg-black flex items-center justify-center">

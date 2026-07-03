@@ -14,7 +14,7 @@ import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { getReadingTime } from '@/utils/timeUtils'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { Star, Zap, ChevronRight } from 'lucide-react'
-import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME, STATIC_STALE_TIME } from '@/utils/queryConfig'
+import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
 
 const fetchArticles = async ({ queryKey }) => {
   const [, options] = queryKey
@@ -22,7 +22,7 @@ const fetchArticles = async ({ queryKey }) => {
 }
 
 // ── Image-first breaking news card ─────────────────────────────────────────
-function BreakingCard({ article, onClick }) {
+function BreakingCard({ article, onClick, loading = 'lazy' }) {
   if (!article) return null
   return (
     <button
@@ -34,6 +34,7 @@ function BreakingCard({ article, onClick }) {
         <NewsImage
           article={article}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading={loading}
         />
       </div>
       <h3 className="mt-3 text-base font-black leading-snug text-gray-900 transition-colors group-hover:text-red-600 line-clamp-2 md:text-lg">
@@ -43,13 +44,13 @@ function BreakingCard({ article, onClick }) {
   )
 }
 
-function NewsImage({ article, className }) {
+function NewsImage({ article, className, loading = 'lazy' }) {
   return article.image_url ? (
     <img
       src={article.image_url}
       alt={article.title}
       className={className}
-      loading="lazy"
+      loading={loading}
     />
   ) : (
     <div className="flex h-full w-full items-center justify-center bg-gray-100">
@@ -58,7 +59,7 @@ function NewsImage({ article, className }) {
   )
 }
 
-function LatestFeatureCard({ article, onClick }) {
+function LatestFeatureCard({ article, onClick, loading = 'lazy' }) {
   if (!article) return null
   return (
     <button
@@ -70,6 +71,7 @@ function LatestFeatureCard({ article, onClick }) {
         <NewsImage
           article={article}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading={loading}
         />
       </div>
       <h3 className="px-3 py-3 text-base font-black leading-snug text-gray-900 transition-colors group-hover:text-red-600 line-clamp-4 md:text-lg">
@@ -130,7 +132,7 @@ export default function Home() {
   const goToArticle = useCallback((slug) => () => router.push(getLangPath(`/news/${encodeURIComponent(slug)}`)), [lang, router, getLangPath])
 
   const { data: breakingData, isLoading: breakingLoading, error: breakingError, refetch: refetchBreaking } = useQuery({
-    queryKey: ['articles', { isBreaking: true, limit: 20, page: 1, lang }],
+    queryKey: ['articles', { isBreaking: true, limit: 20, page: 1, lang, summary: true }],
     queryFn: fetchArticles,
     staleTime: CONTENT_STALE_TIME,
     refetchInterval: CONTENT_REFETCH_INTERVAL,
@@ -139,7 +141,7 @@ export default function Home() {
   })
 
   const { data: articlesData, isLoading: articlesLoading, error: articlesError, refetch: refetchArticles } = useQuery({
-    queryKey: ['articles', { limit: 10, page: 1, lang }],
+    queryKey: ['articles', { limit: 10, page: 1, lang, summary: true }],
     queryFn: fetchArticles,
     staleTime: CONTENT_STALE_TIME,
     refetchInterval: CONTENT_REFETCH_INTERVAL,
@@ -148,12 +150,13 @@ export default function Home() {
   })
 
   const { data: featuredData, isLoading: featuredLoading } = useQuery({
-    queryKey: ['articles', { isFeatured: true, limit: 6, page: 1, lang }],
+    queryKey: ['articles', { isFeatured: true, limit: 6, page: 1, lang, summary: true }],
     queryFn: fetchArticles,
     staleTime: CONTENT_STALE_TIME,
     refetchInterval: CONTENT_REFETCH_INTERVAL,
     refetchIntervalInBackground: false,
     retry: 1,
+    enabled: !breakingLoading && !articlesLoading,
   })
 
   const breakingNews = breakingData?.articles || []
@@ -212,7 +215,7 @@ export default function Home() {
 
                 <div className="px-4 py-5">
                   {breakingLoading ? (
-                    <LoadingSpinner message={t.home.loadingBreaking} size="lg" variant="skeleton" />
+                    <LoadingSpinner message={t.home.loadingBreaking} size="lg" variant="skeleton" skeletonCount={4} skeletonMinWidth={180} />
                   ) : breakingError ? (
                     <div className="text-center py-8">
                       <p className="text-red-500 mb-2 font-medium">{t.home.errorBreaking}</p>
@@ -221,10 +224,11 @@ export default function Home() {
                     </div>
                   ) : breakingNews.length > 0 ? (
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-                      {breakingPreviewArticles.map((article) => (
+                      {breakingPreviewArticles.map((article, index) => (
                         <BreakingCard
                           key={article.id}
                           article={article}
+                          loading={index < 4 ? 'eager' : 'lazy'}
                           onClick={article.slug ? goToArticle(article.slug) : undefined}
                         />
                       ))}
@@ -239,7 +243,6 @@ export default function Home() {
             {/* ── Mid Ad ── */}
             <section><AdBanner size="medium" position="middle_banner" /></section>
 
-            <VideoNewsSection />
 
             {/* ── Latest News ── */}
             <section className="bg-white">
@@ -260,7 +263,7 @@ export default function Home() {
               </div>
 
               {articlesLoading ? (
-                <LoadingSpinner message={t.home.loadingNews} size="lg" variant="skeleton" />
+                <LoadingSpinner message={t.home.loadingNews} size="lg" variant="skeleton" skeletonCount={6} skeletonMinWidth={180} />
               ) : articlesError ? (
                 <div className="text-center py-8">
                   <p className="text-red-500 mb-2 font-medium">{t.home.errorNews}</p>
@@ -269,10 +272,11 @@ export default function Home() {
               ) : articles.length > 0 ? (
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1.25fr]">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {latestFeatureArticles.map((article) => (
+                    {latestFeatureArticles.map((article, index) => (
                       <LatestFeatureCard
                         key={article.id}
                         article={article}
+                        loading={index < 3 ? 'eager' : 'lazy'}
                         onClick={article.slug ? goToArticle(article.slug) : undefined}
                       />
                     ))}
@@ -311,7 +315,7 @@ export default function Home() {
                 </div>
 
                 {featuredLoading ? (
-                  <LoadingSpinner message={t.home.loadingNews} size="lg" variant="skeleton" />
+                  <LoadingSpinner message={t.home.loadingNews} size="lg" variant="skeleton" skeletonCount={4} skeletonMinWidth={260} />
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {featuredArticles.map((article, i) => (
@@ -320,12 +324,15 @@ export default function Home() {
                         category={article.category} categorySlug={article.category_slug} author={article.editor_name || article.author_name}
                         publishedAt={article.created_at} readTime={getReadingTime(article.contentText || article.description)}
                         views={article.views || 0} imageUrl={article.image_url}
+                        imageLoading={i < 2 ? 'eager' : 'lazy'}
                         youtubeUrl={article.youtube_url} slug={article.slug} featured={i === 0} />
                     ))}
                   </div>
                 )}
               </section>
             )}
+
+            <VideoNewsSection />
           </div>
 
           {/* ── Sidebar ── */}

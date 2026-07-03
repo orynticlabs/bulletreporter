@@ -1,53 +1,135 @@
-import { absoluteUrl, fetchNewsList, SITE_URL } from '@/lib/seo'
-import { fetchPayloadVideoNews } from '@/utils/payloadArticles'
+import config from '@payload-config'
+import { getPayload } from 'payload'
+import { absoluteUrl } from '@/lib/seo'
+
+export const revalidate = 300
+
+const PAGE_SIZE = 100
+
+const staticRoutes = [
+  { path: '/', changeFrequency: 'hourly', priority: 1 },
+  { path: '/news', changeFrequency: 'hourly', priority: 0.9 },
+  { path: '/news/breaking', changeFrequency: 'hourly', priority: 0.9 },
+  { path: '/video-news', changeFrequency: 'daily', priority: 0.85 },
+  { path: '/about', changeFrequency: 'monthly', priority: 0.65 },
+  { path: '/contact', changeFrequency: 'monthly', priority: 0.65 },
+  { path: '/terms', changeFrequency: 'yearly', priority: 0.4 },
+  { path: '/privacy-policy', changeFrequency: 'yearly', priority: 0.4 },
+]
+
+const toDate = (value) => {
+  const date = value ? new Date(value) : new Date()
+  return Number.isNaN(date.getTime()) ? new Date() : date
+}
+
+const route = ({ path, lastModified, changeFrequency, priority }) => ({
+  url: absoluteUrl(path),
+  lastModified: toDate(lastModified),
+  changeFrequency,
+  priority,
+})
+
+const getUpdatedAt = (doc) => doc.updatedAt || doc.publishedAt || doc.createdAt
+
+async function fetchAllPublished(payload, collection) {
+  const docs = []
+  let page = 1
+  let hasNextPage = true
+
+  while (hasNextPage) {
+    const result = await payload.find({
+      collection,
+      draft: true,
+      overrideAccess: true,
+      depth: 0,
+      limit: PAGE_SIZE,
+      page,
+      sort: '-updatedAt',
+      where: {
+        status: { equals: 'published' },
+      },
+    })
+
+    docs.push(...(result.docs || []))
+    hasNextPage = Boolean(result.hasNextPage)
+    page += 1
+  }
+
+  return docs
+}
+
+async function fetchAllCategories(payload) {
+  const docs = []
+  let page = 1
+  let hasNextPage = true
+
+  while (hasNextPage) {
+    const result = await payload.find({
+      collection: 'categories',
+      depth: 0,
+      limit: PAGE_SIZE,
+      page,
+      sort: 'order',
+    })
+
+    docs.push(...(result.docs || []))
+    hasNextPage = Boolean(result.hasNextPage)
+    page += 1
+  }
+
+  return docs
+}
 
 export default async function sitemap() {
-  const staticRoutes = [
-    '',
-    '/news',
-    '/news/breaking',
-    '/video-news',
-    '/about',
-    '/contact',
-    '/terms',
-    '/privacy-policy',
-  ].map((path) => ({
-    url: absoluteUrl(path || '/'),
-    lastModified: new Date(),
-    changeFrequency: path === '' ? 'hourly' : path.startsWith('/news') ? 'daily' : 'monthly',
-    priority: path === '' ? 1 : path.startsWith('/news') ? 0.85 : 0.65,
-  }))
+  const now = new Date()
+  const routes = staticRoutes.map((item) => route({ ...item, lastModified: now }))
 
-  const liveNews = await fetchNewsList({ limit: 100, page: 1 })
-  const liveVideoNews = await fetchPayloadVideoNews({ limit: 100, page: 1 }).catch(() => ({ videos: [] }))
-  const liveNewsRoutes = (liveNews.articles || []).map((article) => ({
-    url: absoluteUrl(`/news/${article.slug}`),
-    lastModified: new Date(article.updated_at || article.created_at || Date.now()),
-    changeFrequency: 'daily',
-    priority: article.is_breaking ? 0.95 : 0.8,
-  }))
+  try {
+    const payload = await getPayload({ config })
+    const [categories, news, videoNews] = await Promise.all([
+      fetchAllCategories(payload),
+      fetchAllPublished(payload, 'news'),
+      fetchAllPublished(payload, 'video-news'),
+    ])
 
-  const articleRoutes = (liveNews.articles || []).map((article) => ({
-    url: absoluteUrl(`/article/${article.slug}`),
-    lastModified: new Date(article.updated_at || article.created_at || Date.now()),
-    changeFrequency: 'daily',
-    priority: article.is_featured ? 0.85 : 0.75,
-  }))
+    const categoryRoutes = categories
+      .map((category) => category.slug || category.name || category.nameHindi)
+      .filter(Boolean)
+      .map((category) => route({
+        path: `/category/${encodeURIComponent(category)}`,
+        lastModified: now,
+        changeFrequency: 'daily',
+        priority: 0.75,
+      }))
 
-  const videoNewsRoutes = (liveVideoNews.videos || []).map((video) => ({
-    url: absoluteUrl(`/video-news/${video.slug}`),
-    lastModified: new Date(video.updated_at || video.created_at || Date.now()),
-    changeFrequency: 'daily',
-    priority: 0.8,
-  }))
+    const newsRoutes = news
+      .filter((article) => article.slug)
+      .flatMap((article) => [
+        route({
+          path: `/news/${encodeURIComponent(article.slug)}`,
+          lastModified: getUpdatedAt(article),
+          changeFrequency: article.isBreaking ? 'hourly' : 'daily',
+          priority: article.isBreaking ? 0.95 : 0.85,
+        }),
+        route({
+          path: `/article/${encodeURIComponent(article.slug)}`,
+          lastModified: getUpdatedAt(article),
+          changeFrequency: 'daily',
+          priority: article.isFeatured ? 0.8 : 0.7,
+        }),
+      ])
 
-  const categories = [...new Set((liveNews.articles || []).map((article) => article.category).filter(Boolean))]
-  const categoryRoutes = categories.map((category) => ({
-    url: `${SITE_URL}/category/${encodeURIComponent(category)}`,
-    lastModified: new Date(),
-    changeFrequency: 'daily',
-    priority: 0.75,
-  }))
+    const videoNewsRoutes = videoNews
+      .filter((video) => video.slug)
+      .map((video) => route({
+        path: `/video-news/${encodeURIComponent(video.slug)}`,
+        lastModified: getUpdatedAt(video),
+        changeFrequency: 'daily',
+        priority: 0.8,
+      }))
 
-  return [...staticRoutes, ...categoryRoutes, ...liveNewsRoutes, ...articleRoutes, ...videoNewsRoutes]
+    return [...routes, ...categoryRoutes, ...newsRoutes, ...videoNewsRoutes]
+  } catch {
+    return routes
+  }
 }

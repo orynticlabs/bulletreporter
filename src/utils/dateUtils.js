@@ -14,12 +14,12 @@ export const isValidDate = (dateString) => {
   try {
     const date = new Date(dateString);
     return !isNaN(date.getTime());
-  } catch (error) {
+  } catch {
     return false;
   }
 };
 
-export const getDisplayDateAfterRollover = (date = new Date(), rolloverHour = 0, rolloverMinute = 38) => {
+export const getDisplayDateAfterRollover = (date = new Date(), rolloverHour = 0, rolloverMinute = 0) => {
   const displayDate = new Date(date);
   const beforeRollover =
     displayDate.getHours() < rolloverHour ||
@@ -92,8 +92,7 @@ export const formatDisplayDate = (dateString, fallback = 'तारीख उप
         hour12: true
       });
     }
-  } catch (error) {
-    console.warn('Date formatting error:', error, 'for date:', dateString);
+  } catch {
     return fallback;
   }
 };
@@ -115,8 +114,7 @@ export const getStandardizedDate = (dateString) => {
     }
 
     return date.toISOString();
-  } catch (error) {
-    console.warn('Date standardization error:', error, 'for date:', dateString);
+  } catch {
     return new Date().toISOString();
   }
 };
@@ -142,8 +140,7 @@ export const formatDateForSharing = (dateString) => {
       month: 'long',
       year: 'numeric'
     });
-  } catch (error) {
-    console.warn('Date sharing format error:', error, 'for date:', dateString);
+  } catch {
     return new Date().toLocaleDateString('hi-IN');
   }
 };
@@ -185,8 +182,7 @@ export const getRelativeTime = (dateString) => {
         year: 'numeric'
       });
     }
-  } catch (error) {
-    console.warn('Relative time error:', error, 'for date:', dateString);
+  } catch {
     return 'अभी अभी';
   }
 }; 

@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Layout from '@/components/Layout'
 import NewsCard from '@/components/NewsCard'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import AdBanner from '@/components/AdBanner'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { getReadingTime } from '@/utils/timeUtils'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { Zap, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Zap, ChevronLeft, Loader2 } from 'lucide-react'
 import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
 import Sidebar from '@/components/Sidebar'
 
@@ -18,26 +18,50 @@ const LIMIT = 12
 
 export default function BreakingNewsPage() {
   const router = useRouter()
-  const [page, setPage] = useState(1)
+  const loadMoreRef = useRef(null)
   const { t, lang } = useLanguage()
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['breaking-news-page', page, lang],
-    queryFn: async () => {
-      return fetchPayloadArticles({ isBreaking: true, limit: LIMIT, page, lang })
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    error,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['breaking-news-page', lang],
+    queryFn: ({ pageParam = 1 }) => fetchPayloadArticles({ isBreaking: true, limit: LIMIT, page: pageParam, lang, summary: true }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const currentPage = lastPage?.page || 1
+      return currentPage < (lastPage?.totalPages || 1) ? currentPage + 1 : undefined
     },
     staleTime: CONTENT_STALE_TIME,
     refetchInterval: CONTENT_REFETCH_INTERVAL,
     refetchIntervalInBackground: false,
     retry: 1,
-    placeholderData: (prev) => prev,
   })
 
-  const articles = data?.articles || []
-  const total = data?.total || 0
-  const totalPages = data?.totalPages || Math.ceil(total / LIMIT)
+  const articles = useMemo(() => data?.pages.flatMap((page) => page.articles || []) || [], [data])
 
   const getLangPath = useCallback((p) => lang === 'en' ? `/en${p}` : p, [lang])
+
+  useEffect(() => {
+    const node = loadMoreRef.current
+    if (!node || typeof IntersectionObserver === 'undefined' || !hasNextPage) return undefined
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage()
+        }
+      },
+      { rootMargin: '700px 0px' },
+    )
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage])
 
   return (
     <Layout>
@@ -60,7 +84,7 @@ export default function BreakingNewsPage() {
           {/* Articles */}
           <div className="lg:col-span-3">
             {isLoading ? (
-              <LoadingSpinner message={t.home.loadingBreaking} size="lg" variant="skeleton" />
+              <LoadingSpinner message={t.home.loadingBreaking} size="lg" variant="skeleton" skeletonCount={9} skeletonMinWidth={220} />
             ) : error ? (
               <div className="text-center py-16">
                 <p className="text-red-500 mb-4">{t.news.errorLoading}</p>
@@ -81,22 +105,18 @@ export default function BreakingNewsPage() {
                       publishedAt={article.created_at}
                       readTime={getReadingTime(article.contentText || article.description)}
                       views={article.views || 0} imageUrl={article.image_url}
+                      imageLoading={i < 6 ? 'eager' : 'lazy'}
                       youtubeUrl={article.youtube_url} slug={article.slug} featured={i === 0} />
                   ))}
                 </div>
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-4 mt-10">
-                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                      className="flex items-center gap-2 px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-40">
-                      <ChevronLeft className="w-4 h-4" /> {t.news.previous}
-                    </button>
-                    <span>{page} / {totalPages}</span>
-                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40">
-                      {t.news.next} <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+                <div ref={loadMoreRef} className="mt-10 flex min-h-10 items-center justify-center">
+                  {isFetchingNextPage && (
+                    <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin text-red-500" />
+                      {t.home.loadingBreaking}
+                    </span>
+                  )}
+                </div>
               </>
             )}
             <div className="mt-8"><AdBanner size="large" position="bottom_banner" /></div>

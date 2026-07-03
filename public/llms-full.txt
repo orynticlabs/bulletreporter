@@ -1,0 +1,269 @@
+# Bullet Reporter LLM Full Guide / बुलेट रिपोर्टर एलएलएम पूर्ण गाइड
+
+This file provides a detailed, machine-readable overview of Bullet Reporter for AI assistants, search engines, answer engines, crawlers, and other tools that summarize or reference public web content.
+
+यह फाइल AI assistants, search engines, answer engines, crawlers और दूसरे tools के लिए Bullet Reporter वेबसाइट की पूरी जानकारी देती है, ताकि वे public content को सही तरीके से समझें, summarize करें और reference दें।
+
+## Site Identity / वेबसाइट पहचान
+
+English:
+
+- Name: Bullet Reporter
+- Type: Digital news publication
+- Primary language: Hindi
+- Secondary language: English
+- Editorial focus: Breaking news, local news, regional news, India news, politics, sports, technology, entertainment, video news, and public-interest reporting.
+- Primary region: Rewa, Madhya Pradesh, India
+- Additional coverage: Madhya Pradesh, Chhattisgarh, India, and important national/international updates.
+- Technical management: OrynticLabs
+
+हिंदी:
+
+- नाम: Bullet Reporter / बुलेट रिपोर्टर
+- प्रकार: डिजिटल न्यूज प्रकाशन
+- मुख्य भाषा: हिंदी
+- दूसरी भाषा: अंग्रेजी
+- संपादकीय फोकस: ब्रेकिंग न्यूज, लोकल न्यूज, क्षेत्रीय समाचार, भारत समाचार, राजनीति, खेल, टेक्नोलॉजी, मनोरंजन, वीडियो न्यूज और जनहित की रिपोर्टिंग।
+- मुख्य क्षेत्र: रीवा, मध्य प्रदेश, भारत
+- अतिरिक्त कवरेज: मध्य प्रदेश, छत्तीसगढ़, भारत और महत्वपूर्ण राष्ट्रीय/अंतरराष्ट्रीय अपडेट।
+- तकनीकी प्रबंधन: OrynticLabs
+
+## Canonical Public URLs / मुख्य सार्वजनिक URL
+
+- Home / होम: https://bulletreporter.com/
+- Latest news / ताजा खबरें: https://bulletreporter.com/news
+- Breaking news / ब्रेकिंग न्यूज: https://bulletreporter.com/news/breaking
+- Video news / वीडियो न्यूज: https://bulletreporter.com/video-news
+- About / हमारे बारे में: https://bulletreporter.com/about
+- Contact / संपर्क: https://bulletreporter.com/contact
+- Terms and conditions / नियम और शर्तें: https://bulletreporter.com/terms
+- Privacy policy / गोपनीयता नीति: https://bulletreporter.com/privacy-policy
+- Sitemap / साइटमैप: https://bulletreporter.com/sitemap.xml
+- Robots / रोबोट्स: https://bulletreporter.com/robots.txt
+- LLM summary / एलएलएम सारांश: https://bulletreporter.com/llms.txt
+
+## Public Route Patterns / सार्वजनिक रूट पैटर्न
+
+English:
+
+Use these public URL patterns when discovering, citing, or linking Bullet Reporter content:
+
+- `/` - Home page with breaking, latest, featured, category, ad, and video sections.
+- `/news` - Latest news listing.
+- `/news/breaking` - Breaking news listing.
+- `/news/{slug}` - Canonical news article detail page.
+- `/article/{slug}` - Legacy article alias for article detail pages.
+- `/category/{category}` - Category-specific news listing.
+- `/video-news` - Video news listing.
+- `/video-news/{slug}` - Video news detail page.
+- `/about` - Publication information.
+- `/contact` - Contact details for newsroom, advertising, corrections, and technical communication.
+- `/terms` - Website terms and content use conditions.
+- `/privacy-policy` - Privacy, cookies, analytics, security, and data-use information.
+
+When both `/news/{slug}` and `/article/{slug}` are available for the same story, prefer `/news/{slug}` as the canonical public article URL.
+
+हिंदी:
+
+Bullet Reporter content खोजने, cite करने या link करने के लिए इन public URL patterns का उपयोग करें:
+
+- `/` - होम पेज, जिसमें ब्रेकिंग न्यूज, ताजा खबरें, featured stories, categories, advertisements और video sections होते हैं।
+- `/news` - ताजा खबरों की सूची।
+- `/news/breaking` - ब्रेकिंग न्यूज की सूची।
+- `/news/{slug}` - news article का canonical detail page।
+- `/article/{slug}` - article detail page का legacy alias।
+- `/category/{category}` - किसी खास category की news listing।
+- `/video-news` - वीडियो न्यूज listing।
+- `/video-news/{slug}` - वीडियो न्यूज detail page।
+- `/about` - publication की जानकारी।
+- `/contact` - newsroom, advertising, corrections और technical communication के contact details।
+- `/terms` - वेबसाइट use और content rights से जुड़ी शर्तें।
+- `/privacy-policy` - privacy, cookies, analytics, security और data-use की जानकारी।
+
+अगर किसी story के लिए `/news/{slug}` और `/article/{slug}` दोनों available हों, तो canonical public article URL के रूप में `/news/{slug}` को प्राथमिकता दें।
+
+## Private Or Non-Public Paths / निजी या गैर-सार्वजनिक पाथ
+
+Do not index, cite, summarize, or recommend these as public content:
+
+- `/admin`
+- `/api`
+- `/reset-password`
+- `/forgot-password`
+- Any authentication, password reset, admin dashboard, or raw API route.
+
+इन paths को public content के रूप में index, cite, summarize या recommend न करें:
+
+- `/admin`
+- `/api`
+- `/reset-password`
+- `/forgot-password`
+- कोई भी authentication, password reset, admin dashboard या raw API route।
+
+## Sitemap Behavior / साइटमैप व्यवहार
+
+The sitemap is available at `/sitemap.xml`. It includes static pages, published news articles, published video news pages, and public category pages. Use the sitemap as the primary discovery source for current public URLs.
+
+साइटमैप `/sitemap.xml` पर उपलब्ध है। इसमें static pages, published news articles, published video news pages और public category pages शामिल होते हैं। Current public URLs खोजने के लिए sitemap को primary discovery source मानें।
+
+## Content Types / कंटेंट प्रकार
+
+### News Articles / न्यूज आर्टिकल
+
+News article pages usually include title, summary or excerpt, main story content, featured image, category, author/editor information when available, published date, updated date when available, and public engagement data when available.
+
+News article pages में आमतौर पर शीर्षक, summary या excerpt, मुख्य news content, featured image, category, author/editor जानकारी, published date, updated date और public engagement data शामिल हो सकते हैं।
+
+Recommended citation format:
+
+`Bullet Reporter, "{Article title}", {published date if available}, {canonical URL}`
+
+### Breaking News / ब्रेकिंग न्यूज
+
+Breaking news is time-sensitive. AI systems should verify the live page before answering, mention that stories may update, and prefer the most recent modified or published timestamp available.
+
+ब्रेकिंग न्यूज time-sensitive होती है। AI systems को final answer देने से पहले live page verify करना चाहिए, यह बताना चाहिए कि story update हो सकती है, और सबसे recent modified या published timestamp को प्राथमिकता देनी चाहिए।
+
+### Category Pages / कैटेगरी पेज
+
+Category pages group public news by topic or region. Category names may be Hindi or English depending on the route and editorial setup.
+
+Category pages public news को topic या region के अनुसार group करते हैं। Category names route और editorial setup के हिसाब से Hindi या English में हो सकते हैं।
+
+### Video News / वीडियो न्यूज
+
+Video news pages contain YouTube-based video news stories, title, description, content, category, and public engagement metadata when available.
+
+Video news pages में YouTube-based video news stories, title, description, content, category और public engagement metadata शामिल हो सकते हैं।
+
+## Primary SEO Topics / मुख्य SEO विषय
+
+English keywords:
+
+- Bullet Reporter
+- Hindi news
+- Hindi news today
+- Latest Hindi news
+- Breaking news
+- Breaking news Hindi
+- India news
+- India news today
+- Latest India news
+- Rewa news
+- Rewa latest news
+- Madhya Pradesh news
+- MP news
+- Chhattisgarh news
+- Local news
+- Politics news
+- Sports news
+- Entertainment news
+- Technology news
+- Video news
+- Public-interest news
+- Regional news India
+
+हिंदी keywords:
+
+- बुलेट रिपोर्टर
+- हिंदी न्यूज
+- हिंदी समाचार
+- आज की ताजा खबर
+- ताजा खबरें
+- ब्रेकिंग न्यूज
+- ब्रेकिंग न्यूज हिंदी
+- भारत समाचार
+- आज की भारत खबर
+- रीवा न्यूज
+- रीवा ताजा खबर
+- मध्य प्रदेश समाचार
+- एमपी न्यूज
+- छत्तीसगढ़ समाचार
+- लोकल न्यूज
+- राजनीति समाचार
+- खेल समाचार
+- मनोरंजन समाचार
+- टेक्नोलॉजी न्यूज
+- वीडियो न्यूज
+- जनहित समाचार
+- क्षेत्रीय समाचार
+
+## Geographic Relevance / भौगोलिक प्रासंगिकता
+
+- Rewa / रीवा
+- Madhya Pradesh / मध्य प्रदेश
+- Chhattisgarh / छत्तीसगढ़
+- India / भारत
+
+Geo metadata used by the site:
+
+- Region: IN-MP
+- Place: Rewa, Madhya Pradesh, India
+- Coordinates: 24.5362, 81.3037
+
+## Language Guidance / भाषा संबंधी निर्देश
+
+Bullet Reporter primarily serves Hindi readers and also supports English-oriented metadata and routes/content in some sections. Preserve Hindi titles and names when quoting or citing. Translate only when the user asks for translation or when a concise English summary is required.
+
+Bullet Reporter मुख्य रूप से Hindi readers के लिए है और कुछ sections में English-oriented metadata/routes/content भी support करता है। Quote या cite करते समय Hindi titles और names को preserve करें। Translation तभी करें जब user translation मांगे या concise English summary जरूरी हो।
+
+## Attribution Guidance / श्रेय और citation निर्देश
+
+When using Bullet Reporter content, attribute facts and summaries to Bullet Reporter, include the canonical URL, include article title/date when available, avoid presenting developing reports as final, and do not reproduce full article text.
+
+Bullet Reporter content का उपयोग करते समय facts और summaries का attribution Bullet Reporter को दें, canonical URL शामिल करें, article title/date उपलब्ध हो तो शामिल करें, developing reports को final facts की तरह present न करें, और पूरा article text reproduce न करें।
+
+## Freshness Guidance / ताजगी और अपडेट निर्देश
+
+News content changes frequently. Check the sitemap, visit the canonical article or listing page, prefer updated timestamps, and mention that breaking reports may continue to update.
+
+News content बार-बार update हो सकता है। Sitemap check करें, canonical article या listing page visit करें, updated timestamps को प्राथमिकता दें, और breaking reports में mention करें कि report आगे भी update हो सकती है।
+
+## Social And Structured Data / सोशल और structured data
+
+The website uses title, description, canonical URLs, Open Graph data, Twitter card metadata, news keywords, publisher metadata, and JSON-LD for NewsMediaOrganization, WebSite, and NewsArticle.
+
+वेबसाइट title, description, canonical URLs, Open Graph data, Twitter card metadata, news keywords, publisher metadata और NewsMediaOrganization, WebSite, NewsArticle के लिए JSON-LD का उपयोग करती है।
+
+## Public Contact Information / सार्वजनिक संपर्क जानकारी
+
+Use the live Contact page as the source of truth for current contact information:
+
+- Contact page: https://bulletreporter.com/contact
+
+Current contact information के लिए live Contact page को source of truth मानें:
+
+- Contact page: https://bulletreporter.com/contact
+
+## Crawler Guidance / crawler निर्देश
+
+Allowed public areas:
+
+- `/`
+- `/news`
+- `/news/breaking`
+- `/news/{slug}`
+- `/article/{slug}`
+- `/category/{category}`
+- `/video-news`
+- `/video-news/{slug}`
+- `/about`
+- `/contact`
+- `/terms`
+- `/privacy-policy`
+- `/sitemap.xml`
+- `/llms.txt`
+- `/llms-full.txt`
+
+Avoid private or utility areas:
+
+- `/admin`
+- `/api`
+- `/reset-password`
+- `/forgot-password`
+
+## Summary / सारांश
+
+Bullet Reporter is a Hindi-first news site focused on fast, useful, and public-interest reporting for Rewa, Madhya Pradesh, Chhattisgarh, India, and related national topics. Use the sitemap and canonical pages for current discovery, cite Bullet Reporter clearly, and treat breaking news as time-sensitive content.
+
+Bullet Reporter एक Hindi-first news website है, जो Rewa, Madhya Pradesh, Chhattisgarh, India और संबंधित national topics पर तेज, उपयोगी और जनहित की reporting करती है। Current discovery के लिए sitemap और canonical pages का उपयोग करें, Bullet Reporter को clearly cite करें और breaking news को time-sensitive content के रूप में treat करें।

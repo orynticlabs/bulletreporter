@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { addCacheVersionToUrl, getPublicCacheVersion } from '@/utils/publicCacheState'
 
 const PAYLOAD_API_BASE = typeof window === 'undefined'
-  ? process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  ? process.env.NEXT_PUBLIC_SITE_URL
   : ''
 
 const isCloudinaryUrl = (url = '') => /res\.cloudinary\.com|cloudinary\.com/.test(String(url))
@@ -84,8 +84,20 @@ const AdBanner = ({ size, position }) => {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
-  const { data: advertisements } = useQuery({
-    queryKey: ['advertisements', position, size],
+  const getSizeClasses = () => {
+    switch (size) {
+      case 'large': return 'h-32 md:h-40'
+      case 'medium': return 'h-24 md:h-32'
+      case 'small': return 'h-16 md:h-20'
+      case 'square': return 'h-64 w-full max-w-sm'
+      default: return 'h-24'
+    }
+  }
+
+  const className = `flex items-center justify-center overflow-hidden rounded-lg border border-red-100 bg-white shadow-sm ${getSizeClasses()}`
+
+  const { data: advertisements, isLoading } = useQuery({
+    queryKey: ['advertisements'],
     queryFn: async () => {
       const version = await getPublicCacheVersion('advertisements')
       const url = addCacheVersionToUrl(`${PAYLOAD_API_BASE}/api/public/advertisements`, version)
@@ -97,16 +109,6 @@ const AdBanner = ({ size, position }) => {
     staleTime: 5 * 60 * 1000,
     enabled: mounted,
   })
-
-  const getSizeClasses = () => {
-    switch (size) {
-      case 'large': return 'h-32 md:h-40'
-      case 'medium': return 'h-24 md:h-32'
-      case 'small': return 'h-16 md:h-20'
-      case 'square': return 'h-64 w-full max-w-sm'
-      default: return 'h-24'
-    }
-  }
 
   const getTargetTypes = () => {
     const targetType = LEGACY_POSITION_TO_TYPE[position]
@@ -124,7 +126,13 @@ const AdBanner = ({ size, position }) => {
   }
 
   // Before mount: render nothing to avoid hardcoded banner artwork or hydration mismatch.
-  if (!mounted) return null
+  if (!mounted || isLoading) {
+    return (
+      <div className={className} aria-hidden="true">
+        <div className="h-full w-full animate-pulse bg-gray-100" />
+      </div>
+    )
+  }
 
   const specificAd = advertisements
     ?.map(normalizeAd)
@@ -143,8 +151,6 @@ const AdBanner = ({ size, position }) => {
       className="w-full h-full object-contain bg-white"
     />
   )
-
-  const className = `flex items-center justify-center overflow-hidden rounded-lg border border-red-100 bg-white shadow-sm ${getSizeClasses()}`
 
   if (!currentAd.linkUrl) {
     return <div className={className}>{content}</div>
