@@ -1,6 +1,7 @@
 import config from '@payload-config'
 import { getPayload } from 'payload'
 import { absoluteUrl } from '@/lib/seo'
+import { logDeploymentEvent, toLoggableError } from '@/lib/deploymentLogger'
 
 export const revalidate = 300
 
@@ -128,8 +129,21 @@ export default async function sitemap() {
         priority: 0.8,
       }))
 
+    logDeploymentEvent('info', 'sitemap', 'Generated dynamic sitemap routes', {
+      staticRoutes: routes.length,
+      categoryRoutes: categoryRoutes.length,
+      newsRoutes: newsRoutes.length,
+      videoNewsRoutes: videoNewsRoutes.length,
+      totalRoutes: routes.length + categoryRoutes.length + newsRoutes.length + videoNewsRoutes.length,
+    })
+
     return [...routes, ...categoryRoutes, ...newsRoutes, ...videoNewsRoutes]
-  } catch {
+  } catch (error) {
+    logDeploymentEvent('warn', 'sitemap', 'Dynamic sitemap generation failed; returning static routes', {
+      staticRoutes: routes.length,
+      error: toLoggableError(error),
+    })
+
     return routes
   }
 }

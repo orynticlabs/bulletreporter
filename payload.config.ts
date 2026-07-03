@@ -10,6 +10,7 @@ import sharp from 'sharp'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { logDeploymentEventOnce } from './src/lib/deploymentLogger'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -48,6 +49,12 @@ const databaseUrl =
   process.env.POSTGRES_URL ||
   process.env.POSTGRES_PRISMA_URL ||
   process.env.PAYLOAD_DATABASE_URL
+const databaseUrlSource =
+  process.env.DATABASE_URL ? 'DATABASE_URL'
+    : process.env.POSTGRES_URL ? 'POSTGRES_URL'
+      : process.env.POSTGRES_PRISMA_URL ? 'POSTGRES_PRISMA_URL'
+        : process.env.PAYLOAD_DATABASE_URL ? 'PAYLOAD_DATABASE_URL'
+          : 'missing'
 // ── Email (Nodemailer) ──────────────────────────────────────────────────────
 const smtpHost = process.env.SMTP_HOST
 const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10)
@@ -56,7 +63,22 @@ const smtpPass = process.env.SMTP_PASS
 const configuredEmailFrom = process.env.EMAIL_FROM
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
 
-const getEmailDomain = (value?: string) => value?.split('@').pop()?.toLowerCase() || ''
+const getEmailAddress = (value?: string) => {
+  const match = value?.match(/<([^>]+)>/)
+  return (match?.[1] || value || '').trim()
+}
+
+const getEmailDomain = (value?: string) => getEmailAddress(value).split('@').pop()?.toLowerCase() || ''
+
+const getDatabaseHost = (value?: string) => {
+  if (!value) return ''
+
+  try {
+    return new URL(value).host
+  } catch {
+    return 'invalid-url'
+  }
+}
 
 const smtpUserDomain = getEmailDomain(smtpUser)
 const configuredEmailFromDomain = getEmailDomain(configuredEmailFrom)
@@ -64,6 +86,43 @@ const emailFromAddress =
   smtpUserDomain && configuredEmailFromDomain && smtpUserDomain !== configuredEmailFromDomain
     ? smtpUser || configuredEmailFrom
     : configuredEmailFrom || smtpUser
+
+logDeploymentEventOnce('payload-email-config', 'info', 'payload.email', 'Email transport configured', {
+  smtpHost: smtpHost || 'missing',
+  smtpPort,
+  secure: smtpPort === 465,
+  hasSmtpUser: Boolean(smtpUser),
+  hasSmtpPassword: Boolean(smtpPass),
+  smtpUserDomain: smtpUserDomain || 'missing',
+  emailFromDomain: configuredEmailFromDomain || 'missing',
+  resolvedFromDomain: getEmailDomain(emailFromAddress) || 'missing',
+  skipVerify: true,
+})
+
+if (!smtpHost || !smtpUser || !smtpPass || !emailFromAddress) {
+  logDeploymentEventOnce('payload-email-missing-env', 'warn', 'payload.email', 'Email environment is incomplete', {
+    missing: [
+      !smtpHost ? 'SMTP_HOST' : null,
+      !smtpUser ? 'SMTP_USER' : null,
+      !smtpPass ? 'SMTP_PASS' : null,
+      !emailFromAddress ? 'EMAIL_FROM or SMTP_USER' : null,
+    ].filter(Boolean),
+  })
+}
+
+if (smtpUserDomain && configuredEmailFromDomain && smtpUserDomain !== configuredEmailFromDomain) {
+  logDeploymentEventOnce('payload-email-from-domain-mismatch', 'warn', 'payload.email', 'EMAIL_FROM domain differs from SMTP_USER domain', {
+    smtpUserDomain,
+    emailFromDomain: configuredEmailFromDomain,
+    resolvedFromDomain: getEmailDomain(emailFromAddress),
+  })
+}
+
+logDeploymentEventOnce('payload-database-config', 'info', 'payload.database', 'Database configuration loaded', {
+  source: databaseUrlSource,
+  host: getDatabaseHost(databaseUrl) || 'missing',
+  hasDatabaseUrl: Boolean(databaseUrl),
+})
 
 const escapeHtml = (value: unknown) =>
   String(value ?? '')
@@ -535,6 +594,7 @@ export default buildConfig({
   email: nodemailerAdapter({
     defaultFromAddress: emailFromAddress,
     defaultFromName: 'Bullet Reporter',
+    skipVerify: true,
     transportOptions: {
       host: smtpHost,
       port: smtpPort,
