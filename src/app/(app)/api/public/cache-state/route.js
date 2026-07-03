@@ -7,6 +7,11 @@ const NO_STORE_HEADERS = {
   'Cache-Control': 'no-store, no-cache, must-revalidate',
 }
 
+const CACHE_TTL = 5 * 1000
+let cachedResponse = null
+let cachedAt = 0
+let pendingResponse = null
+
 const timestampOf = (value) => {
   if (!value) return 0
   const time = new Date(value).getTime()
@@ -44,8 +49,7 @@ async function getSettings(payload) {
   }
 }
 
-export async function GET() {
-  try {
+async function buildCacheState() {
     const payload = await getPayload({ config })
     const [
       news,
@@ -98,14 +102,35 @@ export async function GET() {
       versions.monetization,
     ].join('|')
 
-    return Response.json(
-      {
-        version,
-        versions,
-        details: versionDetails,
-      },
-      { headers: NO_STORE_HEADERS },
-    )
+    return {
+      version,
+      versions,
+      details: versionDetails,
+    }
+}
+
+export async function GET() {
+  const now = Date.now()
+
+  if (cachedResponse && now - cachedAt < CACHE_TTL) {
+    return Response.json(cachedResponse, { headers: NO_STORE_HEADERS })
+  }
+
+  try {
+    if (!pendingResponse) {
+      pendingResponse = buildCacheState()
+        .then((data) => {
+          cachedResponse = data
+          cachedAt = Date.now()
+          return data
+        })
+        .finally(() => {
+          pendingResponse = null
+        })
+    }
+
+    const data = await pendingResponse
+    return Response.json(data, { headers: NO_STORE_HEADERS })
   } catch (error) {
     return Response.json(
       {

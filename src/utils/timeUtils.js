@@ -74,8 +74,7 @@ export const getUploadTime = (dateString, showSeconds = false) => {
       hour12: true
     });
     
-  } catch (error) {
-    console.warn('Upload time formatting error:', error, 'for date:', dateString);
+  } catch {
     return 'अपलोड समय उपलब्ध नहीं';
   }
 };
@@ -105,8 +104,7 @@ export const getSimpleTimestamp = (dateString) => {
       hour12: true
     });
     
-  } catch (error) {
-    console.warn('Simple timestamp error:', error, 'for date:', dateString);
+  } catch {
     return 'N/A';
   }
 };
@@ -148,8 +146,7 @@ export const getReadingTime = (content, wordsPerMinute = 150) => {
       }
     }
     
-  } catch (error) {
-    console.warn('Reading time calculation error:', error);
+  } catch {
     return '3 मिनट';
   }
 };
@@ -188,8 +185,7 @@ export const getBreakingNewsTime = (dateString) => {
       });
     }
     
-  } catch (error) {
-    console.warn('Breaking news time error:', error, 'for date:', dateString);
+  } catch {
     return '';
   }
 };
@@ -224,8 +220,7 @@ export const getISTTime = (dateString) => {
 
     return date.toLocaleString('hi-IN', istOptions) + ' IST';
     
-  } catch (error) {
-    console.warn('IST time error:', error, 'for date:', dateString);
+  } catch {
     return 'N/A';
   }
 };

@@ -1,13 +1,13 @@
 'use client'
 
-import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { SearchProvider } from '@/contexts/SearchContext'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
-import { CONTENT_STALE_TIME } from '@/utils/queryConfig'
+import { CONTENT_STALE_TIME, PUBLIC_CACHE_CHECK_INTERVAL } from '@/utils/queryConfig'
 import { fetchPublicCacheState } from '@/utils/publicCacheState'
 
 const PUBLIC_DATA_QUERY_KEYS = new Set([
@@ -31,33 +31,64 @@ const PUBLIC_DATA_QUERY_KEYS = new Set([
 function PublicCacheInvalidator() {
   const queryClient = useQueryClient()
   const lastVersion = useRef(null)
+  const lastCheckAt = useRef(0)
+  const pendingCheck = useRef(null)
 
-  const { data } = useQuery({
-    queryKey: ['public-cache-state'],
-    queryFn: fetchPublicCacheState,
-    staleTime: 0,
-    refetchInterval: 10 * 1000,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: true,
-    retry: 1,
-  })
+  const checkForUpdates = useCallback(async ({ force = false } = {}) => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+
+    const now = Date.now()
+    if (now - lastCheckAt.current < PUBLIC_CACHE_CHECK_INTERVAL) return
+    if (pendingCheck.current) return pendingCheck.current
+
+    lastCheckAt.current = now
+    pendingCheck.current = fetchPublicCacheState({ forceRefresh: true })
+      .then((data) => {
+        const version = data?.version
+        if (!version) return
+
+        if (lastVersion.current === null) {
+          lastVersion.current = version
+          return
+        }
+
+        if (lastVersion.current === version) return
+
+        lastVersion.current = version
+        queryClient.invalidateQueries({
+          predicate: (query) => PUBLIC_DATA_QUERY_KEYS.has(query.queryKey?.[0]),
+        })
+      })
+      .catch(() => {})
+      .finally(() => {
+        pendingCheck.current = null
+      })
+
+    return pendingCheck.current
+  }, [queryClient])
 
   useEffect(() => {
-    const version = data?.version
-    if (!version) return
+    checkForUpdates({ force: true })
 
-    if (lastVersion.current === null) {
-      lastVersion.current = version
-      return
+    const onVisibleOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdates({ force: true })
+      }
     }
 
-    if (lastVersion.current === version) return
+    const intervalId = window.setInterval(() => {
+      checkForUpdates()
+    }, PUBLIC_CACHE_CHECK_INTERVAL)
 
-    lastVersion.current = version
-    queryClient.invalidateQueries({
-      predicate: (query) => PUBLIC_DATA_QUERY_KEYS.has(query.queryKey?.[0]),
-    })
-  }, [data?.version, queryClient])
+    document.addEventListener('visibilitychange', onVisibleOrFocus)
+    window.addEventListener('focus', onVisibleOrFocus)
+
+    return () => {
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', onVisibleOrFocus)
+      window.removeEventListener('focus', onVisibleOrFocus)
+    }
+  }, [checkForUpdates])
 
   return null
 }

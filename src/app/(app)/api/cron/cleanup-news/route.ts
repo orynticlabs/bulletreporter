@@ -80,7 +80,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ deleted, errors, results })
   } catch (err: unknown) {
-    console.error('[cleanup-news] Fatal error:', err)
     return NextResponse.json(
       { error: 'Internal server error', details: messageFromError(err) },
       { status: 500 },

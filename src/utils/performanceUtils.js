@@ -46,7 +46,6 @@ export const cachedApiRequest = async (url, options = {}) => {
     
     return data;
   } catch (error) {
-    console.error('API request failed:', error);
     throw error;
   }
 };
@@ -68,12 +67,7 @@ export const preloadImages = async (imageUrls) => {
       });
     });
   
-  try {
-    await Promise.allSettled(promises);
-    console.log('Images preloaded successfully');
-  } catch (error) {
-    console.warn('Some images failed to preload:', error);
-  }
+  await Promise.allSettled(promises);
 };
 
 /**

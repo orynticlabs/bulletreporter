@@ -37,8 +37,7 @@ export async function POST(request, { params }) {
     })
 
     return Response.json({ views: newViews })
-  } catch (err) {
-    console.error('[video-news view] Error:', err)
+  } catch {
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

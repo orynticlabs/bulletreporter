@@ -24,8 +24,7 @@ export async function POST(request) {
     })
 
     return Response.json({ ok: true })
-  } catch (error) {
-    console.error('[auth forgot-password] Error:', error)
+  } catch {
     return Response.json({ error: 'Unable to send reset email' }, { status: 500 })
   }
 }

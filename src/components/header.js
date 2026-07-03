@@ -1,24 +1,24 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Search, Menu, Bell, BellOff, Share2, Youtube, Facebook, Instagram, Loader2, X, Phone, Mail, Clock, ChevronRight, Zap } from 'lucide-react'
+import { Search, Menu, Bell, BellOff, Share2, MessageCircle, Facebook, Instagram, Twitter, Loader2, X, Phone, Mail, Clock, ChevronRight, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSearch } from '@/contexts/SearchContext'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { fetchPayloadCategories } from '@/utils/payloadCategories'
+import { fetchPayloadCategories, getCategoryDisplayName, getCategoryRouteKey } from '@/utils/payloadCategories'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { getDisplayDateAfterRollover, getRelativeTime } from '@/utils/dateUtils'
+import { PUBLIC_CACHE_CHECK_INTERVAL } from '@/utils/queryConfig'
 import SearchResults from './SearchResults'
 
 const MENU_CATEGORY_LIMIT  = 12
 const ALERTS_LIMIT         = 4               // only latest 4 shown in panel
-const ALERTS_POLL_INTERVAL = 60 * 1000       // 1 min
-const ALERTS_CACHE_TTL     = 55 * 1000       // shorter than poll — guarantees fresh fetch
+const ALERTS_POLL_INTERVAL = PUBLIC_CACHE_CHECK_INTERVAL
+const ALERTS_CACHE_TTL     = PUBLIC_CACHE_CHECK_INTERVAL - 5 * 1000
 const POPUP_DISMISS_DELAY  = 7000
 const LAST_SEEN_KEY  = 'br_alert_last_seen'
 const MUTED_KEY      = 'br_alert_muted'
-
 // ── Sound engine (Web Audio API — no external files needed) ──────────────────
 // Generates a pleasant two-tone "ding-dong" chime.
 // Only plays AFTER the first user interaction (satisfies browser autoplay policy).
@@ -398,8 +398,8 @@ function Header() {
     staleTime: 10 * 60 * 1000,
   })
 
-  // ── Alert articles — polled every 1 min ────────────────────────────────────
-  // • ALERTS_CACHE_TTL (55 s) < ALERTS_POLL_INTERVAL (60 s) so each timed poll
+  // ── Alert articles - visible-tab polling
+  // • ALERTS_CACHE_TTL < ALERTS_POLL_INTERVAL so each timed poll
   //   bypasses the module-level in-memory cache and hits the network.
   // • refetchOnWindowFocus: false prevents the query from firing on every click,
   //   which would race with the bell toggle and cause spurious re-renders.
@@ -410,13 +410,14 @@ function Header() {
         limit: ALERTS_LIMIT,
         sort: '-publishedAt',
         lang,
+        summary: true,
         ttl: ALERTS_CACHE_TTL,
       })
       return result.articles || []
     },
     staleTime: ALERTS_CACHE_TTL,
     refetchInterval: ALERTS_POLL_INTERVAL,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
     retry: 1,
   })
@@ -501,15 +502,60 @@ function Header() {
   const mainCategories = [
     { name: t.header.mainNews, href: getLangPath('/') },
     ...categories.slice(0, MENU_CATEGORY_LIMIT).map(cat => ({
-      name: lang === 'en' ? (cat.name || cat.nameHindi) : (cat.nameHindi || cat.name),
-      href: getLangPath(`/category/${encodeURIComponent(cat.name)}`),
+      name: getCategoryDisplayName(cat, lang),
+      href: getLangPath(`/category/${encodeURIComponent(getCategoryRouteKey(cat))}`),
     }))
   ]
 
+  const getShareData = () => {
+    const url = typeof window !== 'undefined' ? window.location.href : ''
+    const title = typeof document !== 'undefined' ? document.title : 'Bullet Reporter'
+    const text = `${title} - Bullet Reporter`
+    return { url, title, text }
+  }
+
+  const getShareHref = (platform) => {
+    const { url, text } = getShareData()
+    const encodedUrl = encodeURIComponent(url)
+    const encodedText = encodeURIComponent(text)
+
+    switch (platform) {
+      case 'whatsapp':
+        return `https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`
+      case 'facebook':
+        return `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
+      case 'x':
+        return `https://x.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`
+      default:
+        return url || '/'
+    }
+  }
+
+  const handleShareClick = async (event, platform) => {
+    setIsSocialOpen(false)
+    if (platform !== 'instagram') return
+
+    const shareData = getShareData()
+    event.preventDefault()
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share(shareData)
+      } catch {}
+      return
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard && shareData.url) {
+      try {
+        await navigator.clipboard.writeText(shareData.url)
+      } catch {}
+    }
+  }
+
   const socialLinks = [
-    { name: 'YouTube',   icon: Youtube,   href: 'https://www.youtube.com/@bulletreporter', color: 'text-red-600' },
-    { name: 'Facebook',  icon: Facebook,  href: 'https://www.facebook.com/61558107293456', color: 'text-blue-600' },
-    { name: 'Instagram', icon: Instagram, href: 'https://instagram.com/bulletreporterofficial', color: 'text-pink-600' },
+    { name: 'WhatsApp',  icon: MessageCircle, platform: 'whatsapp',  color: 'text-green-600' },
+    { name: 'Facebook',  icon: Facebook,      platform: 'facebook',  color: 'text-blue-600' },
+    { name: 'Instagram', icon: Instagram,     platform: 'instagram', color: 'text-pink-600' },
+    { name: 'X',         icon: Twitter,       platform: 'x',         color: 'text-gray-950' },
   ]
 
   const isActive = (href) => {
@@ -608,12 +654,14 @@ function Header() {
                 {isSocialOpen && (
                   <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
                     <div className="px-3 py-1.5 text-xs text-gray-400 border-b border-gray-100 font-medium">
-                      {t.header.followUs}
+                      {t.home?.share || 'Share'}
                     </div>
                     {socialLinks.map((s) => (
-                      <a key={s.name} href={s.href}
+                      <a key={s.name} href={getShareHref(s.platform)}
+                        target={s.platform === 'instagram' ? undefined : '_blank'}
+                        rel={s.platform === 'instagram' ? undefined : 'noopener noreferrer'}
                         className="flex items-center gap-2.5 px-4 py-2 hover:bg-red-50 transition-colors"
-                        onClick={() => setIsSocialOpen(false)}>
+                        onClick={(event) => handleShareClick(event, s.platform)}>
                         <s.icon className={`w-4 h-4 ${s.color}`} />
                         <span className="text-gray-700 text-sm font-medium">{s.name}</span>
                       </a>
@@ -763,7 +811,10 @@ function Header() {
             <div className="flex items-center">
               <div className="flex gap-3">
                 {socialLinks.map((s) => (
-                  <a key={s.name} href={s.href}
+                  <a key={s.name} href={getShareHref(s.platform)}
+                    target={s.platform === 'instagram' ? undefined : '_blank'}
+                    rel={s.platform === 'instagram' ? undefined : 'noopener noreferrer'}
+                    onClick={(event) => handleShareClick(event, s.platform)}
                     className="bg-gray-100 hover:bg-red-50 p-2 rounded-full transition-colors" title={s.name}>
                     <s.icon className={`w-4 h-4 ${s.color}`} />
                   </a>

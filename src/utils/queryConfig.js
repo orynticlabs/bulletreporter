@@ -12,3 +12,4 @@ export const CONTENT_REFETCH_INTERVAL   = 2 * 60 * 1000   // 2 minutes
 export const CONTENT_STALE_TIME         = 30 * 1000        // 30 seconds
 export const STATIC_STALE_TIME          = 10 * 60 * 1000   // 10 minutes
 export const ARTICLE_STALE_TIME         = 5 * 60 * 1000    // 5 minutes
+export const PUBLIC_CACHE_CHECK_INTERVAL = 2 * 60 * 1000   // 2 minutes

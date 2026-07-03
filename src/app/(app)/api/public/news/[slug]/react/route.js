@@ -58,8 +58,7 @@ export async function POST(request, { params }) {
       likes: updated.likes ?? 0,
       dislikes: updated.dislikes ?? 0,
     })
-  } catch (err) {
-    console.error('[react] Error:', err)
+  } catch {
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

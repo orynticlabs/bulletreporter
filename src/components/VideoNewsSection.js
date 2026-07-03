@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Play, Video } from 'lucide-react'
@@ -62,10 +62,36 @@ function VideoNewsCard({ video, featured = false, onOpen }) {
   )
 }
 
-export default function VideoNewsSection({ limit = 5, compact = false }) {
+export default function VideoNewsSection({ limit = 5, compact = false, initialVideos }) {
   const router = useRouter()
   const { t, lang } = useLanguage()
   const getLangPath = useCallback((path) => lang === 'en' ? `/en${path}` : path, [lang])
+  const hasInitialVideos = Array.isArray(initialVideos)
+  const sectionRef = useRef(null)
+  const [shouldLoad, setShouldLoad] = useState(hasInitialVideos)
+
+  useEffect(() => {
+    if (shouldLoad) return undefined
+
+    const node = sectionRef.current
+    if (!node || typeof IntersectionObserver === 'undefined') {
+      setShouldLoad(true)
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldLoad(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '500px 0px' },
+    )
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [shouldLoad])
 
   const { data, isLoading } = useQuery({
     queryKey: ['video-news', { limit, page: 1, lang }],
@@ -74,14 +100,16 @@ export default function VideoNewsSection({ limit = 5, compact = false }) {
     refetchInterval: CONTENT_REFETCH_INTERVAL,
     refetchIntervalInBackground: false,
     retry: 1,
+    enabled: !hasInitialVideos && shouldLoad,
   })
 
-  const videos = data?.videos || []
+  const videos = hasInitialVideos ? initialVideos : (data?.videos || [])
+  const loading = !shouldLoad || (hasInitialVideos ? false : isLoading)
 
-  if (!isLoading && videos.length === 0) return null
+  if (shouldLoad && !loading && videos.length === 0) return null
 
   return (
-    <section className="rounded-lg border border-red-100 bg-white shadow-sm">
+    <section ref={sectionRef} className="rounded-lg border border-red-100 bg-white shadow-sm">
       <div className="h-1.5 bg-red-700" />
       <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-4 py-3">
         <div className="flex items-center gap-2.5">
@@ -103,7 +131,7 @@ export default function VideoNewsSection({ limit = 5, compact = false }) {
       </div>
 
       <div className="p-4">
-        {isLoading ? (
+        {loading ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {[0, 1, 2].map((item) => (
               <div key={item} className="h-64 animate-pulse rounded-lg bg-gray-100" />

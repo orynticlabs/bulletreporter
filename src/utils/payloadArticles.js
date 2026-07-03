@@ -1,8 +1,9 @@
 import { addCacheVersionToUrl, getPublicCacheVersion } from '@/utils/publicCacheState'
+import { getCategoryDisplayName, getCategoryRouteKey } from '@/utils/payloadCategories'
 
 const PAYLOAD_API_BASE =
   typeof window === 'undefined'
-    ? process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    ? process.env.NEXT_PUBLIC_SITE_URL
     : ''
 
 const PUBLIC_CACHE_TTL = 2 * 60 * 1000
@@ -22,10 +23,9 @@ const getCachedJson = async (url, ttl = PUBLIC_CACHE_TTL) => {
   }
 
   const request = fetch(url, {
-    // 'no-cache' always validates with the server (respects ETag/Last-Modified)
-    // but falls back to cached data if the server says 304. This prevents the
-    // browser from serving a stale or broken cached response via 'force-cache'.
-    cache: 'no-cache',
+    // URLs include the public cache version, so normal browser caching is safe:
+    // when content changes, the URL changes and the browser fetches fresh data.
+    cache: 'default',
     credentials: 'omit',
   })
     .then(async (response) => {
@@ -113,13 +113,13 @@ const buildCloudinaryUrl = (media, transform = 'f_auto,q_auto') => {
   return `https://res.cloudinary.com/${cloudName}/image/upload/${transformPath}${publicId}`
 }
 
-const getMediaUrl = (media) => {
+const getMediaUrl = (media, transform = 'f_auto,q_auto,c_limit,w_900') => {
   if (!media || typeof media !== 'object') return null
 
   // Prefer building from cloudinaryPublicId — gives us full control over the
   // transformation and avoids the raw stored URL which may lack dimensions.
   if (media.cloudinaryPublicId) {
-    const built = buildCloudinaryUrl(media, 'f_auto,q_auto,w_800')
+    const built = buildCloudinaryUrl(media, transform)
     if (built) return built
   }
 
@@ -150,9 +150,7 @@ export const getOgImageUrl = (media) => {
 const getRelationshipTitle = (value, fallback = '', lang = 'hi') => {
   if (!value) return fallback
   if (typeof value === 'string') return value
-  return lang === 'en'
-    ? (value.name || value.nameHindi || value.title || fallback)
-    : (value.nameHindi || value.name || value.title || fallback)
+  return getCategoryDisplayName(value, lang) || fallback
 }
 
 const getAuthorName = (value) => {
@@ -272,15 +270,18 @@ export const lexicalToPlainText = (value) => {
     .trim()
 }
 
-export const normalizePayloadArticle = (doc, lang = 'hi') => {
+export const normalizePayloadArticle = (doc, lang = 'hi', options = {}) => {
   if (!doc) return null
 
   // Single content field (previously English duplicate removed)
   const localizedContent = doc.content
-  const contentHtml = lexicalToHtml(localizedContent)
-  const contentText = lexicalToPlainText(localizedContent)
+  const contentHtml = options.summary ? '' : lexicalToHtml(localizedContent)
+  const contentText = options.summary ? '' : lexicalToPlainText(localizedContent)
   const excerpt = doc.excerpt || contentText.slice(0, 180)
-  const imageUrl = getMediaUrl(doc.featuredImage)
+  const imageUrl = getMediaUrl(
+    doc.featuredImage,
+    options.summary ? 'f_auto,q_auto,c_limit,w_640' : 'f_auto,q_auto,c_limit,w_1200',
+  )
 
   // category_slug  → used in URLs (always the English `name` field so the API
   //                   filter `category: { equals: id }` resolves consistently)
@@ -290,7 +291,7 @@ export const normalizePayloadArticle = (doc, lang = 'hi') => {
     ? getRelationshipTitle(categoryObj, 'News', lang)
     : (typeof doc.category === 'string' ? doc.category : 'News')
   const categorySlug = categoryObj
-    ? (categoryObj.name || categoryObj.nameHindi || categoryDisplay)
+    ? getCategoryRouteKey(categoryObj)
     : categoryDisplay
 
   const tags = Array.isArray(doc.tags)
@@ -335,7 +336,7 @@ export const normalizePayloadVideoNews = (doc, lang = 'hi') => {
     ? getRelationshipTitle(categoryObj, 'Video News', lang)
     : (typeof doc.category === 'string' ? doc.category : 'Video News')
   const categorySlug = categoryObj
-    ? (categoryObj.name || categoryObj.nameHindi || categoryDisplay)
+    ? getCategoryRouteKey(categoryObj)
     : categoryDisplay
 
   const tags = Array.isArray(doc.tags)
@@ -408,6 +409,10 @@ const buildPayloadNewsUrl = (options = {}) => {
     params.set('search', options.search)
   }
 
+  if (options.summary) {
+    params.set('summary', 'true')
+  }
+
   return `${PAYLOAD_API_BASE}/api/public/news?${params.toString()}`
 }
 
@@ -415,7 +420,7 @@ export async function fetchPayloadArticles(options = {}) {
   const version = await getPublicCacheVersion('news')
   const data = await getCachedJson(addCacheVersionToUrl(buildPayloadNewsUrl(options), version), options.ttl)
   const articles = (data.docs || [])
-    .map((doc) => normalizePayloadArticle(doc, options.lang || 'hi'))
+    .map((doc) => normalizePayloadArticle(doc, options.lang || 'hi', { summary: Boolean(options.summary) }))
     .filter(Boolean)
 
   return {

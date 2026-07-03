@@ -171,7 +171,7 @@ export default function NewsDetail({ initialArticle = null }) {
   // ── Fetch suggested articles (same category, exclude self) ───────────────
   const { data: suggestedData } = useQuery({
     queryKey: ['suggested', article?.category_slug, lang],
-    queryFn: () => fetchPayloadArticles({ category: article.category_slug || article.category, limit: 7, lang }),
+    queryFn: () => fetchPayloadArticles({ category: article.category_slug || article.category, limit: 7, lang, summary: true }),
     enabled: !!(article?.category_slug || article?.category),
     staleTime: 5 * 60 * 1000,
   })

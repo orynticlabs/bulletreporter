@@ -205,7 +205,6 @@ export const shareOnPlatform = (platform, article) => {
       shareUrl = generateLinkedInShareUrl(article, baseUrl);
       break;
     default:
-      console.warn(`Unknown platform: ${platform}`);
       return;
   }
   
@@ -243,8 +242,7 @@ export const validateImageUrl = async (imageUrl, fallbackUrl = SHARING_CONFIG.im
     if (response.ok) {
       return imageUrl;
     }
-  } catch (error) {
-    console.warn('Image validation failed:', error);
+  } catch {
   }
   
   return fallbackUrl;
@@ -285,12 +283,6 @@ export const preloadImage = (imageUrl) => {
   
   const img = new Image();
   img.src = imageUrl;
-  img.onload = () => {
-    console.log('Image preloaded successfully:', imageUrl);
-  };
-  img.onerror = () => {
-    console.warn('Failed to preload image:', imageUrl);
-  };
 };
 
 /**
@@ -320,10 +312,6 @@ export const optimizeArticleForSharing = (article) => {
  * @param {Object} article - The article shared
  */
 const trackShareAnalytics = (platform, article) => {
-  // This can be integrated with your analytics service
-  console.log(`Share tracked: ${platform} - ${article.title}`);
-  
-  // Example: Google Analytics
   if (typeof window !== 'undefined' && typeof window.gtag !== 'undefined') {
     window.gtag('event', 'share', {
       method: platform,

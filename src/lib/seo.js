@@ -1,15 +1,29 @@
 import { fetchPayloadArticleBySlug, fetchPayloadArticles } from '@/utils/payloadArticles'
 
 export const SITE_NAME = 'Bullet Reporter'
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bullet-reporter.vercel.app'
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
 export const SITE_TITLE = 'Bullet Reporter'
 export const SITE_DESCRIPTION =
-  'Bullet Reporter delivers fast, reliable Hindi and English news, breaking updates, local stories, politics, sports, technology, and entertainment.'
+  'Bullet Reporter delivers fast Hindi and English news, breaking updates, Rewa and Madhya Pradesh local news, Chhattisgarh news, India headlines, politics, sports, technology, entertainment, video news, and public-interest reports.'
 export const SITE_KEYWORDS = [
   'Bullet Reporter',
   'Hindi news',
+  'Hindi news today',
   'breaking news',
+  'breaking news Hindi',
   'latest news India',
+  'latest Hindi news',
+  'India news today',
+  'Madhya Pradesh news',
+  'MP news',
+  'Rewa news',
+  'Chhattisgarh news',
+  'politics news',
+  'sports news',
+  'entertainment news',
+  'technology news',
+  'video news',
+  'local news',
   'ताज़ा खबरें',
   'ब्रेकिंग न्यूज़',
   'OrynticLabs',
@@ -257,7 +271,12 @@ export function organizationJsonLd() {
       addressRegion: 'Madhya Pradesh',
       addressCountry: 'IN',
     },
-    sameAs: [SITE_URL],
+    sameAs: [
+      SITE_URL,
+      'https://www.youtube.com/@bulletreporter',
+      'https://www.facebook.com/61558107293456',
+      'https://instagram.com/bulletreporterofficial',
+    ],
   }
 }
 

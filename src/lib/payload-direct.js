@@ -45,8 +45,7 @@ export const fetchArticleBySlug = cache(async (slug) => {
     article.og_image_url = getOgImageUrl(rawFeaturedImage) || article.image_url || null
 
     return article
-  } catch (err) {
-    console.error('[payload-direct] fetchArticleBySlug failed:', err?.message)
+  } catch {
     return null
   }
 })

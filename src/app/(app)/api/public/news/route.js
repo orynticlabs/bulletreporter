@@ -20,6 +20,24 @@ const getNumber = (value, fallback) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
 
+const SUMMARY_SELECT = {
+  title: true,
+  slug: true,
+  excerpt: true,
+  category: true,
+  featuredImage: true,
+  publishedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  author: true,
+  editor: true,
+  views: true,
+  youtubeUrl: true,
+  isBreaking: true,
+  isFeatured: true,
+  status: true,
+}
+
 /**
  * Resolve a category name/slug string to a numeric ID.
  * The frontend routes by the category name shown on the card, which may be
@@ -74,6 +92,7 @@ export async function GET(request) {
   const slug = normalizeRouteSlug(searchParams.get('slug'))
   const categoryParam = searchParams.get('category')
   const search = searchParams.get('search')
+  const summary = searchParams.get('summary') === 'true'
 
   if (typeof isBreaking === 'boolean') where.isBreaking = { equals: isBreaking }
   if (typeof isFeatured === 'boolean') where.isFeatured = { equals: isFeatured }
@@ -99,7 +118,7 @@ export async function GET(request) {
     }
   }
 
-  const data = await payload.find({
+  const findOptions = {
     collection: 'news',
     draft: true,           // include articles saved but not yet Published via Payload button
     overrideAccess: true,  // access rule is enforced manually via the where clause above
@@ -108,7 +127,13 @@ export async function GET(request) {
     page: getNumber(searchParams.get('page'), 1),
     sort: searchParams.get('sort') || '-createdAt',
     where,
-  })
+  }
+
+  if (summary) {
+    findOptions.select = SUMMARY_SELECT
+  }
+
+  const data = await payload.find(findOptions)
 
   data.docs = data.docs.map((doc) => ({
     ...doc,

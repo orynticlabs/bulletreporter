@@ -43,8 +43,7 @@ export async function GET(request, { params }) {
     })
 
     return Response.json(data)
-  } catch (err) {
-    console.error('[video-news comments GET] Error:', err)
+  } catch {
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -89,8 +88,7 @@ export async function POST(request, { params }) {
     })
 
     return Response.json(comment, { status: 201 })
-  } catch (err) {
-    console.error('[video-news comments POST] Error:', err)
+  } catch {
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

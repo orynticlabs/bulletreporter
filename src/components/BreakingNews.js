@@ -16,7 +16,7 @@ function BreakingNews() {
   const { data: breakingNews = [], isLoading } = useQuery({
     queryKey: ['breaking-ticker', lang],
     queryFn: async () => {
-      const result = await fetchPayloadArticles({ isBreaking: true, limit: 10, lang })
+      const result = await fetchPayloadArticles({ isBreaking: true, limit: 10, lang, summary: true })
       return result.articles || []
     },
     staleTime: CONTENT_STALE_TIME,

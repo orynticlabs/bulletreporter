@@ -1,6 +1,15 @@
 import React from 'react';
 
-const LoadingSpinner = ({ size = "md", message = "लोड हो रहा है...", className = "", variant = "spinner" }) => {
+const LoadingSpinner = ({
+  size = "md",
+  message = "लोड हो रहा है...",
+  className = "",
+  variant = "spinner",
+  skeletonCount = 4,
+  skeletonMinWidth = 220,
+  skeletonAspect = "16 / 9",
+  showSkeletonHeader = true,
+}) => {
   const sizeClasses = {
     sm: "w-6 h-6 border-2",
     md: "w-8 h-8 border-3",
@@ -15,23 +24,36 @@ const LoadingSpinner = ({ size = "md", message = "लोड हो रहा ह
     xl: "text-xl"
   };
 
-  // Skeleton loading component
+  const skeletonItems = Array.from({ length: skeletonCount }, (_, index) => index);
+
+  // Responsive skeleton component. It adapts to the available container width
+  // without measuring the DOM, which keeps the loading state cheap to render.
   const SkeletonLoader = () => (
-    <div className="space-y-4">
-      <div className="animate-pulse">
-        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-        <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[1, 2, 3, 4].map((item) => (
-          <div key={item} className="animate-pulse">
-            <div className="h-48 bg-gray-200 rounded-lg mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+    <div className={`space-y-4 ${className}`} aria-label={message} role="status">
+      {showSkeletonHeader && (
+        <div className="animate-pulse space-y-2">
+          <div className="h-4 w-3/4 max-w-lg rounded bg-gray-200"></div>
+          <div className="h-4 w-1/2 max-w-md rounded bg-gray-200"></div>
+          <div className="h-4 w-2/3 max-w-xl rounded bg-gray-200"></div>
+        </div>
+      )}
+      <div
+        className="grid gap-4"
+        style={{ gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${skeletonMinWidth}px), 1fr))` }}
+      >
+        {skeletonItems.map((item) => (
+          <div key={item} className="animate-pulse rounded-lg border border-gray-100 bg-white p-2 shadow-sm">
+            <div className="mb-3 rounded-md bg-gray-200" style={{ aspectRatio: skeletonAspect }}></div>
+            <div className="mb-2 h-4 w-3/4 rounded bg-gray-200"></div>
+            <div className="mb-3 h-4 w-1/2 rounded bg-gray-200"></div>
+            <div className="flex gap-2">
+              <div className="h-3 w-16 rounded bg-gray-100"></div>
+              <div className="h-3 w-20 rounded bg-gray-100"></div>
+            </div>
           </div>
         ))}
       </div>
+      <span className="sr-only">{message}</span>
     </div>
   );
 

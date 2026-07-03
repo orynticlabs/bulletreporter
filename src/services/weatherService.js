@@ -4,10 +4,6 @@
 const API_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || '657c13238d19faa09c854dfe2b21f7df';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
-// Debug logging
-// console.log('Weather API Key (first 8 chars):', API_KEY ? API_KEY.substring(0, 8) + '...' : 'NOT SET');
-// console.log('Environment check:', process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY ? 'ENV KEY SET' : 'ENV KEY NOT SET');
-
 // Hindi translations for weather conditions
 const weatherTranslations = {
   'clear sky': 'साफ आसमान',
@@ -50,8 +46,7 @@ export const getCurrentLocation = () => {
           lon: position.coords.longitude
         });
       },
-      (error) => {
-        // console.warn('Geolocation error:', error);
+      () => {
         // Fallback to default location
         resolve(DEFAULT_LOCATION);
       },
@@ -73,13 +68,11 @@ export const getWeatherByCoords = async (lat, lon) => {
     }
 
     const url = `${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=hi`;
-    // console.log('Making weather API request to:', url.replace(API_KEY, 'API_KEY_HIDDEN'));
     
     const response = await fetch(url);
 
     if (!response.ok) {
       const errorText = await response.text();
-      // console.error('Weather API error response:', errorText);
       
       if (response.status === 401) {
         throw new Error('Invalid API key. Please check your OpenWeatherMap API key in the .env file');
@@ -93,10 +86,8 @@ export const getWeatherByCoords = async (lat, lon) => {
     }
 
     const data = await response.json();
-    // console.log('Weather API response received:', data.name, data.main.temp + '°C');
     return formatWeatherData(data);
   } catch (error) {
-    // console.error('Error fetching weather data:', error);
     throw error;
   }
 };
@@ -110,13 +101,11 @@ export const getWeatherByCity = async (cityName) => {
     }
 
     const url = `${BASE_URL}/weather?q=${cityName}&appid=${API_KEY}&units=metric&lang=hi`;
-    // console.log('Making weather API request to:', url.replace(API_KEY, 'API_KEY_HIDDEN'));
     
     const response = await fetch(url);
 
     if (!response.ok) {
       const errorText = await response.text();
-      // console.error('Weather API error response:', errorText);
       
       if (response.status === 401) {
         throw new Error('Invalid API key. Please check your OpenWeatherMap API key in the .env file');
@@ -130,10 +119,8 @@ export const getWeatherByCity = async (cityName) => {
     }
 
     const data = await response.json();
-    // console.log('Weather API response received:', data.name, data.main.temp + '°C');
     return formatWeatherData(data);
   } catch (error) {
-    // console.error('Error fetching weather data:', error);
     throw error;
   }
 };
@@ -171,14 +158,12 @@ export const getCurrentWeather = async () => {
     const location = await getCurrentLocation();
     const weather = await getWeatherByCoords(location.lat, location.lon);
     return weather;
-  } catch (error) {
-    // console.error('Error getting current weather:', error);
+  } catch {
     // Fallback to default location
     try {
       const fallbackWeather = await getWeatherByCoords(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon);
       return fallbackWeather;
-    } catch (fallbackError) {
-      // console.error('Fallback weather also failed:', fallbackError);
+    } catch {
       // Return mock data as final fallback
       return {
         city: 'नई दिल्ली',
@@ -197,28 +182,22 @@ export const getCurrentWeather = async () => {
 // Test API key function
 export const testApiKey = async () => {
   try {
-    // console.log('Testing OpenWeatherMap API key...');
-    
     if (!API_KEY || API_KEY === 'YOUR_OPENWEATHER_API_KEY') {
       throw new Error('API key not configured');
     }
 
     const testUrl = `${BASE_URL}/weather?q=London&appid=${API_KEY}&units=metric`;
-    // console.log('Test request URL:', testUrl.replace(API_KEY, 'API_KEY_HIDDEN'));
     
     const response = await fetch(testUrl);
     
     if (!response.ok) {
       const errorText = await response.text();
-      // console.error('API test failed:', response.status, errorText);
       return { success: false, error: `API test failed: ${response.status}` };
     }
 
     const data = await response.json();
-    // console.log('API test successful:', data.name, data.main.temp + '°C');
     return { success: true, data };
   } catch (error) {
-    // console.error('API test error:', error);
     return { success: false, error: error.message };
   }
 };
@@ -248,7 +227,6 @@ export const getWeatherForecast = async (lat, lon) => {
       icon: item.weather[0].icon
     }));
   } catch (error) {
-    // console.error('Error fetching weather forecast:', error);
     throw error;
   }
-}; 
+};

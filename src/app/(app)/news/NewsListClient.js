@@ -1,43 +1,68 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Layout from '@/components/Layout'
 import NewsCard from '@/components/NewsCard'
 import Sidebar from '@/components/Sidebar'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import AdBanner from '@/components/AdBanner'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { getReadingTime } from '@/utils/timeUtils'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, Loader2 } from 'lucide-react'
 import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
 
 const LIMIT = 12
 
 export default function AllNews() {
   const router = useRouter()
-  const [page, setPage] = useState(1)
+  const loadMoreRef = useRef(null)
   const { t, lang } = useLanguage()
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['all-news', page, lang],
-    queryFn: async () => {
-      return fetchPayloadArticles({ limit: LIMIT, page, lang })
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    error,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['all-news', lang],
+    queryFn: ({ pageParam = 1 }) => fetchPayloadArticles({ limit: LIMIT, page: pageParam, lang, summary: true }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const currentPage = lastPage?.page || 1
+      return currentPage < (lastPage?.totalPages || 1) ? currentPage + 1 : undefined
     },
     staleTime: CONTENT_STALE_TIME,
     refetchInterval: CONTENT_REFETCH_INTERVAL,
     refetchIntervalInBackground: false,
     retry: 1,
-    placeholderData: (prev) => prev,
   })
 
-  const articles = data?.articles || []
-  const total = data?.total || 0
-  const totalPages = data?.totalPages || Math.ceil(total / LIMIT)
+  const articles = useMemo(() => data?.pages.flatMap((page) => page.articles || []) || [], [data])
+  const total = data?.pages?.[0]?.total || 0
 
   const getLangPath = useCallback((p) => lang === 'en' ? `/en${p}` : p, [lang])
+
+  useEffect(() => {
+    const node = loadMoreRef.current
+    if (!node || typeof IntersectionObserver === 'undefined' || !hasNextPage) return undefined
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage()
+        }
+      },
+      { rootMargin: '700px 0px' },
+    )
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage])
 
   return (
     <Layout>
@@ -68,7 +93,7 @@ export default function AllNews() {
           {/* Articles area */}
           <div className="lg:col-span-3">
             {isLoading ? (
-              <LoadingSpinner message={t.news.loadingNews} size="lg" variant="skeleton" />
+              <LoadingSpinner message={t.news.loadingNews} size="lg" variant="skeleton" skeletonCount={9} skeletonMinWidth={220} />
             ) : error ? (
               <div className="text-center py-16">
                 <p className="text-red-500 text-lg mb-4">{t.news.errorLoading}</p>
@@ -84,7 +109,7 @@ export default function AllNews() {
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {articles.map(article => (
+                  {articles.map((article, index) => (
                     <NewsCard
                       key={article.id}
                       id={article.id}
@@ -97,31 +122,21 @@ export default function AllNews() {
                       readTime={getReadingTime(article.contentText || article.description)}
                       views={article.views || 0}
                       imageUrl={article.image_url}
+                      imageLoading={index < 6 ? 'eager' : 'lazy'}
                       youtubeUrl={article.youtube_url}
                       slug={article.slug}
                     />
                   ))}
                 </div>
 
-                {totalPages > 1 && (
-                  <div className="mt-10 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-                    <button
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="flex items-center gap-2 rounded-lg border border-red-600 px-4 py-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <ChevronLeft className="w-4 h-4" /> {t.news.previous}
-                    </button>
-                    <span className="text-gray-600">{page} / {totalPages}</span>
-                    <button
-                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                      disabled={page === totalPages}
-                      className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {t.news.next} <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+                <div ref={loadMoreRef} className="mt-10 flex min-h-10 items-center justify-center">
+                  {isFetchingNextPage && (
+                    <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin text-red-500" />
+                      {t.news.loadingNews}
+                    </span>
+                  )}
+                </div>
               </>
             )}
 

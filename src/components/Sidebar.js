@@ -20,48 +20,7 @@ const DEFAULT_WEATHER_COORDS = { lat: 23.2599, lon: 77.4126 }
 function FacebookEmbed() {
   const pageUrl = (process.env.NEXT_PUBLIC_FACEBOOK_PAGE_URL || '').trim()
   const containerRef = useRef(null)
-  const [sdkReady, setSdkReady] = useState(false)
-
-  useEffect(() => {
-    if (!pageUrl) return
-
-    // Add fb-root to body once (required by the SDK)
-    if (!document.getElementById('fb-root')) {
-      const root = document.createElement('div')
-      root.id = 'fb-root'
-      document.body.prepend(root)
-    }
-
-    const initSDK = () => {
-      if (window.FB) {
-        window.FB.init({ xfbml: true, version: 'v21.0' })
-        setSdkReady(true)
-        if (containerRef.current) {
-          window.FB.XFBML.parse(containerRef.current)
-        }
-      }
-    }
-
-    if (window.FB) {
-      // SDK already loaded by a previous render
-      initSDK()
-      return
-    }
-
-    // Define the async init callback
-    window.fbAsyncInit = initSDK
-
-    // Inject the SDK script only once
-    if (!document.getElementById('facebook-jssdk')) {
-      const script = document.createElement('script')
-      script.id = 'facebook-jssdk'
-      script.src = 'https://connect.facebook.net/en_US/sdk.js'
-      script.async = true
-      script.defer = true
-      script.crossOrigin = 'anonymous'
-      document.head.appendChild(script)
-    }
-  }, [pageUrl])
+  const sdkReady = true
 
   if (!pageUrl) {
     return (
@@ -91,10 +50,19 @@ function FacebookEmbed() {
         <span className="font-bold text-white text-sm tracking-wide">Facebook</span>
       </div>
 
+      <iframe
+        title="Facebook Page"
+        src={`https://www.facebook.com/plugins/page.php?href=${encodeURIComponent(pageUrl)}&tabs=timeline&width=320&height=500&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=true`}
+        className="block w-full border-0"
+        style={{ height: 500 }}
+        loading="lazy"
+        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+      />
+
       {/* SDK embed container — no overflow:hidden so the FB iframe header isn't clipped */}
       <div
         ref={containerRef}
-        className="w-full"
+        className="hidden"
         style={{ minHeight: 500, background: '#fff' }}
       >
         {/* Loading skeleton shown before SDK fires */}
@@ -147,6 +115,40 @@ function FacebookEmbed() {
 //
 // Embed URL: https://www.youtube.com/embed/videoseries?list=UUxxxxxxxxxxxxxx
 // ─────────────────────────────────────────────────────────────────────────────
+function LazySidebarBlock({ children, minHeight = 320 }) {
+  const blockRef = useRef(null)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    if (isVisible) return undefined
+
+    const node = blockRef.current
+    if (!node || typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true)
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '500px 0px' },
+    )
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [isVisible])
+
+  return (
+    <div ref={blockRef} style={{ minHeight }}>
+      {isVisible ? children : null}
+    </div>
+  )
+}
+
 function YouTubeEmbed() {
   const rawId = (process.env.NEXT_PUBLIC_YOUTUBE_CHANNEL_ID || '').trim()
 
@@ -304,11 +306,38 @@ function Sidebar() {
     return () => clearInterval(id)
   }, [fetchWeatherData])
 
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) return undefined
+
+    let permissionStatus
+    let cancelled = false
+
+    navigator.permissions.query({ name: 'geolocation' })
+      .then((status) => {
+        if (cancelled) return
+        permissionStatus = status
+        if (status.state === 'granted') {
+          fetchWeatherData({ requestLocation: true })
+        }
+        status.onchange = () => {
+          if (status.state === 'granted') {
+            fetchWeatherData({ requestLocation: true })
+          }
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+      if (permissionStatus) permissionStatus.onchange = null
+    }
+  }, [fetchWeatherData])
+
   // ── Trending news ────────────────────────────────────────────────────────
   const { data: trendingData = [], isLoading: trendingLoading } = useQuery({
     queryKey: ['trending', lang],
     queryFn: async () => {
-      const result = await fetchPayloadArticles({ limit: 10, lang })
+      const result = await fetchPayloadArticles({ limit: 10, lang, summary: true })
       return result.articles || []
     },
     staleTime: CONTENT_STALE_TIME,
@@ -447,10 +476,14 @@ function Sidebar() {
       </div>
 
       {/* 3. Facebook Page embed ──────────────────────────────────────────── */}
-      <FacebookEmbed />
+      <LazySidebarBlock minHeight={560}>
+        <FacebookEmbed />
+      </LazySidebarBlock>
 
       {/* 4. YouTube Channel embed ────────────────────────────────────────── */}
-      <YouTubeEmbed />
+      <LazySidebarBlock minHeight={260}>
+        <YouTubeEmbed />
+      </LazySidebarBlock>
 
     </div>
   )
