@@ -402,10 +402,51 @@ const deleteCloudinaryAsset = async ({ doc }: { doc?: Record<string, any> }) => 
   }
 }
 
-const configuredMaxUploadMb = Number(process.env.PAYLOAD_MAX_UPLOAD_MB || 10)
-const MAX_UPLOAD_MB = Number.isFinite(configuredMaxUploadMb) && configuredMaxUploadMb > 0
-  ? configuredMaxUploadMb
-  : 10
+const preventDeletingCategoryInUse = async ({ id, req }: { id: string | number; req: any }) => {
+  const categoryId = String(id)
+  const collectionsToCheck = [
+    { label: 'news article', pluralLabel: 'news articles', slug: 'news' },
+    { label: 'video news story', pluralLabel: 'video news stories', slug: 'video-news' },
+  ]
+
+  for (const collection of collectionsToCheck) {
+    const result = await req.payload.find({
+      collection: collection.slug,
+      depth: 0,
+      limit: 1,
+      overrideAccess: true,
+      pagination: false,
+      req,
+      select: {
+        id: true,
+      },
+      where: {
+        category: {
+          contains: categoryId,
+        },
+      },
+    })
+
+    const usageCount = Array.isArray(result?.docs) ? result.docs.length : 0
+
+    if (usageCount > 0) {
+      throw new APIError(
+        `This category cannot be deleted because it is used by one or more ${collection.pluralLabel}. Remove this category from all ${collection.pluralLabel} first.`,
+        400,
+        null,
+        true,
+      )
+    }
+  }
+}
+
+const configuredMaxUploadMb = Number(process.env.PAYLOAD_MAX_UPLOAD_MB)
+
+if (!Number.isFinite(configuredMaxUploadMb) || configuredMaxUploadMb <= 0) {
+  throw new Error('PAYLOAD_MAX_UPLOAD_MB must be set to a positive number.')
+}
+
+const MAX_UPLOAD_MB = configuredMaxUploadMb
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
 
 const CATEGORY_HINDI_TRANSLATIONS: Record<string, string> = {
@@ -858,6 +899,7 @@ export default buildConfig({
       },
       hooks: {
         beforeValidate: [ensureCategoryFields],
+        beforeDelete: [preventDeletingCategoryInUse],
         afterChange: [
           async ({ req }: { req: any }) => {
             await touchPublicCache({ req, scopes: ['categories'] })
@@ -904,7 +946,7 @@ export default buildConfig({
     {
       slug: 'news',
       access: {
-        // Public: only published articles; logged-in staff: all (including drafts)
+        // Public: only published articles; logged-in staff: all articles.
         read: ({ req }) => {
           if (isStaff(req.user) || isViewer(req.user)) return true
           return { status: { equals: 'published' } }
@@ -962,9 +1004,6 @@ export default buildConfig({
         useAsTitle: 'title',
         defaultColumns: ['title', 'category', 'status', 'publishedAt', 'deleteAt'],
       },
-      versions: {
-        drafts: true,
-      },
       fields: [
         { name: 'title', type: 'text', label: 'Title (Hindi)', required: true },
         {
@@ -1000,8 +1039,17 @@ export default buildConfig({
         {
           name: 'category',
           type: 'relationship',
+          label: 'Categories',
           relationTo: 'categories',
+          hasMany: true,
           required: true,
+          admin: {
+            components: {
+              Field:
+                '@/components/payload/CategoryCheckboxRelationshipField#CategoryCheckboxRelationshipField',
+            },
+            description: 'Select one or more categories for this news article.',
+          },
         },
         {
           name: 'author',
@@ -1161,9 +1209,6 @@ export default buildConfig({
         defaultColumns: ['title', 'category', 'language', 'status', 'publishedAt'],
         description: 'Create YouTube-based video news stories for the frontend video section.',
       },
-      versions: {
-        drafts: true,
-      },
       fields: [
         { name: 'title', type: 'text', required: true },
         {
@@ -1188,8 +1233,17 @@ export default buildConfig({
         {
           name: 'category',
           type: 'relationship',
+          label: 'Categories',
           relationTo: 'categories',
+          hasMany: true,
           required: true,
+          admin: {
+            components: {
+              Field:
+                '@/components/payload/CategoryCheckboxRelationshipField#CategoryCheckboxRelationshipField',
+            },
+            description: 'Select one or more categories for this video news story.',
+          },
         },
         {
           name: 'description',
