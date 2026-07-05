@@ -70,6 +70,21 @@ const normalizeUrl = (value?: string) => {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
 }
 
+const normalizeCorsOrigin = (value?: string) => {
+  const trimmed = value?.trim().replace(/\/+$/, '')
+  if (!trimmed) return ''
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(trimmed)) return `http://${trimmed}`
+  return `https://${trimmed}`
+}
+
+const configuredCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(normalizeCorsOrigin)
+  .filter(Boolean)
+
+const allowedCorsOrigins = Array.from(new Set(configuredCorsOrigins))
+
 const getAppUrl = (req?: any) => {
   const configuredUrl = normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL || '')
   if (configuredUrl) return configuredUrl
@@ -692,6 +707,8 @@ const COMMENT_PUBLIC_FIELDS = [
 export default buildConfig({
   secret: payloadSecret,
   sharp,
+  cors: allowedCorsOrigins,
+  csrf: allowedCorsOrigins,
 
   email: nodemailerAdapter({
     defaultFromAddress: resolvedEmailFromAddress,
