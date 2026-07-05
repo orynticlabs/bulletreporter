@@ -24,14 +24,9 @@ const CONTENT = {
       { name: 'प्राइवेसी पॉलिसी', href: '/privacy-policy' },
       { name: 'टर्म्स ऑफ यूज़', href: '/terms' },
     ],
-    bottomLinks: [
-      { name: 'हमारे बारे में', href: '/about' },
-      { name: 'संपर्क', href: '/contact' },
-      { name: 'T&C', href: '/terms' },
-    ],
     copyright: (
-      <>© 2026 बुलेट रिपोर्टर। Developed By{' '}
-        <a href="https://orynticlabs.com/" target="_blank" rel="noopener noreferrer" className="text-[#e84118] hover:underline">OrynticLabs Pvt. Ltd.</a>
+      <>© 2026 बुलेट रिपोर्टर। Developed by{' '}
+        <a href="https://orynticlabs.com/" target="_blank" rel="noopener noreferrer" className="text-[#e84118] hover:underline">Oryntic Labs Private Limited</a>
       </>
     ),
     mainCatName: 'मुख्य समाचार',
@@ -50,14 +45,9 @@ const CONTENT = {
       { name: 'Privacy Policy', href: '/privacy-policy' },
       { name: 'Terms of Use', href: '/terms' },
     ],
-    bottomLinks: [
-      { name: 'About Us', href: '/about' },
-      { name: 'Contact', href: '/contact' },
-      { name: 'T&C', href: '/terms' },
-    ],
     copyright: (
-      <>© 2026 Bullet Reporter. Built by{' '}
-        <a href="https://orynticlabs.com/" target="_blank" rel="noopener noreferrer" className="text-[#e84118] hover:underline">OrynticLabs</a>
+      <>© 2026 Bullet Reporter. Developed by{' '}
+        <a href="https://orynticlabs.com/" target="_blank" rel="noopener noreferrer" className="text-[#e84118] hover:underline">Oryntic Labs Private Limited</a>
       </>
     ),
     mainCatName: 'Top News',
@@ -229,16 +219,10 @@ export default function Footer() {
       <div className="h-px mx-6 lg:mx-8" style={{ background: 'linear-gradient(to right, transparent, #2a2a2a 20%, #2a2a2a 80%, transparent)' }} />
 
       {/* Bottom bar */}
-      <div className="container mx-auto flex flex-col items-center justify-between gap-3 px-6 py-4 text-center sm:flex-row sm:text-left lg:px-8">
-        <p className="text-xs text-[#666]">{t.copyright}</p>
+      <div className="container mx-auto flex flex-row flex-nowrap items-center justify-between gap-2 overflow-x-auto px-3 py-4 text-left sm:gap-4 lg:px-8">
+        <p className="shrink-0 whitespace-nowrap text-[9px] leading-4 text-[#666] min-[420px]:text-[10px] sm:text-xs">{t.copyright}</p>
 
-        <div className="flex flex-wrap justify-center gap-4 sm:gap-5">
-          {t.bottomLinks.map(link => (
-            <a key={link.name} href={getLangPath(link.href)} className="text-[#666] hover:text-[#e84118] text-xs transition-colors duration-150">
-              {link.name}
-            </a>
-          ))}
-        </div>
+        <span className="shrink-0 whitespace-nowrap text-right text-[9px] text-[#666] min-[420px]:text-[10px] sm:mr-24 sm:text-xs lg:mr-28">Version V1.0.0</span>
       </div>
     </footer>
   );
