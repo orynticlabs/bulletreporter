@@ -33,6 +33,13 @@ export const DEFAULT_IMAGE = '/logo.png'
 export const GEO_REGION = 'IN-MP'
 export const GEO_PLACENAME = 'Rewa, Madhya Pradesh, India'
 export const GEO_POSITION = '24.5362;81.3037'
+const SOCIAL_PROFILE_URLS = [
+  SITE_URL,
+  process.env.NEXT_PUBLIC_YOUTUBE_URL,
+  process.env.NEXT_PUBLIC_FACEBOOK_PAGE_URL,
+  process.env.NEXT_PUBLIC_INSTAGRAM_URL,
+].filter(Boolean)
+
 export function absoluteUrl(path = '/') {
   if (!path) return SITE_URL
   if (/^https?:\/\//i.test(path)) return path
@@ -271,12 +278,7 @@ export function organizationJsonLd() {
       addressRegion: 'Madhya Pradesh',
       addressCountry: 'IN',
     },
-    sameAs: [
-      SITE_URL,
-      'https://www.youtube.com/@bulletreporter',
-      'https://www.facebook.com/61558107293456',
-      'https://instagram.com/bulletreporterofficial',
-    ],
+    sameAs: SOCIAL_PROFILE_URLS,
   }
 }
 

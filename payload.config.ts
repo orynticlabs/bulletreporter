@@ -10,7 +10,7 @@ import sharp from 'sharp'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { logDeploymentEventOnce } from './src/lib/deploymentLogger'
+import { logEmailDiagnosticsForSend } from './src/lib/emailDiagnostics'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -49,19 +49,13 @@ const databaseUrl =
   process.env.POSTGRES_URL ||
   process.env.POSTGRES_PRISMA_URL ||
   process.env.PAYLOAD_DATABASE_URL
-const databaseUrlSource =
-  process.env.DATABASE_URL ? 'DATABASE_URL'
-    : process.env.POSTGRES_URL ? 'POSTGRES_URL'
-      : process.env.POSTGRES_PRISMA_URL ? 'POSTGRES_PRISMA_URL'
-        : process.env.PAYLOAD_DATABASE_URL ? 'PAYLOAD_DATABASE_URL'
-          : 'missing'
+const payloadSecret = process.env.PAYLOAD_SECRET
 // ── Email (Nodemailer) ──────────────────────────────────────────────────────
 const smtpHost = process.env.SMTP_HOST
 const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10)
 const smtpUser = process.env.SMTP_USER
 const smtpPass = process.env.SMTP_PASS
 const configuredEmailFrom = process.env.EMAIL_FROM
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
 
 const getEmailAddress = (value?: string) => {
   const match = value?.match(/<([^>]+)>/)
@@ -70,14 +64,21 @@ const getEmailAddress = (value?: string) => {
 
 const getEmailDomain = (value?: string) => getEmailAddress(value).split('@').pop()?.toLowerCase() || ''
 
-const getDatabaseHost = (value?: string) => {
-  if (!value) return ''
+const normalizeUrl = (value?: string) => {
+  const trimmed = value?.trim().replace(/\/+$/, '')
+  if (!trimmed) return ''
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+}
 
-  try {
-    return new URL(value).host
-  } catch {
-    return 'invalid-url'
-  }
+const getAppUrl = (req?: any) => {
+  const configuredUrl = normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL || '')
+  if (configuredUrl) return configuredUrl
+
+  const host = req?.headers?.get?.('x-forwarded-host') || req?.headers?.get?.('host')
+  if (!host) return ''
+
+  const proto = req?.headers?.get?.('x-forwarded-proto') || 'https'
+  return `${proto}://${host}`.replace(/\/+$/, '')
 }
 
 const smtpUserDomain = getEmailDomain(smtpUser)
@@ -86,43 +87,7 @@ const emailFromAddress =
   smtpUserDomain && configuredEmailFromDomain && smtpUserDomain !== configuredEmailFromDomain
     ? smtpUser || configuredEmailFrom
     : configuredEmailFrom || smtpUser
-
-logDeploymentEventOnce('payload-email-config', 'info', 'payload.email', 'Email transport configured', {
-  smtpHost: smtpHost || 'missing',
-  smtpPort,
-  secure: smtpPort === 465,
-  hasSmtpUser: Boolean(smtpUser),
-  hasSmtpPassword: Boolean(smtpPass),
-  smtpUserDomain: smtpUserDomain || 'missing',
-  emailFromDomain: configuredEmailFromDomain || 'missing',
-  resolvedFromDomain: getEmailDomain(emailFromAddress) || 'missing',
-  skipVerify: true,
-})
-
-if (!smtpHost || !smtpUser || !smtpPass || !emailFromAddress) {
-  logDeploymentEventOnce('payload-email-missing-env', 'warn', 'payload.email', 'Email environment is incomplete', {
-    missing: [
-      !smtpHost ? 'SMTP_HOST' : null,
-      !smtpUser ? 'SMTP_USER' : null,
-      !smtpPass ? 'SMTP_PASS' : null,
-      !emailFromAddress ? 'EMAIL_FROM or SMTP_USER' : null,
-    ].filter(Boolean),
-  })
-}
-
-if (smtpUserDomain && configuredEmailFromDomain && smtpUserDomain !== configuredEmailFromDomain) {
-  logDeploymentEventOnce('payload-email-from-domain-mismatch', 'warn', 'payload.email', 'EMAIL_FROM domain differs from SMTP_USER domain', {
-    smtpUserDomain,
-    emailFromDomain: configuredEmailFromDomain,
-    resolvedFromDomain: getEmailDomain(emailFromAddress),
-  })
-}
-
-logDeploymentEventOnce('payload-database-config', 'info', 'payload.database', 'Database configuration loaded', {
-  source: databaseUrlSource,
-  host: getDatabaseHost(databaseUrl) || 'missing',
-  hasDatabaseUrl: Boolean(databaseUrl),
-})
+const resolvedEmailFromAddress = getEmailAddress(emailFromAddress)
 
 const escapeHtml = (value: unknown) =>
   String(value ?? '')
@@ -279,6 +244,7 @@ const buildPasswordResetEmail = ({ name, email, resetUrl }: { name?: string; ema
 const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
 const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY
 const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET
+const cloudinaryFolder = process.env.CLOUDINARY_FOLDER
 const hasCloudinaryCredentials = Boolean(cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret)
 const requireCloudinaryStorage = process.env.PAYLOAD_REQUIRE_CLOUDINARY !== 'false'
 const missingCloudinaryKeys = [
@@ -291,6 +257,10 @@ const missingCloudinaryKeys = [
 
 if (!databaseUrl) {
   throw new Error('DATABASE_URL is required for Payload CMS. Add your Neon Postgres connection string to .env.local.')
+}
+
+if (!payloadSecret) {
+  throw new Error('PAYLOAD_SECRET is required for Payload CMS. Add a long random secret to .env.local.')
 }
 
 if (hasCloudinaryCredentials) {
@@ -437,6 +407,97 @@ const MAX_UPLOAD_MB = Number.isFinite(configuredMaxUploadMb) && configuredMaxUpl
   ? configuredMaxUploadMb
   : 10
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+
+const CATEGORY_HINDI_TRANSLATIONS: Record<string, string> = {
+  agriculture: 'कृषि',
+  automobile: 'ऑटोमोबाइल',
+  auto: 'ऑटोमोबाइल',
+  bollywood: 'बॉलीवुड',
+  breaking: 'ब्रेकिंग',
+  business: 'व्यापार',
+  career: 'करियर',
+  careers: 'करियर',
+  chattisgarh: 'छत्तीसगढ़',
+  chhattisgarh: 'छत्तीसगढ़',
+  cg: 'छत्तीसगढ़',
+  city: 'शहर',
+  crime: 'क्राइम',
+  cricket: 'क्रिकेट',
+  education: 'शिक्षा',
+  election: 'चुनाव',
+  elections: 'चुनाव',
+  entertainment: 'मनोरंजन',
+  fashion: 'फैशन',
+  health: 'स्वास्थ्य',
+  india: 'भारत',
+  international: 'अंतरराष्ट्रीय',
+  job: 'नौकरी',
+  jobs: 'नौकरी',
+  latest: 'ताजा खबरें',
+  lifestyle: 'लाइफस्टाइल',
+  local: 'स्थानीय',
+  madhya_pradesh: 'मध्य प्रदेश',
+  mp: 'मध्य प्रदेश',
+  national: 'राष्ट्रीय',
+  other: 'अन्य',
+  others: 'अन्य',
+  politics: 'राजनीति',
+  religion: 'धर्म',
+  rewa: 'रीवा',
+  science: 'विज्ञान',
+  sports: 'खेल',
+  state: 'राज्य',
+  technology: 'तकनीक',
+  tech: 'तकनीक',
+  top_news: 'मुख्य समाचार',
+  travel: 'यात्रा',
+  trending: 'ट्रेंडिंग',
+  uttar_pradesh: 'उत्तर प्रदेश',
+  up: 'उत्तर प्रदेश',
+  video: 'वीडियो',
+  video_news: 'वीडियो न्यूज़',
+  viral: 'वायरल',
+  weather: 'मौसम',
+  world: 'विश्व',
+}
+
+const normalizeCategoryKeyForTranslation = (value?: string) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+const makeCategorySlug = (value?: string) =>
+  normalizeCategoryKeyForTranslation(value)
+    .replace(/_/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+const getHindiCategoryName = (value?: string) => {
+  const key = normalizeCategoryKeyForTranslation(value)
+  if (!key) return ''
+
+  const compactKey = key
+    .replace(/_?(news|samachar|category|updates)$/g, '')
+    .replace(/^(news|samachar|category|updates)_?/g, '')
+
+  return CATEGORY_HINDI_TRANSLATIONS[key] || CATEGORY_HINDI_TRANSLATIONS[compactKey] || ''
+}
+
+const ensureCategoryFields = ({ data }: { data?: Record<string, any> }) => {
+  if (!data) return data || {}
+
+  if (data.name && !data.slug) {
+    data.slug = makeCategorySlug(data.name)
+  }
+
+  if (data.name && !data.nameHindi) {
+    data.nameHindi = getHindiCategoryName(data.name) || data.name
+  }
+
+  return data
+}
 
 const bannerSizeLabels: Record<string, string> = {
   large: 'Large - 1280 x 320 px',
@@ -588,11 +649,11 @@ const COMMENT_PUBLIC_FIELDS = [
 ]
 
 export default buildConfig({
-  secret: process.env.PAYLOAD_SECRET || 'change-this-payload-secret-for-production',
+  secret: payloadSecret,
   sharp,
 
   email: nodemailerAdapter({
-    defaultFromAddress: emailFromAddress,
+    defaultFromAddress: resolvedEmailFromAddress,
     defaultFromName: 'Bullet Reporter',
     skipVerify: true,
     transportOptions: {
@@ -625,10 +686,12 @@ export default buildConfig({
     {
       slug: 'users',
       auth: {
+        tokenExpiration: 12 * 60 * 60,
         forgotPassword: {
           expiration: 10 * 60 * 1000,
-          generateEmailHTML: ({ token, user }: { token?: string; user?: any }) => {
-            const resetUrl = `${siteUrl}/reset-password/${token}`
+          generateEmailHTML: ({ req, token, user }: { req?: any; token?: string; user?: any }) => {
+            logEmailDiagnosticsForSend('password-reset')
+            const resetUrl = `${getAppUrl(req)}/reset-password/${token}`
             return buildPasswordResetEmail({
               name: user?.name,
               email: user?.email,
@@ -662,8 +725,8 @@ export default buildConfig({
               return doc
             }
 
-            const loginUrl = `${siteUrl}/admin`
-            const resetUrl = `${siteUrl}/reset-password/${req.__newUserResetToken}`
+            const loginUrl = `${getAppUrl(req)}/admin`
+            const resetUrl = `${getAppUrl(req)}/reset-password/${req.__newUserResetToken}`
             const message = buildAccountInviteEmail({
               name: doc.name,
               email: doc.email,
@@ -671,8 +734,9 @@ export default buildConfig({
               resetUrl,
             })
 
+            logEmailDiagnosticsForSend('account-invite')
             await req.payload.sendEmail({
-              from: `"Bullet Reporter" <${emailFromAddress}>`,
+              from: `"Bullet Reporter" <${resolvedEmailFromAddress}>`,
               html: message.html,
               subject: message.subject,
               text: message.text,
@@ -793,6 +857,7 @@ export default buildConfig({
         hidden: ({ user }: { user: any }) => !isAdminOrEditor(user),
       },
       hooks: {
+        beforeValidate: [ensureCategoryFields],
         afterChange: [
           async ({ req }: { req: any }) => {
             await touchPublicCache({ req, scopes: ['categories'] })
@@ -805,9 +870,32 @@ export default buildConfig({
         ],
       },
       fields: [
-        { name: 'name', type: 'text', required: true },
-        { name: 'slug', type: 'text', required: true, unique: true },
-        { name: 'nameHindi', type: 'text', label: 'Name (Hindi)' },
+        {
+          name: 'name',
+          type: 'text',
+          label: 'Name (English)',
+          required: true,
+          admin: {
+            description: 'Enter the category name in English. This is used for English display and stable frontend URLs.',
+          },
+        },
+        {
+          name: 'slug',
+          type: 'text',
+          required: true,
+          unique: true,
+          admin: {
+            description: 'Auto-generated from the English name if left empty.',
+          },
+        },
+        {
+          name: 'nameHindi',
+          type: 'text',
+          label: 'Name (Hindi)',
+          admin: {
+            description: 'Auto-filled for common categories when left empty. Edit this for custom Hindi wording.',
+          },
+        },
         { name: 'description', type: 'textarea' },
         { name: 'color', type: 'text', label: 'Color (hex)', defaultValue: '#dc2626' },
         { name: 'order', type: 'number', defaultValue: 0 },
@@ -1471,7 +1559,7 @@ export default buildConfig({
         apiKey: cloudinaryApiKey || '',
         apiSecret: cloudinaryApiSecret || '',
       },
-      folder: process.env.CLOUDINARY_FOLDER || 'bullet_reporter',
+      folder: cloudinaryFolder,
       clientUploads: false,
       useFilename: true,
     }),

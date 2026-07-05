@@ -19,6 +19,9 @@ const ALERTS_CACHE_TTL     = PUBLIC_CACHE_CHECK_INTERVAL - 5 * 1000
 const POPUP_DISMISS_DELAY  = 7000
 const LAST_SEEN_KEY  = 'br_alert_last_seen'
 const MUTED_KEY      = 'br_alert_muted'
+const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || ''
+const CONTACT_PHONE = process.env.NEXT_PUBLIC_CONTACT_PHONE || ''
+const CONTACT_PHONE_LABEL = process.env.NEXT_PUBLIC_CONTACT_PHONE_LABEL || CONTACT_PHONE
 // ── Sound engine (Web Audio API — no external files needed) ──────────────────
 // Generates a pleasant two-tone "ding-dong" chime.
 // Only plays AFTER the first user interaction (satisfies browser autoplay policy).
@@ -671,12 +674,16 @@ function Header() {
               </div>
 
               {/* Contact icons */}
-              <a href="tel:+919425470033" className="hidden lg:flex hover:bg-red-800 p-1.5 rounded transition-colors" title="+91 9425470033">
-                <Phone className="w-3.5 h-3.5" />
-              </a>
-              <a href="mailto:bulletreporter1@gmail.com" className="hidden lg:flex hover:bg-red-800 p-1.5 rounded transition-colors" title="bulletreporter1@gmail.com">
-                <Mail className="w-3.5 h-3.5" />
-              </a>
+              {CONTACT_PHONE && (
+                <a href={`tel:${CONTACT_PHONE}`} className="hidden lg:flex hover:bg-red-800 p-1.5 rounded transition-colors" title={CONTACT_PHONE_LABEL}>
+                  <Phone className="w-3.5 h-3.5" />
+                </a>
+              )}
+              {CONTACT_EMAIL && (
+                <a href={`mailto:${CONTACT_EMAIL}`} className="hidden lg:flex hover:bg-red-800 p-1.5 rounded transition-colors" title={CONTACT_EMAIL}>
+                  <Mail className="w-3.5 h-3.5" />
+                </a>
+              )}
             </div>
           </div>
         </div>

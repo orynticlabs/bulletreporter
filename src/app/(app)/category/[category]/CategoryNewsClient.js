@@ -6,9 +6,10 @@ import Layout from '@/components/Layout'
 import NewsCard from '@/components/NewsCard'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import AdBanner from '@/components/AdBanner'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { getReadingTime } from '@/utils/timeUtils'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
+import { fetchPayloadCategories, getCategoryDisplayName, getCategoryRouteKey } from '@/utils/payloadCategories'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { ChevronLeft, Loader2 } from 'lucide-react'
 import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
@@ -48,6 +49,33 @@ export default function CategoryNews() {
   const articles = useMemo(() => data?.pages.flatMap((page) => page.articles || []) || [], [data])
   const total = data?.pages?.[0]?.total || 0
   const getLangPath = useCallback((p) => lang === 'en' ? `/en${p}` : p, [lang])
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', 'category-page'],
+    queryFn: () => fetchPayloadCategories({ limit: 100 }),
+    staleTime: CONTENT_STALE_TIME,
+  })
+
+  const currentCategory = useMemo(() => {
+    const decodedCategory = category.trim().toLowerCase()
+
+    return categories.find((item) => {
+      const values = [
+        getCategoryRouteKey(item),
+        item.slug,
+        item.name,
+        item.nameHindi,
+        item.nameEn,
+      ]
+
+      return values
+        .filter(Boolean)
+        .some((value) => String(value).trim().toLowerCase() === decodedCategory)
+    })
+  }, [categories, category])
+
+  const categoryTitle = currentCategory
+    ? getCategoryDisplayName(currentCategory, lang)
+    : category
 
   useEffect(() => {
     const node = loadMoreRef.current
@@ -75,7 +103,7 @@ export default function CategoryNews() {
         <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm text-gray-500 mb-1">{t.news.category}</p>
-            <h1 className="break-words text-2xl font-bold text-primary sm:text-4xl">{category}</h1>
+            <h1 className="break-words text-2xl font-bold text-primary sm:text-4xl">{categoryTitle}</h1>
             {total > 0 && <p className="text-gray-500 mt-1">{total} {t.news.newsFound}</p>}
           </div>
           <button onClick={() => router.push(getLangPath('/'))}
@@ -97,7 +125,7 @@ export default function CategoryNews() {
                 </button>
               </div>
             ) : articles.length === 0 ? (
-              <div className="text-center py-16 text-gray-500">{category} — {t.news.noNewsFound}</div>
+              <div className="text-center py-16 text-gray-500">{categoryTitle} — {t.news.noNewsFound}</div>
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">

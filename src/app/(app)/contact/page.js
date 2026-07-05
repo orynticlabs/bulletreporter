@@ -9,6 +9,11 @@ export const metadata = buildMetadata({
 })
 
 export default function ContactPage() {
+  const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || ''
+  const contactPhone = process.env.NEXT_PUBLIC_CONTACT_PHONE || ''
+  const contactPhoneLabel = process.env.NEXT_PUBLIC_CONTACT_PHONE_LABEL || contactPhone
+  const contactLocation = process.env.NEXT_PUBLIC_CONTACT_LOCATION || ''
+
   return (
     <Layout>
       <main className="bg-white">
@@ -25,19 +30,27 @@ export default function ContactPage() {
         <section className="container mx-auto grid gap-6 px-4 py-10 md:grid-cols-3">
           <div className="border border-gray-100 bg-gray-50 p-6">
             <h2 className="text-lg font-black text-gray-950">News Desk</h2>
-            <a className="mt-3 block text-red-600 hover:underline" href="mailto:bulletreporter1@gmail.com">
-              bulletreporter1@gmail.com
-            </a>
+            {contactEmail ? (
+              <a className="mt-3 block text-red-600 hover:underline" href={`mailto:${contactEmail}`}>
+                {contactEmail}
+              </a>
+            ) : (
+              <p className="mt-3 text-gray-700">Email is not configured.</p>
+            )}
           </div>
           <div className="border border-gray-100 bg-gray-50 p-6">
             <h2 className="text-lg font-black text-gray-950">Phone</h2>
-            <a className="mt-3 block text-red-600 hover:underline" href="tel:+919425470033">
-              +91 9425470033
-            </a>
+            {contactPhone ? (
+              <a className="mt-3 block text-red-600 hover:underline" href={`tel:${contactPhone}`}>
+                {contactPhoneLabel}
+              </a>
+            ) : (
+              <p className="mt-3 text-gray-700">Phone is not configured.</p>
+            )}
           </div>
           <div className="border border-gray-100 bg-gray-50 p-6">
             <h2 className="text-lg font-black text-gray-950">Location</h2>
-            <p className="mt-3 text-gray-700">Rewa, Madhya Pradesh, India</p>
+            <p className="mt-3 text-gray-700">{contactLocation || 'Location is not configured.'}</p>
           </div>
         </section>
       </main>

@@ -41,7 +41,7 @@ loadEnvFile(path.join(projectRoot, '.env.local'))
 const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
 const apiKey = process.env.CLOUDINARY_API_KEY
 const apiSecret = process.env.CLOUDINARY_API_SECRET
-const folder = process.env.CLOUDINARY_FOLDER || 'bullet_reporter'
+const folder = process.env.CLOUDINARY_FOLDER
 
 const missing = [
   ['CLOUDINARY_CLOUD_NAME', cloudName],

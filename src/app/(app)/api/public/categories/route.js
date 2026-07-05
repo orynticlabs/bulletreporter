@@ -3,13 +3,13 @@ import { getPayload } from 'payload'
 
 export const dynamic = 'force-dynamic'
 
-const CACHE_TTL = 10 * 60 * 1000
+const CACHE_TTL = 30 * 1000
 let cachedData = null
 let cachedAt = 0
 
 const getLimit = (searchParams) => {
   const parsed = Number(searchParams.get('limit'))
-  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 12) : 12
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 100) : 12
 }
 
 export async function GET(request) {
@@ -25,7 +25,7 @@ export async function GET(request) {
     now - cachedAt < CACHE_TTL
   ) {
     return Response.json(cachedData.data, {
-      headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' },
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
     })
   }
 
@@ -41,6 +41,6 @@ export async function GET(request) {
   cachedAt = now
 
   return Response.json(data, {
-    headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' },
+    headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
   })
 }

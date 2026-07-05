@@ -42,7 +42,7 @@ function ResetPassword() {
         body: JSON.stringify({ token, password: newPassword, recaptchaToken }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed')
+      if (!res.ok) throw new Error(data.error || data.message || 'Failed')
       toast({
         title: "सफल",
         description: "आपका पासवर्ड सफलतापूर्वक रीसेट कर दिया गया है।",

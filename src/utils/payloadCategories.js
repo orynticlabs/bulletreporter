@@ -5,7 +5,7 @@ const PAYLOAD_API_BASE =
     ? process.env.NEXT_PUBLIC_SITE_URL
     : ''
 
-const CATEGORIES_TTL = 10 * 60 * 1000
+const CATEGORIES_TTL = 30 * 1000
 
 const CATEGORY_HI_FALLBACKS = {
   chattisgarh: 'छत्तीसगढ़',
@@ -93,6 +93,9 @@ export const getCategoryDisplayName = (category = {}, lang = 'hi') => {
     return category.nameEn || category.name || category.nameHindi || category.title || ''
   }
 
+  const directHindi = category.nameHindi || category.hindiName || category.titleHindi
+  if (hasDevanagari(directHindi)) return directHindi
+
   const candidates = [
     category.slug,
     category.name,
@@ -105,9 +108,6 @@ export const getCategoryDisplayName = (category = {}, lang = 'hi') => {
     if (fallback) return fallback
   }
 
-  const directHindi = category.nameHindi || category.hindiName || category.titleHindi
-  if (hasDevanagari(directHindi)) return directHindi
-
   return category.name || category.nameEn || category.title || ''
 }
 
@@ -116,18 +116,25 @@ export const getCategoryRouteKey = (category = {}) =>
 
 let cachedCategories = null
 let cachedCategoriesVersion = null
+let cachedCategoriesLimit = 0
 let cachedAt = 0
 let pendingCategories = null
+let pendingCategoriesLimit = 0
 
 export async function fetchPayloadCategories({ limit = 12 } = {}) {
   const now = Date.now()
-  const version = await getPublicCacheVersion('categories')
+  const version = await getPublicCacheVersion('categories', { forceRefresh: true })
 
-  if (cachedCategories && cachedCategoriesVersion === version && now - cachedAt < CATEGORIES_TTL) {
+  if (
+    cachedCategories &&
+    cachedCategoriesVersion === version &&
+    cachedCategoriesLimit >= limit &&
+    now - cachedAt < CATEGORIES_TTL
+  ) {
     return cachedCategories.slice(0, limit)
   }
 
-  if (pendingCategories) {
+  if (pendingCategories && pendingCategoriesLimit >= limit) {
     return pendingCategories.then((categories) => categories.slice(0, limit))
   }
 
@@ -136,10 +143,10 @@ export async function fetchPayloadCategories({ limit = 12 } = {}) {
     version,
   )
 
-  pendingCategories = fetch(url, {
-    cache: 'force-cache',
+  pendingCategoriesLimit = limit
+  const request = fetch(url, {
+    cache: 'no-store',
     credentials: 'omit',
-    next: { revalidate: CATEGORIES_TTL / 1000 },
   })
     .then(async (res) => {
       if (!res.ok) return []
@@ -147,20 +154,25 @@ export async function fetchPayloadCategories({ limit = 12 } = {}) {
       const data = await res.json()
       cachedCategories = data.docs || []
       cachedCategoriesVersion = version
+      cachedCategoriesLimit = limit
       cachedAt = Date.now()
       return cachedCategories
     })
     .catch(() => [])
     .finally(() => {
-      pendingCategories = null
+      if (pendingCategories === request) {
+        pendingCategories = null
+        pendingCategoriesLimit = 0
+      }
     })
 
+  pendingCategories = request
   return pendingCategories
 }
 
 // ── Site Settings ─────────────────────────────────────────────────────────────
 
-const SETTINGS_TTL = 5 * 60 * 1000
+const SETTINGS_TTL = 30 * 1000
 
 let cachedSettings = null
 let cachedSettingsVersion = null
@@ -169,7 +181,7 @@ let pendingSettings = null
 
 export async function fetchPayloadSettings() {
   const now = Date.now()
-  const version = await getPublicCacheVersion('settings')
+  const version = await getPublicCacheVersion('settings', { forceRefresh: true })
 
   if (cachedSettings && cachedSettingsVersion === version && now - settingsCachedAt < SETTINGS_TTL) {
     return cachedSettings
@@ -182,8 +194,8 @@ export async function fetchPayloadSettings() {
   pendingSettings = fetch(
     addCacheVersionToUrl(`${PAYLOAD_API_BASE}/api/globals/settings`, version),
     {
+      cache: 'no-store',
       credentials: 'omit',
-      next: { revalidate: SETTINGS_TTL / 1000 },
     },
   )
     .then(async (res) => {

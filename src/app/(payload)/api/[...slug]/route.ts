@@ -17,10 +17,9 @@ export async function POST(request: Request, context: { params: Promise<{ slug?:
   const { slug = [] } = await context.params
   const path = slug.join('/')
 
-  if (path === 'users/forgot-password' || path === 'users/reset-password') {
+  if (path === 'users/reset-password') {
     const body = await request.clone().json().catch(() => ({}))
-    const action = path === 'users/forgot-password' ? 'forgot_password' : 'reset_password'
-    const captchaError = await verifyRecaptchaFromBody(request, body, action)
+    const captchaError = await verifyRecaptchaFromBody(request, body, 'reset_password')
     if (captchaError) return captchaError
   }
 

@@ -7,7 +7,15 @@ import { MessageSquareMore, ChevronUp } from 'lucide-react'
 import Footer from '@/components/footer'
 import YouTubeShorts from '@/components/YouTubeShorts'
 
-const WHATSAPP_LINK = 'https://wa.me/919425470033'
+const getExternalUrl = (value = '') => {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  if (/^(https?:|whatsapp:)/i.test(trimmed)) return trimmed
+  if (/^\+?\d[\d\s-]+$/.test(trimmed)) return `https://wa.me/${trimmed.replace(/\D/g, '')}`
+  return `https://${trimmed.replace(/^\/+/, '')}`
+}
+
+const WHATSAPP_LINK = getExternalUrl(process.env.NEXT_PUBLIC_WHATSAPP_URL || '')
 
 function Layout({ children, showBreakingNews = true }) {
   const [showScrollTop, setShowScrollTop] = useState(false)
@@ -30,16 +38,17 @@ function Layout({ children, showBreakingNews = true }) {
       <YouTubeShorts />
       <Footer />
 
-      {/* WhatsApp floating button */}
-      <a
-        href={WHATSAPP_LINK}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-4 right-4 z-50 rounded-full bg-green-500 p-3 text-white shadow-xl transition-all duration-300 hover:scale-110 hover:bg-green-600 active:scale-95 sm:bottom-6 sm:right-6 md:p-4"
-        aria-label="Join WhatsApp Group"
-      >
-        <MessageSquareMore className="w-5 h-5 md:w-6 md:h-6" />
-      </a>
+      {WHATSAPP_LINK && (
+        <a
+          href={WHATSAPP_LINK}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-4 right-4 z-50 rounded-full bg-green-500 p-3 text-white shadow-xl transition-all duration-300 hover:scale-110 hover:bg-green-600 active:scale-95 sm:bottom-6 sm:right-6 md:p-4"
+          aria-label="Join WhatsApp Group"
+        >
+          <MessageSquareMore className="w-5 h-5 md:w-6 md:h-6" />
+        </a>
+      )}
 
       {/* Scroll to top button — mobile pe especially useful */}
       {showScrollTop && (
