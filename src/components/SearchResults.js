@@ -84,9 +84,9 @@ const SearchResults = () => {
                     <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">{article.title}</h3>
                     <p className="text-xs text-gray-500 line-clamp-1">{article.description}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {article.category && (
-                        <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded">{article.category}</span>
-                      )}
+                      {(article.categories?.length ? article.categories : [article.category]).filter(Boolean).slice(0, 2).map((category, index) => (
+                        <span key={`${category}-${index}`} className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded">{category}</span>
+                      ))}
                       {article.created_at && (
                         <span className="text-xs text-gray-400">
                           {new Date(article.created_at).toLocaleDateString(dateFmt)}

@@ -321,7 +321,9 @@ export default function Home() {
                     {featuredArticles.map((article, i) => (
                       <NewsCard key={article.id} id={article.id} title={article.title}
                         excerpt={(article.description || '').slice(0, 120)}
-                        category={article.category} categorySlug={article.category_slug} author={article.editor_name || article.author_name}
+                        category={article.category} categorySlug={article.category_slug}
+                        categories={article.categories} categorySlugs={article.category_slugs}
+                        author={article.editor_name || article.author_name}
                         publishedAt={article.created_at} readTime={getReadingTime(article.contentText || article.description)}
                         views={article.views || 0} imageUrl={article.image_url}
                         imageLoading={i < 2 ? 'eager' : 'lazy'}

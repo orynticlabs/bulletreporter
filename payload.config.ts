@@ -666,6 +666,23 @@ export default buildConfig({
 
   admin: {
     user: 'users',
+    meta: {
+      titleSuffix: ' - Bullet Reporter Admin',
+      icons: {
+        icon: [
+          {
+            url: '/favicon.png',
+            type: 'image/png',
+          },
+        ],
+        apple: [
+          {
+            url: '/favicon.png',
+            type: 'image/png',
+          },
+        ],
+      },
+    },
     importMap: {
       baseDir: dirname,
       importMapFile: path.resolve(dirname, 'src/app/(payload)/admin/importMap.js'),
@@ -673,7 +690,7 @@ export default buildConfig({
   },
 
   db: postgresAdapter({
-    push: process.env.PAYLOAD_DB_PUSH === 'true',
+    push: false,
     pool: {
       connectionString: databaseUrl,
       ssl: databaseUrl.includes('sslmode=') ? undefined : { rejectUnauthorized: false },
@@ -962,9 +979,6 @@ export default buildConfig({
         useAsTitle: 'title',
         defaultColumns: ['title', 'category', 'status', 'publishedAt', 'deleteAt'],
       },
-      versions: {
-        drafts: true,
-      },
       fields: [
         { name: 'title', type: 'text', label: 'Title (Hindi)', required: true },
         {
@@ -1000,8 +1014,17 @@ export default buildConfig({
         {
           name: 'category',
           type: 'relationship',
+          label: 'Categories',
           relationTo: 'categories',
+          hasMany: true,
           required: true,
+          admin: {
+            components: {
+              Field:
+                '@/components/payload/CategoryCheckboxRelationshipField#CategoryCheckboxRelationshipField',
+            },
+            description: 'Select one or more categories for this news article.',
+          },
         },
         {
           name: 'author',
@@ -1161,9 +1184,6 @@ export default buildConfig({
         defaultColumns: ['title', 'category', 'language', 'status', 'publishedAt'],
         description: 'Create YouTube-based video news stories for the frontend video section.',
       },
-      versions: {
-        drafts: true,
-      },
       fields: [
         { name: 'title', type: 'text', required: true },
         {
@@ -1188,8 +1208,17 @@ export default buildConfig({
         {
           name: 'category',
           type: 'relationship',
+          label: 'Categories',
           relationTo: 'categories',
+          hasMany: true,
           required: true,
+          admin: {
+            components: {
+              Field:
+                '@/components/payload/CategoryCheckboxRelationshipField#CategoryCheckboxRelationshipField',
+            },
+            description: 'Select one or more categories for this video news story.',
+          },
         },
         {
           name: 'description',

@@ -153,6 +153,28 @@ const getRelationshipTitle = (value, fallback = '', lang = 'hi') => {
   return getCategoryDisplayName(value, lang) || fallback
 }
 
+const getCategoryRelationships = (value) => {
+  if (!value) return []
+  return Array.isArray(value) ? value.filter(Boolean) : [value]
+}
+
+const getCategoryDisplayValues = (value, fallback, lang = 'hi') => {
+  const categoryValues = getCategoryRelationships(value)
+  const categories = categoryValues
+    .map((category) => getRelationshipTitle(category, '', lang))
+    .filter(Boolean)
+  const categorySlugs = categoryValues
+    .map((category) => (typeof category === 'string' ? category : getCategoryRouteKey(category)))
+    .filter(Boolean)
+
+  return {
+    category: categories[0] || fallback,
+    category_slug: categorySlugs[0] || categories[0] || fallback,
+    categories: categories.length ? categories : [fallback],
+    category_slugs: categorySlugs.length ? categorySlugs : categories.length ? categories : [fallback],
+  }
+}
+
 const getAuthorName = (value) => {
   if (!value) return 'Bullet Reporter'
   if (typeof value === 'string') return value
@@ -286,13 +308,7 @@ export const normalizePayloadArticle = (doc, lang = 'hi', options = {}) => {
   // category_slug  → used in URLs (always the English `name` field so the API
   //                   filter `category: { equals: id }` resolves consistently)
   // category       → display label (nameHindi when available, otherwise name)
-  const categoryObj = (doc.category && typeof doc.category === 'object') ? doc.category : null
-  const categoryDisplay = categoryObj
-    ? getRelationshipTitle(categoryObj, 'News', lang)
-    : (typeof doc.category === 'string' ? doc.category : 'News')
-  const categorySlug = categoryObj
-    ? getCategoryRouteKey(categoryObj)
-    : categoryDisplay
+  const categoryValues = getCategoryDisplayValues(doc.category, 'News', lang)
 
   const tags = Array.isArray(doc.tags)
     ? doc.tags.map((item) => item.tag).filter(Boolean)
@@ -305,8 +321,10 @@ export const normalizePayloadArticle = (doc, lang = 'hi', options = {}) => {
     description: excerpt,
     content: contentHtml,
     contentText,
-    category: categoryDisplay,   // shown in badges / cards
-    category_slug: categorySlug, // used in /category/[slug] URLs
+    category: categoryValues.category,   // primary badge / backward compatibility
+    category_slug: categoryValues.category_slug, // primary category URL / backward compatibility
+    categories: categoryValues.categories,
+    category_slugs: categoryValues.category_slugs,
     author_name: getAuthorName(doc.author),
     editor_name: getAuthorName(doc.editor),
     created_at: doc.publishedAt || doc.createdAt || doc.created_at,
@@ -331,13 +349,7 @@ export const normalizePayloadVideoNews = (doc, lang = 'hi') => {
   const videoId = doc.youtubeVideoId || getYouTubeVideoId(doc.youtubeVideo)
   const thumbnailUrl = getMediaUrl(doc.thumbnail) || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null)
 
-  const categoryObj = (doc.category && typeof doc.category === 'object') ? doc.category : null
-  const categoryDisplay = categoryObj
-    ? getRelationshipTitle(categoryObj, 'Video News', lang)
-    : (typeof doc.category === 'string' ? doc.category : 'Video News')
-  const categorySlug = categoryObj
-    ? getCategoryRouteKey(categoryObj)
-    : categoryDisplay
+  const categoryValues = getCategoryDisplayValues(doc.category, 'Video News', lang)
 
   const tags = Array.isArray(doc.tags)
     ? doc.tags.map((item) => item.tag).filter(Boolean)
@@ -350,8 +362,10 @@ export const normalizePayloadVideoNews = (doc, lang = 'hi') => {
     description: doc.description || contentText.slice(0, 180),
     content: contentHtml,
     contentText,
-    category: categoryDisplay,
-    category_slug: categorySlug,
+    category: categoryValues.category,
+    category_slug: categoryValues.category_slug,
+    categories: categoryValues.categories,
+    category_slugs: categoryValues.category_slugs,
     author_name: getAuthorName(doc.author),
     editor_name: getAuthorName(doc.editor),
     created_at: doc.publishedAt || doc.createdAt || doc.created_at,

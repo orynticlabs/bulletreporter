@@ -40,10 +40,14 @@ function VideoCard({ video, onOpen }) {
         </span>
       </div>
       <div className="p-4">
-        {video.category && (
-          <p className="mb-2 text-xs font-black uppercase tracking-wide text-red-600">
-            {video.category}
-          </p>
+        {(video.categories?.length ? video.categories : [video.category]).filter(Boolean).length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {(video.categories?.length ? video.categories : [video.category]).filter(Boolean).slice(0, 3).map((category, index) => (
+              <span key={`${category}-${index}`} className="text-xs font-black uppercase tracking-wide text-red-600">
+                {category}
+              </span>
+            ))}
+          </div>
         )}
         <h2 className="line-clamp-2 text-base font-black leading-snug text-gray-950 transition-colors group-hover:text-red-600">
           {video.title}

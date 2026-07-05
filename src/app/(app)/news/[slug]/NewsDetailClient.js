@@ -362,12 +362,15 @@ export default function NewsDetail({ initialArticle = null }) {
               <CardContent className="p-4 md:p-6 lg:p-8">
                 {/* Badges */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {article.category && (
-                    <Badge className="bg-red-600 text-white cursor-pointer hover:bg-red-700"
-                      onClick={() => router.push(getLangPath(`/category/${encodeURIComponent(article.category)}`))}>
-                      {article.category}
+                  {(article.categories?.length ? article.categories : [article.category]).filter(Boolean).map((category, index) => (
+                    <Badge
+                      key={`${category}-${index}`}
+                      className="bg-red-600 text-white cursor-pointer hover:bg-red-700"
+                      onClick={() => router.push(getLangPath(`/category/${encodeURIComponent(article.category_slugs?.[index] || category)}`))}
+                    >
+                      {category}
                     </Badge>
-                  )}
+                  ))}
                   {article.is_breaking && (
                     <Badge variant="destructive">{t.newsDetail.breaking}</Badge>
                   )}
@@ -629,6 +632,7 @@ export default function NewsDetail({ initialArticle = null }) {
                 <NewsCard key={a.id} id={a.id} title={a.title}
                   excerpt={(a.description || '').slice(0, 80) + '...'}
                   category={a.category} categorySlug={a.category_slug}
+                  categories={a.categories} categorySlugs={a.category_slugs}
                   author={a.editor_name || a.author_name}
                   publishedAt={a.created_at}
                   readTime={getReadingTime(a.contentText || a.description)}
