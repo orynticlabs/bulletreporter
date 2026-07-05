@@ -366,12 +366,16 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
                   <Badge className="bg-red-600 text-white flex items-center gap-1">
                     <Video className="w-3 h-3" /> {t.home.videoNews}
                   </Badge>
-                  {video.category && (
-                    <Badge variant="outline" className="text-red-600 border-red-200 cursor-pointer hover:bg-red-50"
-                      onClick={() => router.push(getLangPath(`/category/${encodeURIComponent(video.category)}`))}>
-                      {video.category}
+                  {(video.categories?.length ? video.categories : [video.category]).filter(Boolean).map((category, index) => (
+                    <Badge
+                      key={`${category}-${index}`}
+                      variant="outline"
+                      className="text-red-600 border-red-200 cursor-pointer hover:bg-red-50"
+                      onClick={() => router.push(getLangPath(`/category/${encodeURIComponent(video.category_slugs?.[index] || category)}`))}
+                    >
+                      {category}
                     </Badge>
-                  )}
+                  ))}
                 </div>
 
                 {/* Title */}

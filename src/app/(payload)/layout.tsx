@@ -7,6 +7,23 @@ import AdminAutoLogout from '@/components/payload/AdminAutoLogout'
 
 import '@payloadcms/next/css'
 
+export const metadata = {
+  icons: {
+    icon: [
+      {
+        url: '/favicon.png',
+        type: 'image/png',
+      },
+    ],
+    apple: [
+      {
+        url: '/favicon.png',
+        type: 'image/png',
+      },
+    ],
+  },
+}
+
 const configPromise = import('@payload-config').then(
   ({ default: config }) => config,
 ) as Promise<SanitizedConfig>

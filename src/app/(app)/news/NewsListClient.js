@@ -117,6 +117,8 @@ export default function AllNews() {
                       excerpt={(article.description || '').slice(0, 100) + '...'}
                       category={article.category}
                       categorySlug={article.category_slug}
+                      categories={article.categories}
+                      categorySlugs={article.category_slugs}
                       author={article.editor_name || article.author_name}
                       publishedAt={article.created_at}
                       readTime={getReadingTime(article.contentText || article.description)}

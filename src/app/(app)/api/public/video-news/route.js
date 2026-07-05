@@ -72,7 +72,7 @@ export async function GET(request) {
   if (categoryParam) {
     const categoryId = await resolveCategoryId(payload, categoryParam)
     if (categoryId) {
-      where.category = { equals: categoryId }
+      where.category = { contains: categoryId }
     } else {
       const empty = { docs: [], totalDocs: 0, totalPages: 1, page: 1, hasNextPage: false, hasPrevPage: false }
       return Response.json(empty, { headers: { 'Cache-Control': 'public, max-age=30' } })

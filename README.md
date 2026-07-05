@@ -124,8 +124,23 @@ Do not commit `.env.local` or production secrets.
 | --- | --- | --- |
 | `PAYLOAD_SECRET` | Yes | Long random secret used by Payload for auth and encryption. |
 | `DATABASE_URL` | Yes | PostgreSQL connection string. Neon pooled URLs are supported. |
-| `PAYLOAD_DB_PUSH` | Optional | Set to `true` only when intentionally allowing Payload schema push behavior. |
+| `PAYLOAD_DB_PUSH` | No | Keep disabled. Database schema changes are managed through Prisma migrations. |
 | `CRON_SECRET` | Recommended | Secret used to protect cron endpoints. |
+
+### Prisma Database Workflow
+
+Database structure is tracked in `prisma/migrations`. Deployment runs `prisma migrate deploy` before `next build`, so a new database URL is initialized automatically and an existing database is skipped or updated idempotently.
+
+Useful commands:
+
+```bash
+npm run prisma:status
+npm run prisma:migrate
+npm run prisma:pull
+npm run prisma:generate
+```
+
+Use `prisma:pull` only when intentionally baselining an already populated database into `prisma/schema.prisma`.
 
 ### reCAPTCHA
 
@@ -349,7 +364,7 @@ Before going live:
 - Confirm `NEXT_PUBLIC_SITE_URL` points to the production domain.
 - Confirm `PAYLOAD_SECRET` is strong and unique.
 - Confirm `DATABASE_URL` points to the production database.
-- Confirm `PAYLOAD_DB_PUSH` is intentionally configured.
+- Confirm `PAYLOAD_DB_PUSH` is disabled and Prisma migrations are ready.
 - Confirm Cloudinary uploads work from the admin dashboard.
 - Confirm forgot-password email sends successfully.
 - Confirm reset-password links open the public reset page.

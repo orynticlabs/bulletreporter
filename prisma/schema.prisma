@@ -1,0 +1,581 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model news_v {
+  id                                    Int                          @id @default(autoincrement())
+  parent_id                             Int?
+  version_title                         String?                      @db.VarChar
+  version_slug                          String?                      @db.VarChar
+  version_excerpt                       String?                      @db.VarChar
+  version_content                       Json?
+  version_featured_image_id             Int?
+  version_category_id                   Int?
+  version_author_id                     Int?
+  version_is_breaking                   Boolean?                     @default(false)
+  version_is_featured                   Boolean?                     @default(false)
+  version_status                        enum__news_v_version_status? @default(draft)
+  version_published_at                  DateTime?                    @db.Timestamptz(3)
+  version_views                         Decimal?                     @default(0) @db.Decimal
+  version_seo_meta_title                String?                      @db.VarChar
+  version_seo_meta_description          String?                      @db.VarChar
+  version_seo_keywords                  String?                      @db.VarChar
+  version_updated_at                    DateTime?                    @db.Timestamptz(3)
+  version_created_at                    DateTime?                    @db.Timestamptz(3)
+  version__status                       enum__news_v_version_status? @default(draft)
+  created_at                            DateTime                     @default(now()) @db.Timestamptz(3)
+  updated_at                            DateTime                     @default(now()) @db.Timestamptz(3)
+  latest                                Boolean?
+  version_excerpt_hindi                 String?                      @db.VarChar
+  version_editor_id                     Int?
+  version_title_english                 String?                      @db.VarChar
+  version_delete_at                     DateTime?                    @db.Timestamptz(6)
+  version_likes                         Int                          @default(0)
+  version_dislikes                      Int                          @default(0)
+  news                                  news?                        @relation(fields: [parent_id], references: [id], onUpdate: NoAction, map: "_news_v_parent_id_news_id_fk")
+  users_news_v_version_author_idTousers users?                       @relation("news_v_version_author_idTousers", fields: [version_author_id], references: [id], onUpdate: NoAction, map: "_news_v_version_author_id_users_id_fk")
+  categories                            categories?                  @relation(fields: [version_category_id], references: [id], onUpdate: NoAction, map: "_news_v_version_category_id_categories_id_fk")
+  users_news_v_version_editor_idTousers users?                       @relation("news_v_version_editor_idTousers", fields: [version_editor_id], references: [id], onUpdate: NoAction, map: "_news_v_version_editor_id_users_id_fk")
+  media                                 media?                       @relation(fields: [version_featured_image_id], references: [id], onUpdate: NoAction, map: "_news_v_version_featured_image_id_media_id_fk")
+  news_v_version_tags                   news_v_version_tags[]
+
+  @@index([created_at])
+  @@index([latest])
+  @@index([parent_id], map: "_news_v_parent_idx")
+  @@index([updated_at])
+  @@index([version__status], map: "_news_v_version_version__status_idx")
+  @@index([version_author_id], map: "_news_v_version_version_author_idx")
+  @@index([version_category_id], map: "_news_v_version_version_category_idx")
+  @@index([version_created_at], map: "_news_v_version_version_created_at_idx")
+  @@index([version_editor_id], map: "_news_v_version_version_editor_idx")
+  @@index([version_featured_image_id], map: "_news_v_version_version_featured_image_idx")
+  @@index([version_slug], map: "_news_v_version_version_slug_idx")
+  @@index([version_updated_at], map: "_news_v_version_version_updated_at_idx")
+  @@map("_news_v")
+}
+
+model news_v_version_tags {
+  order     Int     @map("_order")
+  parent_id Int     @map("_parent_id")
+  id        Int     @id @default(autoincrement())
+  tag       String? @db.VarChar
+  uuid      String? @map("_uuid") @db.VarChar
+  news_v    news_v  @relation(fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "_news_v_version_tags_parent_id_fk")
+
+  @@index([order], map: "_news_v_version_tags_order_idx")
+  @@index([parent_id], map: "_news_v_version_tags_parent_id_idx")
+  @@map("_news_v_version_tags")
+}
+
+model video_news_v {
+  id                                          Int                                  @id @default(autoincrement())
+  parent_id                                   Int?
+  version_title                               String?                              @db.VarChar
+  version_slug                                String?                              @db.VarChar
+  version_language                            enum__video_news_v_version_language? @default(hi)
+  version_category_id                         Int?
+  version_description                         String?                              @db.VarChar
+  version_content                             Json?
+  version_youtube_video                       String?                              @db.VarChar
+  version_youtube_video_id                    String?                              @db.VarChar
+  version_thumbnail_id                        Int?
+  version_author_id                           Int?
+  version_editor_id                           Int?
+  version_status                              enum__video_news_v_version_status?   @default(draft)
+  version_published_at                        DateTime?                            @db.Timestamptz(6)
+  version_views                               Decimal?                             @default(0) @db.Decimal
+  version_seo_meta_title                      String?                              @db.VarChar
+  version_seo_meta_description                String?                              @db.VarChar
+  version_seo_keywords                        String?                              @db.VarChar
+  version_updated_at                          DateTime?                            @db.Timestamptz(6)
+  version_created_at                          DateTime?                            @db.Timestamptz(6)
+  version__status                             enum__video_news_v_version_status?   @default(draft)
+  created_at                                  DateTime                             @default(now()) @db.Timestamptz(6)
+  updated_at                                  DateTime                             @default(now()) @db.Timestamptz(6)
+  latest                                      Boolean?
+  version_likes                               Int                                  @default(0)
+  version_dislikes                            Int                                  @default(0)
+  video_news                                  video_news?                          @relation(fields: [parent_id], references: [id], onUpdate: NoAction, map: "_video_news_v_parent_id_video_news_id_fk")
+  users_video_news_v_version_author_idTousers users?                               @relation("video_news_v_version_author_idTousers", fields: [version_author_id], references: [id], onUpdate: NoAction, map: "_video_news_v_version_author_id_users_id_fk")
+  categories                                  categories?                          @relation(fields: [version_category_id], references: [id], onUpdate: NoAction, map: "_video_news_v_version_category_id_categories_id_fk")
+  users_video_news_v_version_editor_idTousers users?                               @relation("video_news_v_version_editor_idTousers", fields: [version_editor_id], references: [id], onUpdate: NoAction, map: "_video_news_v_version_editor_id_users_id_fk")
+  media                                       media?                               @relation(fields: [version_thumbnail_id], references: [id], onUpdate: NoAction, map: "_video_news_v_version_thumbnail_id_media_id_fk")
+  video_news_v_version_tags                   video_news_v_version_tags[]
+
+  @@index([created_at])
+  @@index([latest])
+  @@index([parent_id], map: "_video_news_v_parent_idx")
+  @@index([updated_at])
+  @@index([version__status], map: "_video_news_v_version_version__status_idx")
+  @@index([version_author_id], map: "_video_news_v_version_version_author_idx")
+  @@index([version_category_id], map: "_video_news_v_version_version_category_idx")
+  @@index([version_created_at], map: "_video_news_v_version_version_created_at_idx")
+  @@index([version_editor_id], map: "_video_news_v_version_version_editor_idx")
+  @@index([version_slug], map: "_video_news_v_version_version_slug_idx")
+  @@index([version_thumbnail_id], map: "_video_news_v_version_version_thumbnail_idx")
+  @@index([version_updated_at], map: "_video_news_v_version_version_updated_at_idx")
+  @@map("_video_news_v")
+}
+
+model video_news_v_version_tags {
+  order        Int          @map("_order")
+  parent_id    Int          @map("_parent_id")
+  id           Int          @id @default(autoincrement())
+  tag          String?      @db.VarChar
+  uuid         String?      @map("_uuid") @db.VarChar
+  video_news_v video_news_v @relation(fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "_video_news_v_version_tags_parent_id_fk")
+
+  @@index([order], map: "_video_news_v_version_tags_order_idx")
+  @@index([parent_id], map: "_video_news_v_version_tags_parent_id_idx")
+  @@map("_video_news_v_version_tags")
+}
+
+model advertisements {
+  id                            Int                             @id @default(autoincrement())
+  title                         String                          @db.VarChar
+  image_id                      Int?
+  link                          String?                         @db.VarChar
+  position                      enum_advertisements_position
+  is_active                     Boolean?                        @default(true)
+  starts_at                     DateTime?                       @db.Timestamptz(3)
+  ends_at                       DateTime?                       @db.Timestamptz(3)
+  updated_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  created_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  banner_type                   String                          @default("large_ad_banner") @db.VarChar
+  size                          String                          @default("large") @db.VarChar
+  media                         media?                          @relation(fields: [image_id], references: [id], onUpdate: NoAction, map: "advertisements_image_id_media_id_fk")
+  payload_locked_documents_rels payload_locked_documents_rels[]
+
+  @@index([created_at])
+  @@index([image_id], map: "advertisements_image_idx")
+  @@index([updated_at])
+}
+
+model categories {
+  id                            Int                             @id @default(autoincrement())
+  name                          String                          @db.VarChar
+  slug                          String                          @unique(map: "categories_slug_idx") @db.VarChar
+  name_hindi                    String?                         @db.VarChar
+  description                   String?                         @db.VarChar
+  color                         String?                         @default("#dc2626") @db.VarChar
+  order                         Decimal?                        @default(0) @db.Decimal
+  updated_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  created_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  news_v                        news_v[]
+  video_news_v                  video_news_v[]
+  news                          news[]
+  payload_locked_documents_rels payload_locked_documents_rels[]
+  video_news                    video_news[]
+
+  @@index([created_at])
+  @@index([updated_at])
+}
+
+model comments {
+  id                            Int                             @id @default(autoincrement())
+  author_name                   String                          @db.VarChar
+  author_email                  String?                         @db.VarChar
+  content                       String                          @db.VarChar
+  article_id                    Int?
+  status                        enum_comments_status?           @default(pending)
+  updated_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  created_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  video_article_id              Int?
+  news                          news?                           @relation(fields: [article_id], references: [id], onUpdate: NoAction, map: "comments_article_id_news_id_fk")
+  video_news                    video_news?                     @relation(fields: [video_article_id], references: [id], onUpdate: NoAction, map: "comments_video_article_id_video_news_id_fk")
+  payload_locked_documents_rels payload_locked_documents_rels[]
+
+  @@index([article_id], map: "comments_article_idx")
+  @@index([created_at])
+  @@index([updated_at])
+  @@index([video_article_id], map: "comments_video_article_idx")
+}
+
+model media {
+  id                                  Int                             @id @default(autoincrement())
+  alt                                 String                          @db.VarChar
+  caption                             String?                         @db.VarChar
+  updated_at                          DateTime                        @default(now()) @db.Timestamptz(3)
+  created_at                          DateTime                        @default(now()) @db.Timestamptz(3)
+  url                                 String?                         @db.VarChar
+  thumbnail_u_r_l                     String?                         @db.VarChar
+  filename                            String?                         @unique(map: "media_filename_idx") @db.VarChar
+  mime_type                           String?                         @db.VarChar
+  filesize                            Decimal?                        @db.Decimal
+  width                               Decimal?                        @db.Decimal
+  height                              Decimal?                        @db.Decimal
+  focal_x                             Decimal?                        @db.Decimal
+  focal_y                             Decimal?                        @db.Decimal
+  sizes_thumbnail_url                 String?                         @db.VarChar
+  sizes_thumbnail_width               Decimal?                        @db.Decimal
+  sizes_thumbnail_height              Decimal?                        @db.Decimal
+  sizes_thumbnail_mime_type           String?                         @db.VarChar
+  sizes_thumbnail_filesize            Decimal?                        @db.Decimal
+  sizes_thumbnail_filename            String?                         @db.VarChar
+  sizes_card_url                      String?                         @db.VarChar
+  sizes_card_width                    Decimal?                        @db.Decimal
+  sizes_card_height                   Decimal?                        @db.Decimal
+  sizes_card_mime_type                String?                         @db.VarChar
+  sizes_card_filesize                 Decimal?                        @db.Decimal
+  sizes_card_filename                 String?                         @db.VarChar
+  sizes_hero_url                      String?                         @db.VarChar
+  sizes_hero_width                    Decimal?                        @db.Decimal
+  sizes_hero_height                   Decimal?                        @db.Decimal
+  sizes_hero_mime_type                String?                         @db.VarChar
+  sizes_hero_filesize                 Decimal?                        @db.Decimal
+  sizes_hero_filename                 String?                         @db.VarChar
+  cloudinary_public_id                String?                         @db.VarChar
+  news_v                              news_v[]
+  video_news_v                        video_news_v[]
+  advertisements                      advertisements[]
+  news                                news[]
+  payload_locked_documents_rels       payload_locked_documents_rels[]
+  settings_settings_favicon_idTomedia settings[]                      @relation("settings_favicon_idTomedia")
+  settings_settings_logo_idTomedia    settings[]                      @relation("settings_logo_idTomedia")
+  users                               users[]
+  video_news                          video_news[]
+
+  @@index([created_at])
+  @@index([sizes_card_filename], map: "media_sizes_card_sizes_card_filename_idx")
+  @@index([sizes_hero_filename], map: "media_sizes_hero_sizes_hero_filename_idx")
+  @@index([sizes_thumbnail_filename], map: "media_sizes_thumbnail_sizes_thumbnail_filename_idx")
+  @@index([updated_at])
+}
+
+model news {
+  id                            Int                             @id @default(autoincrement())
+  title                         String?                         @db.VarChar
+  slug                          String?                         @unique(map: "news_slug_idx") @db.VarChar
+  excerpt                       String?                         @db.VarChar
+  content                       Json?
+  featured_image_id             Int?
+  category_id                   Int?
+  author_id                     Int?
+  is_breaking                   Boolean?                        @default(false)
+  is_featured                   Boolean?                        @default(false)
+  status                        enum_news_status?               @default(draft)
+  published_at                  DateTime?                       @db.Timestamptz(3)
+  views                         Decimal?                        @default(0) @db.Decimal
+  seo_meta_title                String?                         @db.VarChar
+  seo_meta_description          String?                         @db.VarChar
+  seo_keywords                  String?                         @db.VarChar
+  updated_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  created_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  payload_status                enum_news_status?               @default(draft) @map("_status")
+  excerpt_hindi                 String?                         @db.VarChar
+  editor_id                     Int?
+  title_english                 String?                         @db.VarChar
+  delete_at                     DateTime?                       @db.Timestamptz(6)
+  likes                         Int                             @default(0)
+  dislikes                      Int                             @default(0)
+  news_v                        news_v[]
+  comments                      comments[]
+  users_news_author_idTousers   users?                          @relation("news_author_idTousers", fields: [author_id], references: [id], onUpdate: NoAction, map: "news_author_id_users_id_fk")
+  categories                    categories?                     @relation(fields: [category_id], references: [id], onUpdate: NoAction, map: "news_category_id_categories_id_fk")
+  users_news_editor_idTousers   users?                          @relation("news_editor_idTousers", fields: [editor_id], references: [id], onUpdate: NoAction, map: "news_editor_id_users_id_fk")
+  media                         media?                          @relation(fields: [featured_image_id], references: [id], onUpdate: NoAction, map: "news_featured_image_id_media_id_fk")
+  news_tags                     news_tags[]
+  payload_locked_documents_rels payload_locked_documents_rels[]
+
+  @@index([status])
+  @@index([author_id], map: "news_author_idx")
+  @@index([category_id], map: "news_category_idx")
+  @@index([created_at])
+  @@index([editor_id], map: "news_editor_idx")
+  @@index([featured_image_id], map: "news_featured_image_idx")
+  @@index([updated_at])
+}
+
+model news_tags {
+  order     Int     @map("_order")
+  parent_id Int     @map("_parent_id")
+  id        String  @id @db.VarChar
+  tag       String? @db.VarChar
+  news      news    @relation(fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "news_tags_parent_id_fk")
+
+  @@index([order], map: "news_tags_order_idx")
+  @@index([parent_id], map: "news_tags_parent_id_idx")
+}
+
+model payload_kv {
+  id   Int    @id @default(autoincrement())
+  key  String @unique(map: "payload_kv_key_idx") @db.VarChar
+  data Json
+}
+
+model payload_locked_documents {
+  id                            Int                             @id @default(autoincrement())
+  global_slug                   String?                         @db.VarChar
+  updated_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  created_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  payload_locked_documents_rels payload_locked_documents_rels[]
+
+  @@index([created_at])
+  @@index([global_slug])
+  @@index([updated_at])
+}
+
+model payload_locked_documents_rels {
+  id                       Int                      @id @default(autoincrement())
+  order                    Int?
+  parent_id                Int
+  path                     String                   @db.VarChar
+  users_id                 Int?
+  media_id                 Int?
+  categories_id            Int?
+  news_id                  Int?
+  comments_id              Int?
+  advertisements_id        Int?
+  video_news_id            Int?
+  advertisements           advertisements?          @relation(fields: [advertisements_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_advertisements_fk")
+  categories               categories?              @relation(fields: [categories_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_categories_fk")
+  comments                 comments?                @relation(fields: [comments_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_comments_fk")
+  media                    media?                   @relation(fields: [media_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_media_fk")
+  news                     news?                    @relation(fields: [news_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_news_fk")
+  payload_locked_documents payload_locked_documents @relation(fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_parent_fk")
+  users                    users?                   @relation(fields: [users_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_users_fk")
+  video_news               video_news?              @relation(fields: [video_news_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_video_news_fk")
+
+  @@index([advertisements_id])
+  @@index([categories_id])
+  @@index([comments_id])
+  @@index([media_id])
+  @@index([news_id])
+  @@index([order])
+  @@index([parent_id], map: "payload_locked_documents_rels_parent_idx")
+  @@index([path])
+  @@index([users_id])
+  @@index([video_news_id])
+}
+
+model payload_migrations {
+  id         Int      @id @default(autoincrement())
+  name       String?  @db.VarChar
+  batch      Decimal? @db.Decimal
+  updated_at DateTime @default(now()) @db.Timestamptz(3)
+  created_at DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([created_at])
+  @@index([updated_at])
+}
+
+model payload_preferences {
+  id                       Int                        @id @default(autoincrement())
+  key                      String?                    @db.VarChar
+  value                    Json?
+  updated_at               DateTime                   @default(now()) @db.Timestamptz(3)
+  created_at               DateTime                   @default(now()) @db.Timestamptz(3)
+  payload_preferences_rels payload_preferences_rels[]
+
+  @@index([created_at])
+  @@index([key])
+  @@index([updated_at])
+}
+
+model payload_preferences_rels {
+  id                  Int                 @id @default(autoincrement())
+  order               Int?
+  parent_id           Int
+  path                String              @db.VarChar
+  users_id            Int?
+  payload_preferences payload_preferences @relation(fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_preferences_rels_parent_fk")
+  users               users?              @relation(fields: [users_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_preferences_rels_users_fk")
+
+  @@index([order])
+  @@index([parent_id], map: "payload_preferences_rels_parent_idx")
+  @@index([path])
+  @@index([users_id])
+}
+
+model settings {
+  id                                  Int       @id @default(autoincrement())
+  site_name                           String?   @default("Bullet Reporter") @db.VarChar
+  tagline                             String?   @db.VarChar
+  logo_id                             Int?
+  favicon_id                          Int?
+  social_links_facebook               String?   @db.VarChar
+  social_links_twitter                String?   @db.VarChar
+  social_links_instagram              String?   @db.VarChar
+  social_links_youtube                String?   @db.VarChar
+  footer_text                         String?   @db.VarChar
+  breaking_news_ticker                Boolean?  @default(true)
+  updated_at                          DateTime? @db.Timestamptz(3)
+  created_at                          DateTime? @db.Timestamptz(3)
+  about_page_eyebrow                  String?   @default("About Bullet Reporter") @db.VarChar
+  about_page_headline                 String?   @default("साफ, तेज और जिम्मेदार खबरें") @db.VarChar
+  about_page_summary                  String?   @db.VarChar
+  about_page_photo_id                 Int?
+  about_page_description              Json?
+  about_page_mission                  String?   @db.VarChar
+  about_page_technology_management    String?   @db.VarChar
+  about_page_ownership                String?   @db.VarChar
+  about_page_chief_editor_name        String?   @db.VarChar
+  about_page_chief_editor_designation String?   @default("Chief Editor") @db.VarChar
+  about_page_chief_editor_photo_id    Int?
+  about_page_chief_editor_bio         String?   @db.VarChar
+  about_page_chief_editor_email       String?   @db.VarChar
+  about_page_editor_name              String?   @db.VarChar
+  about_page_editor_designation       String?   @default("Editor") @db.VarChar
+  about_page_editor_photo_id          Int?
+  about_page_editor_bio               String?   @db.VarChar
+  about_page_editor_email             String?   @db.VarChar
+  media_settings_favicon_idTomedia    media?    @relation("settings_favicon_idTomedia", fields: [favicon_id], references: [id], onUpdate: NoAction, map: "settings_favicon_id_media_id_fk")
+  media_settings_logo_idTomedia       media?    @relation("settings_logo_idTomedia", fields: [logo_id], references: [id], onUpdate: NoAction, map: "settings_logo_id_media_id_fk")
+
+  @@index([favicon_id], map: "settings_favicon_idx")
+  @@index([logo_id], map: "settings_logo_idx")
+}
+
+model users {
+  id                                                 Int                             @id @default(autoincrement())
+  name                                               String                          @db.VarChar
+  role                                               enum_users_role                 @default(author)
+  bio                                                String?                         @db.VarChar
+  avatar_id                                          Int?
+  updated_at                                         DateTime                        @default(now()) @db.Timestamptz(3)
+  created_at                                         DateTime                        @default(now()) @db.Timestamptz(3)
+  email                                              String                          @unique(map: "users_email_idx") @db.VarChar
+  reset_password_token                               String?                         @db.VarChar
+  reset_password_expiration                          DateTime?                       @db.Timestamptz(3)
+  salt                                               String?                         @db.VarChar
+  hash                                               String?                         @db.VarChar
+  login_attempts                                     Decimal?                        @default(0) @db.Decimal
+  lock_until                                         DateTime?                       @db.Timestamptz(3)
+  news_v_news_v_version_author_idTousers             news_v[]                        @relation("news_v_version_author_idTousers")
+  news_v_news_v_version_editor_idTousers             news_v[]                        @relation("news_v_version_editor_idTousers")
+  video_news_v_video_news_v_version_author_idTousers video_news_v[]                  @relation("video_news_v_version_author_idTousers")
+  video_news_v_video_news_v_version_editor_idTousers video_news_v[]                  @relation("video_news_v_version_editor_idTousers")
+  news_news_author_idTousers                         news[]                          @relation("news_author_idTousers")
+  news_news_editor_idTousers                         news[]                          @relation("news_editor_idTousers")
+  payload_locked_documents_rels                      payload_locked_documents_rels[]
+  payload_preferences_rels                           payload_preferences_rels[]
+  media                                              media?                          @relation(fields: [avatar_id], references: [id], onUpdate: NoAction, map: "users_avatar_id_media_id_fk")
+  users_sessions                                     users_sessions[]
+  video_news_video_news_author_idTousers             video_news[]                    @relation("video_news_author_idTousers")
+  video_news_video_news_editor_idTousers             video_news[]                    @relation("video_news_editor_idTousers")
+
+  @@index([avatar_id], map: "users_avatar_idx")
+  @@index([created_at])
+  @@index([updated_at])
+}
+
+model users_sessions {
+  order      Int       @map("_order")
+  parent_id  Int       @map("_parent_id")
+  id         String    @id @db.VarChar
+  created_at DateTime? @db.Timestamptz(3)
+  expires_at DateTime  @db.Timestamptz(3)
+  users      users     @relation(fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "users_sessions_parent_id_fk")
+
+  @@index([order], map: "users_sessions_order_idx")
+  @@index([parent_id], map: "users_sessions_parent_id_idx")
+}
+
+model video_news {
+  id                                Int                             @id @default(autoincrement())
+  title                             String?                         @db.VarChar
+  slug                              String?                         @unique(map: "video_news_slug_idx") @db.VarChar
+  language                          enum_video_news_language?       @default(hi)
+  category_id                       Int?
+  description                       String?                         @db.VarChar
+  content                           Json?
+  youtube_video                     String?                         @db.VarChar
+  youtube_video_id                  String?                         @db.VarChar
+  thumbnail_id                      Int?
+  author_id                         Int?
+  editor_id                         Int?
+  status                            enum_video_news_status?         @default(draft)
+  published_at                      DateTime?                       @db.Timestamptz(6)
+  views                             Decimal?                        @default(0) @db.Decimal
+  seo_meta_title                    String?                         @db.VarChar
+  seo_meta_description              String?                         @db.VarChar
+  seo_keywords                      String?                         @db.VarChar
+  updated_at                        DateTime                        @default(now()) @db.Timestamptz(6)
+  created_at                        DateTime                        @default(now()) @db.Timestamptz(6)
+  payload_status                    enum_video_news_status?         @default(draft) @map("_status")
+  likes                             Int                             @default(0)
+  dislikes                          Int                             @default(0)
+  video_news_v                      video_news_v[]
+  comments                          comments[]
+  payload_locked_documents_rels     payload_locked_documents_rels[]
+  users_video_news_author_idTousers users?                          @relation("video_news_author_idTousers", fields: [author_id], references: [id], onUpdate: NoAction, map: "video_news_author_id_users_id_fk")
+  categories                        categories?                     @relation(fields: [category_id], references: [id], onUpdate: NoAction, map: "video_news_category_id_categories_id_fk")
+  users_video_news_editor_idTousers users?                          @relation("video_news_editor_idTousers", fields: [editor_id], references: [id], onUpdate: NoAction, map: "video_news_editor_id_users_id_fk")
+  media                             media?                          @relation(fields: [thumbnail_id], references: [id], onUpdate: NoAction, map: "video_news_thumbnail_id_media_id_fk")
+  video_news_tags                   video_news_tags[]
+
+  @@index([status])
+  @@index([author_id], map: "video_news_author_idx")
+  @@index([category_id], map: "video_news_category_idx")
+  @@index([created_at])
+  @@index([editor_id], map: "video_news_editor_idx")
+  @@index([thumbnail_id], map: "video_news_thumbnail_idx")
+  @@index([updated_at])
+}
+
+model video_news_tags {
+  order      Int        @map("_order")
+  parent_id  Int        @map("_parent_id")
+  id         String     @id @db.VarChar
+  tag        String?    @db.VarChar
+  video_news video_news @relation(fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "video_news_tags_parent_id_fk")
+
+  @@index([order], map: "video_news_tags_order_idx")
+  @@index([parent_id], map: "video_news_tags_parent_id_idx")
+}
+
+enum enum__news_v_version_status {
+  draft
+  published
+}
+
+enum enum__video_news_v_version_language {
+  hi
+  en
+}
+
+enum enum__video_news_v_version_status {
+  draft
+  published
+}
+
+enum enum_advertisements_position {
+  top_banner
+  middle_banner
+  bottom_banner
+  sidebar
+  bottom_sidebar
+}
+
+enum enum_comments_status {
+  pending
+  approved
+  rejected
+}
+
+enum enum_news_status {
+  draft
+  published
+}
+
+enum enum_users_role {
+  admin
+  chief_editor
+  editor
+  author
+  viewer
+}
+
+enum enum_video_news_language {
+  hi
+  en
+}
+
+enum enum_video_news_status {
+  draft
+  published
+}
