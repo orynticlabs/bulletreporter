@@ -26,7 +26,7 @@ function ForgotPassword() {
         body: JSON.stringify({ email, recaptchaToken }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed')
+      if (!res.ok) throw new Error(data.error || data.message || 'Failed')
       toast({
         title: "सफल",
         description: "पासवर्ड रीसेट लिंक आपके ईमेल पर भेज दिया गया है।",

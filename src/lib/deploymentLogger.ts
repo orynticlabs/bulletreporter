@@ -4,6 +4,22 @@ type LogDetails = Record<string, unknown>
 
 const LOG_PREFIX = 'BulletReporter'
 
+const formatValue = (value: unknown): string => {
+  if (value === undefined) return ''
+  if (value === null) return 'null'
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return JSON.stringify(value)
+}
+
+const formatDetails = (details: LogDetails): string => {
+  const entries = Object.entries(details)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}=${formatValue(value)}`)
+
+  return entries.length ? ` (${entries.join(', ')})` : ''
+}
+
 const writeLogLine = (level: LogLevel, line: string) => {
   const stream = level === 'info' ? process.stdout : process.stderr
 
@@ -59,15 +75,10 @@ export const logDeploymentEvent = (
   message: string,
   details: LogDetails = {},
 ) => {
-  const payload = {
-    timestamp: new Date().toISOString(),
-    scope,
+  const line = `[${LOG_PREFIX}] ${new Date().toISOString()} ${level.toUpperCase()} ${scope} - ${message}${formatDetails({
     pid: process.pid,
-    message,
     ...details,
-  }
-
-  const line = `[${LOG_PREFIX}][${scope}][${level.toUpperCase()}] ${JSON.stringify(payload)}`
+  })}`
 
   writeLogLine(level, line)
 }

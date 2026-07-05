@@ -45,9 +45,9 @@ export async function fetchPublicCacheState({ forceRefresh = false } = {}) {
   return pendingCacheState
 }
 
-export async function getPublicCacheVersion(scope = 'all') {
+export async function getPublicCacheVersion(scope = 'all', options = {}) {
   try {
-    const state = await fetchPublicCacheState()
+    const state = await fetchPublicCacheState(options)
     return String(state?.versions?.[scope] || state?.version || '0')
   } catch {
     return '0'

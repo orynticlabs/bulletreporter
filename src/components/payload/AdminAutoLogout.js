@@ -3,8 +3,25 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
-const INACTIVITY_LIMIT_MS = 5 * 60 * 1000
-const ACTIVITY_EVENTS = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart', 'pointerdown']
+const INACTIVITY_LIMIT_MS = 10 * 60 * 1000
+const ACTIVITY_STORAGE_KEY = 'br_admin_last_activity_at'
+const ACTIVITY_BROADCAST_INTERVAL_MS = 5000
+const ACTIVITY_EVENTS = [
+  'click',
+  'keydown',
+  'keyup',
+  'input',
+  'change',
+  'mousemove',
+  'mousedown',
+  'pointerdown',
+  'pointermove',
+  'scroll',
+  'touchstart',
+  'touchmove',
+  'wheel',
+  'focus',
+]
 const LOGIN_PATHS = ['/admin/login', '/admin/forgot', '/admin/create-first-user']
 
 const clearPayloadClientStorage = () => {
@@ -43,6 +60,8 @@ export default function AdminAutoLogout() {
   const router = useRouter()
   const timerRef = useRef(null)
   const loggingOutRef = useRef(false)
+  const lastActivityRef = useRef(Date.now())
+  const lastBroadcastRef = useRef(0)
 
   const isAdminPage = pathname?.startsWith('/admin')
   const isLoginPage = LOGIN_PATHS.some((path) => pathname?.startsWith(path))
@@ -75,27 +94,62 @@ export default function AdminAutoLogout() {
     }
   }, [router])
 
-  const resetTimer = useCallback(() => {
+  const resetTimer = useCallback((activityAt = Date.now()) => {
     if (!isAdminPage || isLoginPage || loggingOutRef.current) return
+
+    lastActivityRef.current = Math.max(lastActivityRef.current, activityAt)
 
     if (timerRef.current) {
       window.clearTimeout(timerRef.current)
     }
 
+    const expiresIn = Math.max(0, INACTIVITY_LIMIT_MS - (Date.now() - lastActivityRef.current))
     timerRef.current = window.setTimeout(() => {
       logout()
-    }, INACTIVITY_LIMIT_MS)
+    }, expiresIn)
   }, [isAdminPage, isLoginPage, logout])
+
+  const recordActivity = useCallback(() => {
+    const now = Date.now()
+    resetTimer(now)
+
+    if (now - lastBroadcastRef.current < ACTIVITY_BROADCAST_INTERVAL_MS) return
+
+    lastBroadcastRef.current = now
+    try {
+      localStorage.setItem(ACTIVITY_STORAGE_KEY, String(now))
+    } catch (_) {
+      // Storage can be blocked; the current tab timer still works.
+    }
+  }, [resetTimer])
 
   useEffect(() => {
     if (!isAdminPage || isLoginPage) return undefined
 
     loggingOutRef.current = false
-    resetTimer()
+    recordActivity()
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        recordActivity()
+      }
+    }
+
+    const handleStorage = (event) => {
+      if (event.key !== ACTIVITY_STORAGE_KEY || !event.newValue) return
+
+      const activityAt = Number(event.newValue)
+      if (Number.isFinite(activityAt)) {
+        resetTimer(activityAt)
+      }
+    }
 
     ACTIVITY_EVENTS.forEach((eventName) => {
-      window.addEventListener(eventName, resetTimer, { passive: true })
+      window.addEventListener(eventName, recordActivity, { capture: true, passive: true })
+      document.addEventListener(eventName, recordActivity, { capture: true, passive: true })
     })
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('storage', handleStorage)
 
     return () => {
       if (timerRef.current) {
@@ -104,33 +158,13 @@ export default function AdminAutoLogout() {
       }
 
       ACTIVITY_EVENTS.forEach((eventName) => {
-        window.removeEventListener(eventName, resetTimer)
+        window.removeEventListener(eventName, recordActivity, { capture: true })
+        document.removeEventListener(eventName, recordActivity, { capture: true })
       })
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('storage', handleStorage)
     }
-  }, [isAdminPage, isLoginPage, resetTimer])
-
-  useEffect(() => {
-    if (!isAdminPage || isLoginPage) return undefined
-
-    const handleTabClose = () => {
-      clearPayloadClientStorage()
-      try {
-        fetch('/api/users/logout', {
-          method: 'POST',
-          credentials: 'include',
-          keepalive: true,
-        })
-      } catch (_) {
-        // Browsers may stop work during unload; best-effort cleanup above still runs.
-      }
-    }
-
-    window.addEventListener('beforeunload', handleTabClose)
-
-    return () => {
-      window.removeEventListener('beforeunload', handleTabClose)
-    }
-  }, [isAdminPage, isLoginPage])
+  }, [isAdminPage, isLoginPage, recordActivity, resetTimer])
 
   return null
 }

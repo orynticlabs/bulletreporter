@@ -1,7 +1,7 @@
 // Weather service using OpenWeatherMap API
 // To use this service, create a .env file in the frontend root with:
 // NEXT_PUBLIC_OPENWEATHER_API_KEY=your_actual_api_key_here
-const API_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || '657c13238d19faa09c854dfe2b21f7df';
+const API_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
 // Hindi translations for weather conditions
