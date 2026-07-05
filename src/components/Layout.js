@@ -6,6 +6,7 @@ import BreakingNews from '@/components/BreakingNews'
 import { MessageSquareMore, ChevronUp } from 'lucide-react'
 import Footer from '@/components/footer'
 import YouTubeShorts from '@/components/YouTubeShorts'
+import SocialFollowPopup from '@/components/SocialFollowPopup'
 
 const getExternalUrl = (value = '') => {
   const trimmed = value.trim()
@@ -37,6 +38,7 @@ function Layout({ children, showBreakingNews = true }) {
 
       <YouTubeShorts />
       <Footer />
+      <SocialFollowPopup />
 
       {WHATSAPP_LINK && (
         <a
