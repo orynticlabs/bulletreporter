@@ -707,6 +707,23 @@ export default buildConfig({
 
   admin: {
     user: 'users',
+    meta: {
+      titleSuffix: ' - Bullet Reporter Admin',
+      icons: {
+        icon: [
+          {
+            url: '/favicon.png',
+            type: 'image/png',
+          },
+        ],
+        apple: [
+          {
+            url: '/favicon.png',
+            type: 'image/png',
+          },
+        ],
+      },
+    },
     importMap: {
       baseDir: dirname,
       importMapFile: path.resolve(dirname, 'src/app/(payload)/admin/importMap.js'),
@@ -714,7 +731,7 @@ export default buildConfig({
   },
 
   db: postgresAdapter({
-    push: process.env.PAYLOAD_DB_PUSH === 'true',
+    push: false,
     pool: {
       connectionString: databaseUrl,
       ssl: databaseUrl.includes('sslmode=') ? undefined : { rejectUnauthorized: false },

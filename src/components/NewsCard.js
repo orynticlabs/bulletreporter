@@ -10,13 +10,17 @@ import { shareOnPlatform } from '@/utils/socialSharing'
 import { getRelativeTime } from '@/utils/dateUtils'
 import { useLanguage } from '@/contexts/LanguageContext'
 
-function NewsCard({ id, title, excerpt, category, categorySlug, author, publishedAt, readTime, views = 0, imageUrl, youtubeUrl, slug, featured = false, imageLoading = 'lazy' }) {
+function NewsCard({ id, title, excerpt, category, categorySlug, categories = [], categorySlugs = [], author, publishedAt, readTime, views = 0, imageUrl, youtubeUrl, slug, featured = false, imageLoading = 'lazy' }) {
   const router = useRouter()
   const { toast } = useToast()
   const { t, lang } = useLanguage()
 
-  // categorySlug is the URL-safe key (English name); falls back to display name
-  const categoryKey = categorySlug || category
+  const categoryBadges = (Array.isArray(categories) && categories.length ? categories : [category])
+    .filter(Boolean)
+    .map((label, index) => ({
+      label,
+      slug: (Array.isArray(categorySlugs) && categorySlugs[index]) || (index === 0 ? categorySlug : null) || label,
+    }))
 
   const getLangPath = useCallback((path) => lang === 'en' ? `/en${path}` : path, [lang])
 
@@ -26,8 +30,9 @@ function NewsCard({ id, title, excerpt, category, categorySlug, author, publishe
 
   const handleCategoryClick = useCallback((e) => {
     e.stopPropagation()
+    const categoryKey = e.currentTarget.dataset.categorySlug
     if (categoryKey) router.push(getLangPath(`/category/${encodeURIComponent(categoryKey)}`))
-  }, [categoryKey, router, getLangPath])
+  }, [router, getLangPath])
 
   const handleShare = useCallback((e, platform) => {
     e.stopPropagation()
@@ -61,11 +66,19 @@ function NewsCard({ id, title, excerpt, category, categorySlug, author, publishe
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
         {/* Category badge */}
-        {category && (
-          <Badge className="absolute top-3 left-3 bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-colors text-xs"
-            onClick={handleCategoryClick}>
-            {category}
-          </Badge>
+        {categoryBadges.length > 0 && (
+          <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1.5">
+            {categoryBadges.slice(0, 3).map((badge) => (
+              <Badge
+                key={`${badge.slug}-${badge.label}`}
+                data-category-slug={badge.slug}
+                className="bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-colors text-xs"
+                onClick={handleCategoryClick}
+              >
+                {badge.label}
+              </Badge>
+            ))}
+          </div>
         )}
 
         {featured && (
