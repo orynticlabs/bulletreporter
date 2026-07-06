@@ -319,6 +319,91 @@ const ensureNewsPublishedAt = ({ data, operation }: { data?: Record<string, any>
   return data
 }
 
+const getRelationshipValue = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      item && typeof item === 'object' && 'id' in item
+        ? (item as { id: string | number }).id
+        : item && typeof item === 'object' && 'value' in item
+          ? (item as { value: string | number }).value
+          : item,
+    )
+  }
+
+  if (value && typeof value === 'object' && 'id' in value) {
+    return (value as { id: string | number }).id
+  }
+
+  if (value && typeof value === 'object' && 'value' in value) {
+    return (value as { value: string | number }).value
+  }
+
+  return value
+}
+
+const ensureLoggedInUserByline = ({
+  data,
+  operation,
+  originalDoc,
+  req,
+}: {
+  data?: Record<string, any>
+  operation?: string
+  originalDoc?: Record<string, any>
+  req?: any
+}) => {
+  if (!data) return data || {}
+
+  const userId = req?.user?.id
+
+  if (operation === 'create' && userId) {
+    data.author = userId
+    data.editor = userId
+  } else if (operation === 'update') {
+    data.author = getRelationshipValue(originalDoc?.author) || userId
+    data.editor = getRelationshipValue(originalDoc?.editor) || userId
+  }
+
+  return data
+}
+
+const ensureRequiredNewsRelationships = ({
+  data,
+  operation,
+  originalDoc,
+}: {
+  data?: Record<string, any>
+  operation?: string
+  originalDoc?: Record<string, any>
+}) => {
+  if (!data) return data || {}
+
+  if (operation === 'update' && !('category' in data) && originalDoc?.category) {
+    data.category = getRelationshipValue(originalDoc.category)
+  }
+
+  return data
+}
+
+const ensureNewsFields = ({
+  data,
+  operation,
+  originalDoc,
+  req,
+}: {
+  data?: Record<string, any>
+  operation?: string
+  originalDoc?: Record<string, any>
+  req?: any
+}) => {
+  const next = ensureNewsPublishedAt({ data, operation })
+  ensureNewsSlug({ data: next, operation })
+  ensureLoggedInUserByline({ data: next, operation, originalDoc, req })
+  ensureRequiredNewsRelationships({ data: next, operation, originalDoc })
+
+  return next
+}
+
 const extractYouTubeVideoId = (value?: string) => {
   const raw = String(value || '').trim()
   if (!raw) return ''
@@ -341,9 +426,18 @@ const extractYouTubeVideoId = (value?: string) => {
   return ''
 }
 
-const ensureVideoNewsFields = ({ data, operation }: { data?: Record<string, any>, operation?: string }) => {
-  const next = ensureNewsPublishedAt({ data, operation })
-  ensureNewsSlug({ data: next, operation })
+const ensureVideoNewsFields = ({
+  data,
+  operation,
+  originalDoc,
+  req,
+}: {
+  data?: Record<string, any>
+  operation?: string
+  originalDoc?: Record<string, any>
+  req?: any
+}) => {
+  const next = ensureNewsFields({ data, operation, originalDoc, req })
 
   if (next.youtubeVideo) {
     next.youtubeVideoId = extractYouTubeVideoId(next.youtubeVideo)
@@ -998,7 +1092,7 @@ export default buildConfig({
         delete: ({ req }) => isAdminOrEditor(req.user),
       },
       hooks: {
-        beforeValidate: [ensureNewsSlug, ensureNewsPublishedAt],
+        beforeValidate: [ensureNewsFields],
         afterChange: [
           async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
             if (hasPublicFieldChanged({ doc, previousDoc, fields: NEWS_PUBLIC_FIELDS })) {
@@ -1090,14 +1184,18 @@ export default buildConfig({
           type: 'relationship',
           relationTo: 'users',
           required: true,
+          admin: {
+            hidden: true,
+          },
         },
         {
           name: 'editor',
           type: 'relationship',
           relationTo: 'users',
           required: true,
-          // Only Admin/Editor can assign who reviewed/edited a piece
-          access: { update: ({ req }) => isAdminOrEditor(req.user) },
+          admin: {
+            hidden: true,
+          },
         },
         {
           name: 'tags',
@@ -1324,13 +1422,18 @@ export default buildConfig({
           type: 'relationship',
           relationTo: 'users',
           required: true,
+          admin: {
+            hidden: true,
+          },
         },
         {
           name: 'editor',
           type: 'relationship',
           relationTo: 'users',
           required: true,
-          access: { update: ({ req }) => isAdminOrEditor(req.user) },
+          admin: {
+            hidden: true,
+          },
         },
         {
           name: 'tags',
