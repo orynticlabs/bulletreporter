@@ -1,11 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 const INACTIVITY_LIMIT_MS = 10 * 60 * 1000
 const ACTIVITY_STORAGE_KEY = 'br_admin_last_activity_at'
 const ACTIVITY_BROADCAST_INTERVAL_MS = 5000
+const FORCE_LOGOUT_ENDPOINT = '/api/admin-session/logout'
 const ACTIVITY_EVENTS = [
   'click',
   'keydown',
@@ -23,6 +24,7 @@ const ACTIVITY_EVENTS = [
   'focus',
 ]
 const LOGIN_PATHS = ['/admin/login', '/admin/forgot', '/admin/create-first-user']
+const LOGOUT_PATHS = ['/admin/logout', '/admin/logout-inactivity']
 
 const clearPayloadClientStorage = () => {
   const shouldClear = (key = '') => /payload|admin|auth|token/i.test(key)
@@ -57,7 +59,6 @@ const clearPayloadClientStorage = () => {
 
 export default function AdminAutoLogout() {
   const pathname = usePathname()
-  const router = useRouter()
   const timerRef = useRef(null)
   const loggingOutRef = useRef(false)
   const lastActivityRef = useRef(Date.now())
@@ -65,8 +66,11 @@ export default function AdminAutoLogout() {
 
   const isAdminPage = pathname?.startsWith('/admin')
   const isLoginPage = LOGIN_PATHS.some((path) => pathname?.startsWith(path))
+  const isLogoutPage = LOGOUT_PATHS.some((path) => pathname?.startsWith(path))
+  const isManualLogoutPage =
+    pathname?.startsWith('/admin/logout') && !pathname?.startsWith('/admin/logout-inactivity')
 
-  const logout = useCallback(async ({ keepalive = false, redirect = true } = {}) => {
+  const logout = useCallback(async ({ keepalive = false, redirect = true, inactivity = false } = {}) => {
     if (loggingOutRef.current) return
     loggingOutRef.current = true
 
@@ -74,8 +78,6 @@ export default function AdminAutoLogout() {
       window.clearTimeout(timerRef.current)
       timerRef.current = null
     }
-
-    clearPayloadClientStorage()
 
     try {
       await fetch('/api/users/logout', {
@@ -88,14 +90,52 @@ export default function AdminAutoLogout() {
       // Redirect anyway; the next admin request will no longer have client auth state.
     }
 
-    if (redirect) {
-      router.replace('/admin/login')
-      router.refresh()
+    try {
+      await fetch(FORCE_LOGOUT_ENDPOINT, {
+        method: 'POST',
+        credentials: 'include',
+        keepalive,
+      })
+    } catch (_) {
+      // The fallback endpoint only expires cookies; client cleanup below is still useful.
     }
-  }, [router])
+
+    clearPayloadClientStorage()
+
+    if (redirect) {
+      const nextPath = inactivity ? '/admin/logout-inactivity' : '/admin/login'
+      window.location.replace(nextPath)
+    }
+  }, [])
+
+  const getStoredActivityAt = useCallback(() => {
+    try {
+      const stored = Number(localStorage.getItem(ACTIVITY_STORAGE_KEY))
+      return Number.isFinite(stored) ? stored : null
+    } catch (_) {
+      return null
+    }
+  }, [])
+
+  const hasExpired = useCallback((activityAt = lastActivityRef.current) => {
+    return Date.now() - activityAt >= INACTIVITY_LIMIT_MS
+  }, [])
+
+  const checkInactivity = useCallback(() => {
+    const storedActivityAt = getStoredActivityAt()
+    const activityAt = storedActivityAt || lastActivityRef.current
+
+    if (hasExpired(activityAt)) {
+      logout({ inactivity: true })
+      return true
+    }
+
+    lastActivityRef.current = Math.max(lastActivityRef.current, activityAt)
+    return false
+  }, [getStoredActivityAt, hasExpired, logout])
 
   const resetTimer = useCallback((activityAt = Date.now()) => {
-    if (!isAdminPage || isLoginPage || loggingOutRef.current) return
+    if (!isAdminPage || isLoginPage || isLogoutPage || loggingOutRef.current) return
 
     lastActivityRef.current = Math.max(lastActivityRef.current, activityAt)
 
@@ -105,9 +145,9 @@ export default function AdminAutoLogout() {
 
     const expiresIn = Math.max(0, INACTIVITY_LIMIT_MS - (Date.now() - lastActivityRef.current))
     timerRef.current = window.setTimeout(() => {
-      logout()
+      logout({ inactivity: true })
     }, expiresIn)
-  }, [isAdminPage, isLoginPage, logout])
+  }, [isAdminPage, isLoginPage, isLogoutPage, logout])
 
   const recordActivity = useCallback(() => {
     const now = Date.now()
@@ -124,13 +164,22 @@ export default function AdminAutoLogout() {
   }, [resetTimer])
 
   useEffect(() => {
-    if (!isAdminPage || isLoginPage) return undefined
+    if (isManualLogoutPage) {
+      logout()
+    }
+  }, [isManualLogoutPage, logout])
+
+  useEffect(() => {
+    if (!isAdminPage || isLoginPage || isLogoutPage) return undefined
 
     loggingOutRef.current = false
+    if (checkInactivity()) return undefined
+
     recordActivity()
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        if (checkInactivity()) return
         recordActivity()
       }
     }
@@ -164,7 +213,7 @@ export default function AdminAutoLogout() {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('storage', handleStorage)
     }
-  }, [isAdminPage, isLoginPage, recordActivity, resetTimer])
+  }, [checkInactivity, isAdminPage, isLoginPage, isLogoutPage, recordActivity, resetTimer])
 
   return null
 }

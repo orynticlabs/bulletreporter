@@ -8,6 +8,14 @@ import AdminAutoLogout from '@/components/payload/AdminAutoLogout'
 import '@payloadcms/next/css'
 
 export const metadata = {
+  title: {
+    default: 'Bullet Reporter Admin',
+  },
+  description: 'Bullet Reporter content management dashboard for newsroom and website administration.',
+  robots: {
+    index: false,
+    follow: false,
+  },
   icons: {
     icon: [
       {

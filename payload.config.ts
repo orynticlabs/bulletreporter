@@ -725,7 +725,7 @@ export default buildConfig({
   admin: {
     user: 'users',
     meta: {
-      titleSuffix: ' - Bullet Reporter Admin',
+      titleSuffix: '- Bullet Reporter Admin',
       icons: {
         icon: [
           {
@@ -761,7 +761,7 @@ export default buildConfig({
     {
       slug: 'users',
       auth: {
-        tokenExpiration: 12 * 60 * 60,
+        tokenExpiration: 10 * 60,
         forgotPassword: {
           expiration: 10 * 60 * 1000,
           generateEmailHTML: ({ req, token, user }: { req?: any; token?: string; user?: any }) => {
