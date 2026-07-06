@@ -252,7 +252,7 @@ export default function Footer() {
       <div className="container mx-auto flex flex-row flex-nowrap items-center justify-between gap-2 overflow-x-auto px-3 py-4 text-left sm:gap-4 lg:px-8">
         <p className="shrink-0 whitespace-nowrap text-[9px] leading-4 text-[#666] min-[420px]:text-[10px] sm:text-xs">{t.copyright}</p>
 
-        <span className="shrink-0 whitespace-nowrap text-right text-[9px] text-[#666] min-[420px]:text-[10px] sm:mr-24 sm:text-xs lg:mr-28">Version V2.0.0</span>
+        <span className="shrink-0 whitespace-nowrap text-right text-[9px] text-[#666] min-[420px]:text-[10px] sm:mr-24 sm:text-xs lg:mr-28">Version V2.0.1</span>
       </div>
     </footer>
   );
