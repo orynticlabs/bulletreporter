@@ -11,6 +11,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { logEmailDiagnosticsForSend } from './src/lib/emailDiagnostics'
+import { buildAccountInviteEmail, buildPasswordResetEmail } from './src/lib/authEmailTemplates'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -103,157 +104,52 @@ const emailFromAddress =
     ? smtpUser || configuredEmailFrom
     : configuredEmailFrom || smtpUser
 const resolvedEmailFromAddress = getEmailAddress(emailFromAddress)
+const PASSWORD_SETUP_EXPIRATION_MS = 24 * 60 * 60 * 1000
+const USER_CREATE_PASSWORD_FIELDS = ['password', 'confirmPassword', 'confirm-password', 'newPassword']
 
-const escapeHtml = (value: unknown) =>
-  String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+const createPasswordSetupToken = () => crypto.randomBytes(32).toString('hex')
 
-const buildAuthEmailTemplate = ({
-  audience,
-  displayName,
-  intro,
-  ctaLabel,
-  ctaUrl,
-  secondaryLabel,
-  secondaryUrl,
-  expiresText,
-  closingText,
+const getPasswordSetupExpiration = () =>
+  new Date(Date.now() + PASSWORD_SETUP_EXPIRATION_MS).toISOString()
+
+const stripSubmittedCreatePasswordFields = (data: Record<string, any>) => {
+  const sanitizedData = { ...data }
+
+  for (const field of USER_CREATE_PASSWORD_FIELDS) {
+    delete sanitizedData[field]
+  }
+
+  return sanitizedData
+}
+
+const sendPasswordSetupEmail = async ({
+  email,
+  name,
+  req,
+  token,
 }: {
-  audience: string
-  displayName: string
-  intro: string
-  ctaLabel: string
-  ctaUrl: string
-  secondaryLabel?: string
-  secondaryUrl?: string
-  expiresText: string
-  closingText: string
+  email: string
+  name?: string
+  req: any
+  token: string
 }) => {
-  const safeName = escapeHtml(displayName)
-  const safeIntro = escapeHtml(intro)
-  const safeCtaLabel = escapeHtml(ctaLabel)
-  const safeCtaUrl = escapeHtml(ctaUrl)
-  const safeSecondaryLabel = secondaryLabel ? escapeHtml(secondaryLabel) : ''
-  const safeSecondaryUrl = secondaryUrl ? escapeHtml(secondaryUrl) : ''
-  const safeExpiresText = escapeHtml(expiresText)
-  const safeClosingText = escapeHtml(closingText)
-  const safeAudience = escapeHtml(audience)
+  const loginUrl = `${getAppUrl(req)}/admin`
+  const resetUrl = `${getAppUrl(req)}/reset-password/${token}`
+  const message = buildAccountInviteEmail({
+    name,
+    email,
+    loginUrl,
+    resetUrl,
+  })
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>${safeAudience}</title>
-</head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:36px 16px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
-          <tr>
-            <td style="padding:28px 32px;border-bottom:1px solid #e5e7eb;background:#ffffff;">
-              <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;font-weight:700;">Bullet Reporter</div>
-              <h1 style="margin:10px 0 0;font-size:26px;line-height:1.3;color:#111827;">${safeAudience}</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:32px;">
-              <p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#111827;">Hello ${safeName},</p>
-              <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#374151;">${safeIntro}</p>
-              <p style="margin:0 0 24px;font-size:15px;line-height:1.75;color:#374151;">Use the button below to continue.</p>
-              <table cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
-                <tr>
-                  <td style="background:#111827;border-radius:10px;">
-                    <a href="${safeCtaUrl}" style="display:inline-block;padding:14px 22px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">${safeCtaLabel}</a>
-                  </td>
-                </tr>
-              </table>
-              ${secondaryLabel && secondaryUrl ? `
-              <p style="margin:0 0 8px;font-size:13px;line-height:1.7;color:#6b7280;">Alternative link:</p>
-              <p style="margin:0 0 22px;font-size:13px;line-height:1.7;word-break:break-all;">
-                <a href="${safeSecondaryUrl}" style="color:#111827;text-decoration:underline;">${safeSecondaryLabel}</a>
-              </p>
-              ` : ''}
-              <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:6px;">
-                <p style="margin:0 0 8px;font-size:13px;line-height:1.7;color:#6b7280;">${safeExpiresText}</p>
-                <p style="margin:0;font-size:13px;line-height:1.7;color:#6b7280;">${safeClosingText}</p>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:18px 32px 28px;border-top:1px solid #e5e7eb;background:#fafafa;">
-              <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;">Bullet Reporter</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`
-
-  const textLines = [
-    `Hello ${displayName},`,
-    '',
-    intro,
-    '',
-    `${ctaLabel}: ${ctaUrl}`,
-  ]
-
-  if (secondaryLabel && secondaryUrl) {
-    textLines.push('', `${secondaryLabel}: ${secondaryUrl}`)
-  }
-
-  textLines.push('', expiresText, closingText)
-
-  return {
-    html,
-    text: textLines.join('\n'),
-  }
-}
-
-const buildAccountInviteEmail = ({ name, email, loginUrl, resetUrl }: { name?: string; email?: string; loginUrl: string; resetUrl: string }) => {
-  const displayName = name || email || 'there'
-  const subject = 'Your Bullet Reporter account is ready'
-
-  return {
-    subject,
-    ...buildAuthEmailTemplate({
-      audience: 'Your account has been created',
-      displayName,
-      intro: 'Your Bullet Reporter account has been created. You can access the dashboard and set your password using the links below.',
-      ctaLabel: 'Access your account',
-      ctaUrl: loginUrl,
-      secondaryLabel: 'Set your password',
-      secondaryUrl: resetUrl,
-      expiresText: 'The password setup link expires in 10 minutes.',
-      closingText: 'If you did not expect this email, please ignore it and contact an administrator.',
-    }),
-  }
-}
-
-const buildPasswordResetEmail = ({ name, email, resetUrl }: { name?: string; email?: string; resetUrl: string }) => {
-  const displayName = name || email || 'there'
-  const subject = 'Reset your Bullet Reporter password'
-
-  return {
-    subject,
-    ...buildAuthEmailTemplate({
-      audience: 'Reset your password',
-      displayName,
-      intro: 'We received a request to reset your Bullet Reporter password. Use the link below to continue.',
-      ctaLabel: 'Reset password',
-      ctaUrl: resetUrl,
-      expiresText: 'This password reset link expires in 10 minutes.',
-      closingText: 'If you did not request this email, you can safely ignore it.',
-    }),
-  }
+  logEmailDiagnosticsForSend('account-password-setup')
+  await req.payload.sendEmail({
+    from: `"Bullet Reporter" <${resolvedEmailFromAddress}>`,
+    html: message.html,
+    subject: message.subject,
+    text: message.text,
+    to: email,
+  })
 }
 
 const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
@@ -870,21 +766,74 @@ export default buildConfig({
           generateEmailSubject: () => 'Reset your Bullet Reporter password',
         },
       },
+      endpoints: [
+        {
+          path: '/resend-password-setup',
+          method: 'post',
+          handler: async (req) => {
+            if (!isAdmin(req.user)) {
+              return Response.json({ error: 'Unauthorized' }, { status: 403 })
+            }
+
+            const body = await req.json().catch(() => ({}))
+            const userId = body?.id
+
+            if (!userId) {
+              return Response.json({ error: 'User id is required' }, { status: 400 })
+            }
+
+            const user = await req.payload.findByID({
+              collection: 'users',
+              id: userId,
+              overrideAccess: true,
+              req,
+            })
+
+            if (!user?.email) {
+              return Response.json({ error: 'User email is required' }, { status: 400 })
+            }
+
+            const resetPasswordToken = createPasswordSetupToken()
+
+            await req.payload.update({
+              collection: 'users',
+              id: user.id,
+              data: {
+                resetPasswordToken,
+                resetPasswordExpiration: getPasswordSetupExpiration(),
+              },
+              overrideAccess: true,
+              req,
+            })
+
+            await sendPasswordSetupEmail({
+              email: user.email,
+              name: user.name,
+              req,
+              token: resetPasswordToken,
+            })
+
+            return Response.json({ ok: true })
+          },
+        },
+      ],
       hooks: {
-        beforeChange: [
+        beforeValidate: [
           ({ data, operation, req }: { data?: Record<string, any>; operation: string; req: any }) => {
             if (operation !== 'create' || !data?.email) {
               return data
             }
 
-            const resetPasswordToken = crypto.randomBytes(20).toString('hex')
+            const resetPasswordToken = createPasswordSetupToken()
+            const sanitizedData = stripSubmittedCreatePasswordFields(data)
 
             req.__newUserResetToken = resetPasswordToken
 
             return {
-              ...data,
+              ...sanitizedData,
+              password: crypto.randomBytes(32).toString('base64url'),
               resetPasswordToken,
-              resetPasswordExpiration: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+              resetPasswordExpiration: getPasswordSetupExpiration(),
             }
           },
         ],
@@ -894,22 +843,21 @@ export default buildConfig({
               return doc
             }
 
-            const loginUrl = `${getAppUrl(req)}/admin`
-            const resetUrl = `${getAppUrl(req)}/reset-password/${req.__newUserResetToken}`
-            const message = buildAccountInviteEmail({
-              name: doc.name,
-              email: doc.email,
-              loginUrl,
-              resetUrl,
+            await req.payload.db.updateOne({
+              collection: 'users',
+              id: doc.id,
+              data: {
+                hash: null,
+                salt: null,
+              },
+              req,
             })
 
-            logEmailDiagnosticsForSend('account-invite')
-            await req.payload.sendEmail({
-              from: `"Bullet Reporter" <${resolvedEmailFromAddress}>`,
-              html: message.html,
-              subject: message.subject,
-              text: message.text,
-              to: doc.email,
+            await sendPasswordSetupEmail({
+              email: doc.email,
+              name: doc.name,
+              req,
+              token: req.__newUserResetToken,
             })
 
             return doc
@@ -1751,7 +1699,9 @@ export default buildConfig({
         apiSecret: cloudinaryApiSecret || '',
       },
       folder: cloudinaryFolder,
-      clientUploads: false,
+      clientUploads: {
+        access: ({ req }) => isStaff(req.user),
+      },
       useFilename: true,
     }),
   ],

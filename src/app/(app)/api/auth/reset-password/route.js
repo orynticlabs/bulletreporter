@@ -2,6 +2,7 @@ import config from '@payload-config'
 import { generatePayloadCookie, getPayload } from 'payload'
 import { verifyRecaptchaFromBody } from '@/lib/recaptcha'
 import { logDeploymentEvent, toLoggableError } from '@/lib/deploymentLogger'
+import { buildPasswordChangedEmail } from '@/lib/authEmailTemplates'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +39,23 @@ export async function POST(request) {
     logDeploymentEvent('info', 'auth.reset-password', 'Password reset request processed', {
       userId: result?.user?.id,
     })
+
+    if (result?.user?.email) {
+      const requestUrl = new URL(request.url)
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin
+      const message = buildPasswordChangedEmail({
+        name: result.user.name,
+        email: result.user.email,
+        loginUrl: `${siteUrl.replace(/\/+$/, '')}/admin`,
+      })
+
+      await payload.sendEmail({
+        html: message.html,
+        subject: message.subject,
+        text: message.text,
+        to: result.user.email,
+      })
+    }
 
     return Response.json(
       { ok: true, user: result.user },
