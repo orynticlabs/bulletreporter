@@ -79,12 +79,39 @@ const normalizeCorsOrigin = (value?: string) => {
   return `https://${trimmed}`
 }
 
-const configuredCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
-  .split(',')
+const getOriginAliases = (origin: string) => {
+  try {
+    const url = new URL(origin)
+    if (url.hostname.startsWith('www.')) {
+      url.hostname = url.hostname.slice(4)
+      return [url.toString().replace(/\/+$/, '')]
+    }
+
+    if (!url.hostname.includes('localhost') && url.hostname.split('.').length === 2) {
+      url.hostname = `www.${url.hostname}`
+      return [url.toString().replace(/\/+$/, '')]
+    }
+  } catch (_) {
+    return []
+  }
+
+  return []
+}
+
+const configuredCorsOrigins = [
+  ...(process.env.CORS_ALLOWED_ORIGINS || '').split(','),
+  process.env.NEXT_PUBLIC_SITE_URL,
+  process.env.VERCEL_URL,
+  process.env.VERCEL_BRANCH_URL,
+  process.env.VERCEL_PROJECT_PRODUCTION_URL,
+  process.env.RENDER_EXTERNAL_URL,
+]
   .map(normalizeCorsOrigin)
   .filter(Boolean)
 
-const allowedCorsOrigins = Array.from(new Set(configuredCorsOrigins))
+const allowedCorsOrigins = Array.from(
+  new Set([...configuredCorsOrigins, ...configuredCorsOrigins.flatMap(getOriginAliases)]),
+)
 
 const getAppUrl = (req?: any) => {
   const configuredUrl = normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL || '')
