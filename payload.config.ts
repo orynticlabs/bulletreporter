@@ -132,6 +132,7 @@ const emailFromAddress =
     : configuredEmailFrom || smtpUser
 const resolvedEmailFromAddress = getEmailAddress(emailFromAddress)
 const PASSWORD_SETUP_EXPIRATION_MS = 24 * 60 * 60 * 1000
+const USER_CREATE_ALLOWED_FIELDS = ['email', 'name', 'role', 'bio', 'avatar']
 const USER_CREATE_PASSWORD_FIELDS = ['password', 'confirmPassword', 'confirm-password', 'newPassword']
 
 const createPasswordSetupToken = () => crypto.randomBytes(32).toString('hex')
@@ -147,6 +148,35 @@ const stripSubmittedCreatePasswordFields = (data: Record<string, any>) => {
   }
 
   return sanitizedData
+}
+
+const sanitizeUserCreateData = (data: Record<string, any>) => {
+  const sanitizedData: Record<string, any> = {}
+
+  for (const field of USER_CREATE_ALLOWED_FIELDS) {
+    if (data[field] !== undefined) {
+      sanitizedData[field] = data[field]
+    }
+  }
+
+  return stripSubmittedCreatePasswordFields(sanitizedData)
+}
+
+const hasSubmittedPasswordField = (data?: Record<string, any>) =>
+  Boolean(data && USER_CREATE_PASSWORD_FIELDS.some((field) => field in data))
+
+const preventDirectUserPasswordUpdate = ({
+  data,
+  operation,
+}: {
+  data?: Record<string, any>
+  operation: string
+}) => {
+  if (operation === 'update' && hasSubmittedPasswordField(data)) {
+    throw new APIError('Passwords can only be set from the password setup or reset link.', 403, null, true)
+  }
+
+  return data
 }
 
 const sendPasswordSetupEmail = async ({
@@ -308,6 +338,28 @@ const ensureRequiredNewsRelationships = ({
   return data
 }
 
+const ensureEditorialPublishAccess = ({
+  data,
+  req,
+}: {
+  data?: Record<string, any>
+  req?: any
+}) => {
+  if (!data || isAdminOrEditor(req?.user)) return data || {}
+
+  data.status = 'draft'
+
+  if ('isBreaking' in data) {
+    data.isBreaking = false
+  }
+
+  if ('isFeatured' in data) {
+    data.isFeatured = false
+  }
+
+  return data
+}
+
 const ensureNewsFields = ({
   data,
   operation,
@@ -320,6 +372,7 @@ const ensureNewsFields = ({
   req?: any
 }) => {
   const next = ensureNewsPublishedAt({ data, operation })
+  ensureEditorialPublishAccess({ data: next, req })
   ensureNewsSlug({ data: next, operation })
   ensureLoggedInUserByline({ data: next, operation, originalDoc, req })
   ensureRequiredNewsRelationships({ data: next, operation, originalDoc })
@@ -846,13 +899,14 @@ export default buildConfig({
       ],
       hooks: {
         beforeValidate: [
+          preventDirectUserPasswordUpdate,
           ({ data, operation, req }: { data?: Record<string, any>; operation: string; req: any }) => {
             if (operation !== 'create' || !data?.email) {
               return data
             }
 
             const resetPasswordToken = createPasswordSetupToken()
-            const sanitizedData = stripSubmittedCreatePasswordFields(data)
+            const sanitizedData = sanitizeUserCreateData(data)
 
             req.__newUserResetToken = resetPasswordToken
 

@@ -9,6 +9,19 @@ const getClientIp = (request) =>
   request.headers.get('x-real-ip') ||
   undefined
 
+const isLocalhostRequest = (request) => {
+  if (!request || process.env.NODE_ENV === 'production') return false
+
+  try {
+    const host = request.headers.get('host') || new URL(request.url).host
+    const hostname = host.split(':')[0]?.replace(/^\[|\]$/g, '')
+
+    return ['localhost', '127.0.0.1', '::1'].includes(hostname)
+  } catch (_) {
+    return false
+  }
+}
+
 export function isRecaptchaConfigured() {
   return Boolean(process.env.RECAPTCHA_SECRET_KEY)
 }
@@ -19,6 +32,10 @@ export async function verifyRecaptchaToken({
   request,
   token,
 }) {
+  if (isLocalhostRequest(request)) {
+    return { ok: true, reason: 'recaptcha-disabled-localhost' }
+  }
+
   if (!process.env.RECAPTCHA_SECRET_KEY) {
     return {
       ok: process.env.NODE_ENV !== 'production',
