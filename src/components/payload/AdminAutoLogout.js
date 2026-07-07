@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 const INACTIVITY_LIMIT_MS = 10 * 60 * 1000
 const ACTIVITY_STORAGE_KEY = 'br_admin_last_activity_at'
 const ACTIVITY_BROADCAST_INTERVAL_MS = 5000
+const REQUEST_ACTIVITY_INTERVAL_MS = 60 * 1000
 const FORCE_LOGOUT_ENDPOINT = '/api/admin-session/logout'
 const ACTIVITY_EVENTS = [
   'click',
@@ -42,6 +43,27 @@ const getEditableUserIdFromPath = (pathname) => {
   if (!userId || userId === 'create') return null
 
   return userId
+}
+
+const isTrackableAdminRequest = (input) => {
+  try {
+    const rawUrl =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input?.url
+
+    if (!rawUrl) return false
+
+    const url = new URL(rawUrl, window.location.origin)
+
+    if (url.origin !== window.location.origin) return false
+
+    return url.pathname.startsWith('/api') || url.pathname.startsWith('/admin')
+  } catch (_) {
+    return false
+  }
 }
 
 const eyeIcon = `
@@ -397,24 +419,13 @@ export default function AdminAutoLogout() {
     }
 
     try {
-      await fetch('/api/users/logout', {
-        method: 'POST',
-        credentials: 'include',
-        keepalive,
-        headers: keepalive ? undefined : { 'Content-Type': 'application/json' },
-      })
-    } catch (_) {
-      // Redirect anyway; the next admin request will no longer have client auth state.
-    }
-
-    try {
       await fetch(FORCE_LOGOUT_ENDPOINT, {
         method: 'POST',
         credentials: 'include',
         keepalive,
       })
     } catch (_) {
-      // The fallback endpoint only expires cookies; client cleanup below is still useful.
+      // Redirect anyway; the next admin request will no longer have client auth state.
     }
 
     clearPayloadClientStorage()
@@ -479,6 +490,87 @@ export default function AdminAutoLogout() {
       // Storage can be blocked; the current tab timer still works.
     }
   }, [resetTimer])
+
+  useEffect(() => {
+    if (!isAdminPage || isLoginPage || isLogoutPage) return undefined
+
+    const originalFetch = window.fetch
+    const originalOpen = window.XMLHttpRequest?.prototype?.open
+    const originalSend = window.XMLHttpRequest?.prototype?.send
+    const activeIntervals = new Set()
+
+    const startRequestActivity = () => {
+      recordActivity()
+
+      const interval = window.setInterval(recordActivity, REQUEST_ACTIVITY_INTERVAL_MS)
+      activeIntervals.add(interval)
+
+      return () => {
+        window.clearInterval(interval)
+        activeIntervals.delete(interval)
+      }
+    }
+
+    if (typeof originalFetch === 'function') {
+      window.fetch = (...args) => {
+        const shouldTrack = isTrackableAdminRequest(args[0])
+        const stopTracking = shouldTrack ? startRequestActivity() : null
+
+        try {
+          const responsePromise = originalFetch.apply(window, args)
+
+          if (stopTracking && responsePromise?.finally) {
+            return responsePromise.finally(stopTracking)
+          }
+
+          stopTracking?.()
+          return responsePromise
+        } catch (error) {
+          stopTracking?.()
+          throw error
+        }
+      }
+    }
+
+    if (typeof originalOpen === 'function' && typeof originalSend === 'function') {
+      window.XMLHttpRequest.prototype.open = function open(method, url, ...rest) {
+        this.__brTrackAdminActivity = isTrackableAdminRequest(url)
+        return originalOpen.call(this, method, url, ...rest)
+      }
+
+      window.XMLHttpRequest.prototype.send = function send(...args) {
+        const stopTracking = this.__brTrackAdminActivity ? startRequestActivity() : null
+
+        if (stopTracking) {
+          this.addEventListener('loadend', stopTracking, { once: true })
+        }
+
+        try {
+          return originalSend.apply(this, args)
+        } catch (error) {
+          stopTracking?.()
+          throw error
+        }
+      }
+    }
+
+    return () => {
+      if (typeof originalFetch === 'function') {
+        window.fetch = originalFetch
+      }
+
+      if (typeof originalOpen === 'function') {
+        window.XMLHttpRequest.prototype.open = originalOpen
+      }
+
+      if (typeof originalSend === 'function') {
+        window.XMLHttpRequest.prototype.send = originalSend
+      }
+
+      activeIntervals.forEach((interval) => window.clearInterval(interval))
+      activeIntervals.clear()
+    }
+  }, [isAdminPage, isLoginPage, isLogoutPage, recordActivity])
 
   useEffect(() => {
     if (isManualLogoutPage) {
