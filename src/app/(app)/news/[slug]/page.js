@@ -2,6 +2,7 @@ import JsonLd from '@/components/JsonLd'
 import {
   buildMetadata,
   newsArticleJsonLd,
+  parseSeoKeywords,
   SITE_DESCRIPTION,
   SITE_TITLE,
   truncate,
@@ -26,17 +27,20 @@ export async function generateMetadata({ params }) {
 
   // og_image_url = Cloudinary URL pre-built at 1200×630 JPEG by payload-direct.js
   const ogImage = article.og_image_url || article.image_url || '/logo.png'
+  const seoTitle = article.seo?.metaTitle || article.title || SITE_TITLE
+  const seoDescription = article.seo?.metaDescription || article.description || article.contentText || SITE_DESCRIPTION
+  const seoKeywords = parseSeoKeywords(article.seo?.keywords)
 
   return buildMetadata({
-    title: article.title || SITE_TITLE,
-    description: truncate(article.description || article.contentText || SITE_DESCRIPTION),
+    title: seoTitle,
+    description: truncate(seoDescription),
     path: `/news/${slug}`,   // canonical always uses /news/ (not /en/news/)
     image: ogImage,
     type: 'article',
     publishedTime: article.created_at,
     modifiedTime: article.updated_at || article.created_at,
     authors: [article.editor_name || article.author_name || SITE_TITLE],
-    keywords: [article.category, ...(article.tags || [])].filter(Boolean),
+    keywords: [article.category, ...seoKeywords, ...(article.tags || [])].filter(Boolean),
   })
 }
 

@@ -340,14 +340,20 @@ const ensureRequiredNewsRelationships = ({
 
 const ensureEditorialPublishAccess = ({
   data,
+  operation,
+  originalDoc,
   req,
 }: {
   data?: Record<string, any>
+  operation?: string
+  originalDoc?: Record<string, any>
   req?: any
 }) => {
   if (!data || isAdminOrEditor(req?.user)) return data || {}
 
-  data.status = 'draft'
+  if (operation === 'update' && 'status' in data) {
+    data.status = originalDoc?.status || data.status
+  }
 
   if ('isBreaking' in data) {
     data.isBreaking = false
@@ -372,7 +378,7 @@ const ensureNewsFields = ({
   req?: any
 }) => {
   const next = ensureNewsPublishedAt({ data, operation })
-  ensureEditorialPublishAccess({ data: next, req })
+  ensureEditorialPublishAccess({ data: next, operation, originalDoc, req })
   ensureNewsSlug({ data: next, operation })
   ensureLoggedInUserByline({ data: next, operation, originalDoc, req })
   ensureRequiredNewsRelationships({ data: next, operation, originalDoc })
@@ -1254,7 +1260,7 @@ export default buildConfig({
             { label: 'Draft', value: 'draft' },
             { label: 'Published', value: 'published' },
           ],
-          defaultValue: 'draft',
+          defaultValue: 'published',
           required: true,
           // Authors can create articles but cannot publish — only Admin/Editor can
           access: { update: ({ req }) => isAdminOrEditor(req.user) },
@@ -1592,22 +1598,21 @@ export default buildConfig({
     {
       slug: 'advertisements',
       access: {
-        // Public sees only active ads; staff sees all
+        // Public sees only active ads; Admin and Chief Editor see all
         read: ({ req }) => {
-          if (isAuthenticated(req.user)) return true
+          if (isAdminOrChiefEditor(req.user)) return true
           return { isActive: { equals: true } }
         },
-        // Only Admin and Editor can manage advertisements
-        create: ({ req }) => isAdminOrEditor(req.user),
-        update: ({ req }) => isAdminOrEditor(req.user),
-        // Only Admin can delete advertisements
+        // Admin and Chief Editor can manage advertisements, but only Admin can delete.
+        create: ({ req }) => isAdminOrChiefEditor(req.user),
+        update: ({ req }) => isAdminOrChiefEditor(req.user),
         delete: ({ req }) => isAdmin(req.user),
       },
       admin: {
         useAsTitle: 'title',
         defaultColumns: ['title', 'bannerType', 'size', 'isActive', 'startsAt', 'endsAt'],
-        // Only Admin and Editor manage advertisements
-        hidden: ({ user }: { user: any }) => !isAdminOrEditor(user),
+        // Admin and Chief Editor can open advertisements in the admin panel
+        hidden: ({ user }: { user: any }) => !isAdminOrChiefEditor(user),
       },
       hooks: {
         beforeValidate: [ensureAdvertisementTypeAndSize],

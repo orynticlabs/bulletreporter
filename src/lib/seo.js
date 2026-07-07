@@ -1,10 +1,10 @@
 import { fetchPayloadArticleBySlug, fetchPayloadArticles } from '@/utils/payloadArticles'
 
 export const SITE_NAME = 'Bullet Reporter'
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bulletreporter.com'
 export const SITE_TITLE = 'Bullet Reporter'
 export const SITE_DESCRIPTION =
-  'Bullet Reporter delivers fast Hindi and English news, breaking updates, Rewa and Madhya Pradesh local news, Chhattisgarh news, India headlines, politics, sports, technology, entertainment, video news, and public-interest reports.'
+  'Bullet Reporter brings Hindi news, breaking updates, local stories from Rewa, Madhya Pradesh, Chhattisgarh, India, politics, sports, tech and video news.'
 export const SITE_KEYWORDS = [
   'Bullet Reporter',
   'Hindi news',
@@ -109,6 +109,17 @@ export function truncate(value = '', max = 155) {
   const text = stripHtml(value)
   if (text.length <= max) return text
   return `${text.slice(0, max - 3).trim()}...`
+}
+
+export function parseSeoKeywords(value = '') {
+  if (Array.isArray(value)) {
+    return value.flatMap(parseSeoKeywords)
+  }
+
+  return String(value || '')
+    .split(',')
+    .map((keyword) => keyword.trim())
+    .filter(Boolean)
 }
 
 export function buildMetadata({
