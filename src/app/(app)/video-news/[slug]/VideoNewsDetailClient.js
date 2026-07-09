@@ -6,7 +6,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Layout from '@/components/Layout'
 import Sidebar from '@/components/Sidebar'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import AdBanner from '@/components/AdBanner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -326,10 +325,6 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-4">
-        <AdBanner size="large" position="top_banner" />
-      </div>
-
       <main className="container mx-auto px-4 py-6">
         {/* Back */}
         <button onClick={() => router.back()}
@@ -508,8 +503,6 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
               </CardContent>
             </Card>
 
-            <AdBanner size="medium" position="middle_banner" />
-
             {/* ── Comments ── */}
             <Card>
               <CardHeader className="pb-3 border-b">
@@ -618,7 +611,6 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
           </aside>
         </div>
 
-        <div className="mt-8"><AdBanner size="large" position="bottom_banner" /></div>
       </main>
     </Layout>
   )

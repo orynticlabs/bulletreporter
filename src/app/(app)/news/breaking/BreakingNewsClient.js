@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Layout from '@/components/Layout'
 import NewsCard from '@/components/NewsCard'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import AdBanner from '@/components/AdBanner'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { getReadingTime } from '@/utils/timeUtils'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
@@ -65,9 +64,6 @@ export default function BreakingNewsPage() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-4">
-        <AdBanner size="large" position="top_banner" />
-      </div>
       <main className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-primary flex items-center gap-3">
@@ -120,7 +116,6 @@ export default function BreakingNewsPage() {
                 </div>
               </>
             )}
-            <div className="mt-8"><AdBanner size="large" position="bottom_banner" /></div>
           </div>
 
           {/* Sidebar */}

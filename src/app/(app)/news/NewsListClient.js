@@ -6,7 +6,6 @@ import Layout from '@/components/Layout'
 import NewsCard from '@/components/NewsCard'
 import Sidebar from '@/components/Sidebar'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import AdBanner from '@/components/AdBanner'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { getReadingTime } from '@/utils/timeUtils'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
@@ -66,10 +65,6 @@ export default function AllNews() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-4">
-        <AdBanner size="large" position="top_banner" />
-      </div>
-
       <main className="container mx-auto px-3 py-6 sm:px-4 sm:py-8">
         {/* Page header */}
         <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
@@ -141,10 +136,6 @@ export default function AllNews() {
                 </div>
               </>
             )}
-
-            <div className="mt-8">
-              <AdBanner size="large" position="bottom_banner" />
-            </div>
           </div>
 
           {/* Sidebar */}

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Layout from '@/components/Layout'
 import Sidebar from '@/components/Sidebar'
 import NewsCard from '@/components/NewsCard'
-import AdBanner from '@/components/AdBanner'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import VideoNewsSection from '@/components/VideoNewsSection'
 import { useQuery } from '@tanstack/react-query'
@@ -178,11 +177,6 @@ export default function Home() {
 
   return (
     <Layout>
-      {/* Top Ad */}
-      <div className="container mx-auto px-4 py-4">
-        <AdBanner size="large" position="top_banner" />
-      </div>
-
       <main className="container mx-auto px-3 py-5 sm:px-4 sm:py-6">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
           <div className="lg:col-span-3 space-y-12">
@@ -239,10 +233,6 @@ export default function Home() {
                 </div>
               </div>
             </section>
-
-            {/* ── Mid Ad ── */}
-            <section><AdBanner size="medium" position="middle_banner" /></section>
-
 
             {/* ── Latest News ── */}
             <section className="bg-white">

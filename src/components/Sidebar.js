@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Cloud, Wind, Droplets, RefreshCw, TrendingUp } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
+import AdvertisementSlot from '@/components/AdvertisementSlot'
 import { fetchPayloadArticles } from '@/utils/payloadArticles'
 import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
 
@@ -484,6 +485,8 @@ function Sidebar() {
       <LazySidebarBlock minHeight={260}>
         <YouTubeEmbed />
       </LazySidebarBlock>
+
+      <AdvertisementSlot position="sidebar" />
 
     </div>
   )

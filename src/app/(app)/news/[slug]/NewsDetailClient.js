@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Layout from '@/components/Layout'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import NewsCard from '@/components/NewsCard'
-import AdBanner from '@/components/AdBanner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -334,10 +333,6 @@ export default function NewsDetail({ initialArticle = null }) {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-4">
-        <AdBanner size="large" position="top_banner" />
-      </div>
-
       <main className="container mx-auto px-4 py-6">
         {/* Back */}
         <button onClick={() => router.back()}
@@ -510,8 +505,6 @@ export default function NewsDetail({ initialArticle = null }) {
               </CardContent>
             </Card>
 
-            <AdBanner size="medium" position="middle_banner" />
-
             {/* ── Comments ── */}
             <Card>
               <CardHeader className="pb-3 border-b">
@@ -642,7 +635,6 @@ export default function NewsDetail({ initialArticle = null }) {
           </div>
         )}
 
-        <div className="mt-8"><AdBanner size="large" position="bottom_banner" /></div>
       </main>
     </Layout>
   )
