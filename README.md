@@ -254,7 +254,7 @@ On first setup, Payload may prompt you to create the first admin user depending 
 | `/api/public/video-news/[slug]/view` | Record video news views. |
 | `/api/public/video-news/[slug]/react` | Record video news reactions. |
 | `/api/public/video-news/[slug]/comments` | Manage public video comments. |
-| `/api/public/advertisements` | Advertisement data. |
+| `/api/public/advertisements` | Public advertisement data. |
 | `/api/public/cache-state` | Cache state metadata for public clients. |
 | `/api/public/youtube-shorts` | YouTube Shorts integration endpoint. |
 

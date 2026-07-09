@@ -741,7 +741,7 @@ function Header() {
       </div>
 
       {/* ── Desktop Navigation ── */}
-      <div className="hidden border-0 bg-red-600 outline-none md:block">
+      <div className="mb-0 hidden border-0 bg-red-600 outline-none md:block">
         <div className="container mx-auto px-4">
           {categoriesLoading ? (
             <div className="flex items-center justify-center py-3 gap-2">

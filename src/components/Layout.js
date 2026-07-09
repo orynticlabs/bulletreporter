@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import NewsHeader from '@/components/header'
 import BreakingNews from '@/components/BreakingNews'
+import AdvertisementSlot from '@/components/AdvertisementSlot'
 import { MessageSquareMore, ChevronUp } from 'lucide-react'
 import Footer from '@/components/footer'
 import YouTubeShorts from '@/components/YouTubeShorts'
@@ -31,12 +32,14 @@ function Layout({ children, showBreakingNews = true }) {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <NewsHeader />
       {showBreakingNews && <BreakingNews />}
+      <AdvertisementSlot position="top_banner" />
 
       <main className="flex-1 w-full">
         {children}
       </main>
 
       <YouTubeShorts />
+      <AdvertisementSlot position="bottom_banner" />
       <Footer />
       <SocialFollowPopup />
 

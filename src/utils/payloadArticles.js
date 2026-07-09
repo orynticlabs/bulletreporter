@@ -123,12 +123,9 @@ const getMediaUrl = (media, transform = 'f_auto,q_auto,c_limit,w_900') => {
     if (built) return built
   }
 
-  // Fallback: use the stored URL (may be absolute Cloudinary or relative local)
-  const url =
-    media.url ||
-    media.sizes?.hero?.url ||
-    media.sizes?.card?.url ||
-    media.thumbnailURL
+  // Fallback to the original stored URL only. Do not use Payload-generated
+  // image sizes; media uploads must remain a single Cloudinary asset.
+  const url = media.url || media.thumbnailURL
 
   if (!url) return null
   return url
@@ -141,7 +138,7 @@ const getMediaUrl = (media, transform = 'f_auto,q_auto,c_limit,w_900') => {
 export const getOgImageUrl = (media) => {
   if (!media || typeof media !== 'object') return null
   if (media.cloudinaryPublicId) {
-    return buildCloudinaryUrl(media, 'w_1200,h_630,c_fill,f_jpg,q_auto')
+    return buildCloudinaryUrl(media, 'w_1200,h_630,c_limit,f_jpg,q_auto')
   }
   // For non-Cloudinary media fall back to the stored URL as-is
   return media.url || null

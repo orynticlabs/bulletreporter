@@ -165,7 +165,7 @@ export const getOptimizedImageUrl = (imageUrl, size = 'md') => {
     url.searchParams.set('w', width.toString());
     url.searchParams.set('h', height.toString());
     url.searchParams.set('q', '80');
-    url.searchParams.set('c', 'fill');
+    url.searchParams.set('c', 'limit');
     return url.toString();
   }
   

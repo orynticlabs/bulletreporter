@@ -3,9 +3,9 @@ import { buildMetadata } from '@/lib/seo'
 
 export const metadata = buildMetadata({
   title: 'Contact Us',
-  description: 'Contact Bullet Reporter for newsroom, advertising, correction, and website-related communication.',
+  description: 'Contact Bullet Reporter for newsroom, corrections, partnerships, and website-related communication.',
   path: '/contact',
-  keywords: ['Contact Bullet Reporter', 'news desk', 'advertising', 'corrections'],
+  keywords: ['Contact Bullet Reporter', 'news desk', 'partnerships', 'corrections'],
 })
 
 export default function ContactPage() {
@@ -22,7 +22,7 @@ export default function ContactPage() {
             <p className="text-sm font-bold uppercase tracking-wide text-red-600">Contact</p>
             <h1 className="mt-2 text-3xl font-black text-gray-950 md:text-5xl">Contact Bullet Reporter</h1>
             <p className="mt-4 max-w-3xl leading-7 text-gray-700">
-              Reach out for news tips, corrections, advertising, partnerships, or technical questions related to the website.
+              Reach out for news tips, corrections, partnerships, or technical questions related to the website.
             </p>
           </div>
         </section>

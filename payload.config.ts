@@ -479,20 +479,6 @@ const ensureCloudinaryUploadConfigured = ({ data, req }: { data?: Record<string,
   return data
 }
 
-const deleteCloudinaryAsset = async ({ doc }: { doc?: Record<string, any> }) => {
-  const publicId = doc?.cloudinaryPublicId
-
-  if (!publicId || !hasCloudinaryCredentials) return
-
-  try {
-    await cloudinary.uploader.destroy(publicId, {
-      resource_type: doc?.mimeType?.startsWith('video/') ? 'video' : 'image',
-    })
-  } catch (_) {
-    // Non-fatal: Payload should still remove the media record.
-  }
-}
-
 const preventDeletingCategoryInUse = async ({ id, req }: { id: string | number; req: any }) => {
   const categoryId = String(id)
   const collectionsToCheck = [
@@ -631,65 +617,172 @@ const ensureCategoryFields = ({ data }: { data?: Record<string, any> }) => {
   return data
 }
 
-const bannerSizeLabels: Record<string, string> = {
-  large: 'Large - 1280 x 320 px',
-  medium: 'Medium - 1024 x 256 px',
-  small: 'Small - 640 x 180 px',
-  square: 'Square / Sidebar - 512 x 512 px',
+const advertisementPositionConfig: Record<string, {
+  bannerType: string
+  bannerTypeLabel: string
+  size: string
+  sizeLabel: string
+  width: number
+  height: number
+  maxActive: number
+}> = {
+  top_banner: {
+    bannerType: 'large_ad_banner',
+    bannerTypeLabel: 'Large Advertisement Banner',
+    size: 'large',
+    sizeLabel: 'Large Banner Size (1300 x 160 px)',
+    width: 1300,
+    height: 160,
+    maxActive: 1,
+  },
+  bottom_banner: {
+    bannerType: 'large_ad_banner',
+    bannerTypeLabel: 'Large Advertisement Banner',
+    size: 'large',
+    sizeLabel: 'Large Banner Size (1300 x 160 px)',
+    width: 1300,
+    height: 160,
+    maxActive: 1,
+  },
+  sidebar: {
+    bannerType: 'square_banner',
+    bannerTypeLabel: 'Square Banner',
+    size: 'square',
+    sizeLabel: 'Square Banner Size (350 x 220 px)',
+    width: 350,
+    height: 220,
+    maxActive: 3,
+  },
 }
 
-const bannerTypeLabels: Record<string, string> = {
-  header_banner: 'Header Banner',
-  footer_banner: 'Footer Banner',
-  sidebar_banner: 'Sidebar Banner',
-  large_ad_banner: 'Large Advertisement Banner',
-  middle_banner: 'Middle Content Banner',
-}
+const getAdvertisementPositionConfig = (position?: string) => (
+  position ? advertisementPositionConfig[position] : null
+)
 
-const bannerTypeAllowedSizes: Record<string, string[]> = {
-  header_banner: ['large'],
-  footer_banner: ['large', 'medium'],
-  sidebar_banner: ['square', 'small'],
-  large_ad_banner: ['large'],
-  middle_banner: ['medium'],
-}
-
-const bannerTypeDefaultSize: Record<string, string> = {
-  header_banner: 'large',
-  footer_banner: 'large',
-  sidebar_banner: 'square',
-  large_ad_banner: 'large',
-  middle_banner: 'medium',
-}
-
-const legacyAdDefaults: Record<string, { bannerType: string; size: string }> = {
-  top_banner: { bannerType: 'header_banner', size: 'large' },
-  middle_banner: { bannerType: 'middle_banner', size: 'medium' },
-  bottom_banner: { bannerType: 'footer_banner', size: 'large' },
-  sidebar: { bannerType: 'sidebar_banner', size: 'square' },
-  bottom_sidebar: { bannerType: 'sidebar_banner', size: 'square' },
-}
-
-const ensureAdvertisementTypeAndSize = ({ data }: { data?: Record<string, any> }) => {
+const ensureAdvertisementFields = ({ data }: { data?: Record<string, any> }) => {
   if (!data) return data || {}
 
-  const defaults = data.position ? legacyAdDefaults[data.position] : null
-
-  if (!data.bannerType) {
-    data.bannerType = defaults?.bannerType || 'large_ad_banner'
+  const config = getAdvertisementPositionConfig(data.position)
+  if (config) {
+    data.bannerType = config.bannerType
+    data.size = config.size
   }
 
-  if (!data.size) {
-    data.size = defaults?.size || bannerTypeDefaultSize[data.bannerType] || 'large'
+  if (data.link) {
+    const link = String(data.link).trim()
+    data.link = /^(https?:)?\/\//i.test(link) ? link : `https://${link.replace(/^\/+/, '')}`
   }
 
-  const allowedSizes = bannerTypeAllowedSizes[data.bannerType] || Object.keys(bannerSizeLabels)
+  if (data.startsAt && data.endsAt) {
+    const startsAt = new Date(data.startsAt).getTime()
+    const endsAt = new Date(data.endsAt).getTime()
 
-  if (!allowedSizes.includes(data.size)) {
-    const bannerLabel = bannerTypeLabels[data.bannerType] || 'This banner type'
-    const sizeList = allowedSizes.map((size) => bannerSizeLabels[size] || size).join(', ')
+    if (Number.isFinite(startsAt) && Number.isFinite(endsAt) && endsAt <= startsAt) {
+      throw new APIError('End At must be later than Start At.', 400, null, true)
+    }
+  }
 
-    throw new APIError(`${bannerLabel} supports only: ${sizeList}. Please select the correct Banner Size.`, 400, null, true)
+  return data
+}
+
+const getRelationshipID = (value: any) => {
+  if (!value) return null
+  if (typeof value === 'object' && 'id' in value) return value.id
+  return value
+}
+
+const validateAdvertisementImage = async ({
+  data,
+  originalDoc,
+  req,
+}: {
+  data?: Record<string, any>
+  originalDoc?: Record<string, any>
+  req: any
+}) => {
+  if (!data) return data || {}
+
+  const position = data.position || originalDoc?.position
+  const config = getAdvertisementPositionConfig(position)
+  const imageID = getRelationshipID(data.image ?? originalDoc?.image)
+
+  if (!config || !imageID) return data
+
+  const image = await req.payload.findByID({
+    collection: 'media',
+    id: imageID,
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  if (!image?.cloudinaryPublicId) {
+    throw new APIError('Advertisement image must be a Cloudinary-backed media item. Uploads to Media can be any image size, but ads can only select Cloudinary images with the required slot dimensions.', 400, null, true)
+  }
+
+  const width = Number(image.width)
+  const height = Number(image.height)
+
+  if (width !== config.width || height !== config.height) {
+    throw new APIError(
+      `${config.bannerTypeLabel} requires an image exactly ${config.width} x ${config.height} px. Selected image is ${width || 'unknown'} x ${height || 'unknown'} px.`,
+      400,
+      null,
+      true,
+    )
+  }
+
+  return data
+}
+
+const enforceAdvertisementLimits = async ({
+  data,
+  operation,
+  originalDoc,
+  req,
+}: {
+  data?: Record<string, any>
+  operation?: string
+  originalDoc?: Record<string, any>
+  req: any
+}) => {
+  if (!data) return data || {}
+
+  const position = data.position || originalDoc?.position
+  const config = getAdvertisementPositionConfig(position)
+  if (!position || !config || data.isActive === false) return data
+
+  const result = await req.payload.find({
+    collection: 'advertisements',
+    depth: 0,
+    limit: 10,
+    overrideAccess: true,
+    where: {
+      and: [
+        { position: { equals: position } },
+        { isActive: { equals: true } },
+      ],
+    },
+  })
+
+  const currentId = originalDoc?.id ? String(originalDoc.id) : null
+  const existing = (result.docs || []).filter((doc: any) => String(doc.id) !== currentId)
+
+  if (position === 'sidebar') {
+    if (existing.length >= config.maxActive) {
+      throw new APIError('Sidebar supports a maximum of 3 active advertisements. Remove or deactivate one before adding another.', 400, null, true)
+    }
+
+    return data
+  }
+
+  if (operation === 'create' || operation === 'update') {
+    for (const doc of existing) {
+      await req.payload.delete({
+        collection: 'advertisements',
+        id: doc.id,
+        overrideAccess: true,
+      })
+    }
   }
 
   return data
@@ -778,6 +871,18 @@ const COMMENT_PUBLIC_FIELDS = [
   'article',
   'videoArticle',
   'status',
+]
+
+const ADVERTISEMENT_PUBLIC_FIELDS = [
+  'title',
+  'image',
+  'link',
+  'position',
+  'bannerType',
+  'size',
+  'isActive',
+  'startsAt',
+  'endsAt',
 ]
 
 export default buildConfig({
@@ -1025,13 +1130,9 @@ export default buildConfig({
           },
         ],
         beforeChange: [ensureCloudinaryUploadConfigured],
-        afterDelete: [deleteCloudinaryAsset],
       },
       upload: {
         mimeTypes: ['image/*', 'video/*'],
-        imageSizes: [
-          { name: 'hero', width: 1280, height: 720, position: 'centre' },
-        ],
       },
       admin: {
         useAsTitle: 'alt',
@@ -1597,28 +1698,41 @@ export default buildConfig({
     },
     {
       slug: 'advertisements',
+      labels: {
+        singular: 'Advertisement',
+        plural: 'Advertisements',
+      },
       access: {
-        // Public sees only active ads; Admin and Chief Editor see all
         read: ({ req }) => {
           if (isAdminOrChiefEditor(req.user)) return true
-          return { isActive: { equals: true } }
+
+          const now = new Date().toISOString()
+          return {
+            and: [
+              { isActive: { equals: true } },
+              { startsAt: { less_than_equal: now } },
+              { endsAt: { greater_than: now } },
+            ],
+          }
         },
-        // Admin and Chief Editor can manage advertisements, but only Admin can delete.
         create: ({ req }) => isAdminOrChiefEditor(req.user),
         update: ({ req }) => isAdminOrChiefEditor(req.user),
         delete: ({ req }) => isAdmin(req.user),
       },
       admin: {
         useAsTitle: 'title',
-        defaultColumns: ['title', 'bannerType', 'size', 'isActive', 'startsAt', 'endsAt'],
-        // Admin and Chief Editor can open advertisements in the admin panel
+        defaultColumns: ['title', 'position', 'bannerType', 'size', 'isActive', 'startsAt', 'endsAt'],
         hidden: ({ user }: { user: any }) => !isAdminOrChiefEditor(user),
+        description: 'Manage one top/header ad, one bottom/footer ad, and up to three sidebar ads.',
       },
       hooks: {
-        beforeValidate: [ensureAdvertisementTypeAndSize],
+        beforeValidate: [ensureAdvertisementFields],
+        beforeChange: [validateAdvertisementImage, enforceAdvertisementLimits],
         afterChange: [
-          async ({ req }: { req: any }) => {
-            await touchPublicCache({ req, scopes: ['advertisements'] })
+          async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
+            if (hasPublicFieldChanged({ doc, previousDoc, fields: ADVERTISEMENT_PUBLIC_FIELDS })) {
+              await touchPublicCache({ req, scopes: ['advertisements'] })
+            }
           },
         ],
         afterDelete: [
@@ -1628,68 +1742,116 @@ export default buildConfig({
         ],
       },
       fields: [
-        { name: 'title', type: 'text', required: true },
         {
-          name: 'image',
-          type: 'upload',
-          relationTo: 'media',
+          name: 'title',
+          type: 'text',
           required: true,
+        },
+        {
+          name: 'position',
+          label: 'Legacy Position',
+          type: 'select',
+          required: true,
+          options: [
+            { label: 'Top / Header', value: 'top_banner' },
+            { label: 'Bottom / Footer', value: 'bottom_banner' },
+            { label: 'Sidebar', value: 'sidebar' },
+          ],
           admin: {
-            description: `Upload banner artwork here. Maximum file size: ${MAX_UPLOAD_MB} MB. Use the recommended dimensions from Banner Size. Media uploads are stored in Cloudinary.`,
+            description: 'Choose where this advertisement appears on the website.',
           },
         },
-        { name: 'link', type: 'text', label: 'Click URL' },
+        {
+          name: 'positionDetails',
+          type: 'ui',
+          admin: {
+            components: {
+              Field:
+                '@/components/payload/AdvertisementPositionDetails#AdvertisementPositionDetails',
+            },
+          },
+        },
         {
           name: 'bannerType',
           label: 'Banner Type',
           type: 'select',
-          options: [
-            { label: 'Header Banner - top wide slot', value: 'header_banner' },
-            { label: 'Footer Banner - bottom wide slot', value: 'footer_banner' },
-            { label: 'Sidebar Banner - right column slot', value: 'sidebar_banner' },
-            { label: 'Large Advertisement Banner - full width slot', value: 'large_ad_banner' },
-            { label: 'Middle Content Banner - between content rows', value: 'middle_banner' },
-          ],
           required: true,
-          defaultValue: 'large_ad_banner',
+          options: [
+            { label: 'Large Advertisement Banner', value: 'large_ad_banner' },
+            { label: 'Square Banner', value: 'square_banner' },
+          ],
           admin: {
-            description: 'Choose where this banner should be displayed on the website.',
+            readOnly: true,
+            description: 'Auto-set from Legacy Position: Top/Footer use Large Advertisement Banner; Sidebar uses Square Banner.',
+            components: {
+              Field:
+                '@/components/payload/AdvertisementDerivedFields#AdvertisementBannerTypeField',
+            },
           },
         },
         {
           name: 'size',
           label: 'Banner Size',
           type: 'select',
-          options: [
-            { label: bannerSizeLabels.large, value: 'large' },
-            { label: bannerSizeLabels.medium, value: 'medium' },
-            { label: bannerSizeLabels.small, value: 'small' },
-            { label: bannerSizeLabels.square, value: 'square' },
-          ],
           required: true,
-          defaultValue: 'large',
+          options: [
+            { label: 'Large Banner Size (1300 x 160 px)', value: 'large' },
+            { label: 'Square Banner Size (350 x 220 px)', value: 'square' },
+          ],
           admin: {
-            description: 'Allowed sizes: Header/Large Ad = Large, Middle = Medium, Sidebar = Square or Small, Footer = Large or Medium.',
+            readOnly: true,
+            description: 'Auto-set from Legacy Position: Top/Footer = 1300 x 160 px; Sidebar = 350 x 220 px.',
+            components: {
+              Field:
+                '@/components/payload/AdvertisementDerivedFields#AdvertisementBannerSizeField',
+            },
           },
         },
         {
-          name: 'position',
-          label: 'Legacy Position',
-          type: 'select',
-          options: [
-            { label: 'Top / Header Banner', value: 'top_banner' },
-            { label: 'Middle Content Banner', value: 'middle_banner' },
-            { label: 'Bottom / Footer Banner', value: 'bottom_banner' },
-            { label: 'Sidebar', value: 'sidebar' },
-            { label: 'Bottom Sidebar', value: 'bottom_sidebar' },
-          ],
+          name: 'image',
+          type: 'upload',
+          relationTo: 'media',
+          required: true,
           admin: {
-            description: 'Optional compatibility field for existing frontend placements. New banners should use Banner Type + Banner Size.',
+            description: 'Select a Cloudinary media item with the exact ad-slot size. Media uploads can be any image size; this ad field only accepts Top/Footer = 1300 x 160 px or Sidebar = 350 x 220 px.',
           },
         },
-        { name: 'isActive', type: 'checkbox', defaultValue: true },
-        { name: 'startsAt', type: 'date' },
-        { name: 'endsAt', type: 'date' },
+        {
+          name: 'isActive',
+          type: 'checkbox',
+          label: 'Is Active',
+          defaultValue: true,
+        },
+        {
+          name: 'link',
+          type: 'text',
+          label: 'Click URL',
+          required: true,
+          admin: {
+            description: 'Opens in a new tab when a visitor clicks the advertisement.',
+          },
+        },
+        {
+          name: 'startsAt',
+          type: 'date',
+          label: 'Start At',
+          required: true,
+          defaultValue: () => new Date().toISOString(),
+          admin: {
+            date: { pickerAppearance: 'dayAndTime' },
+            description: 'Advertisement becomes visible at this date and time.',
+          },
+        },
+        {
+          name: 'endsAt',
+          type: 'date',
+          label: 'End At',
+          required: true,
+          admin: {
+            date: { pickerAppearance: 'dayAndTime' },
+            description: 'Advertisement is hidden after this date and deleted by the cleanup cron.',
+          },
+        },
       ],
     },
   ],
@@ -1785,9 +1947,7 @@ export default buildConfig({
         apiSecret: cloudinaryApiSecret || '',
       },
       folder: cloudinaryFolder,
-      clientUploads: {
-        access: ({ req }) => isStaff(req.user),
-      },
+      clientUploads: false,
       useFilename: true,
     }),
   ],

@@ -22,6 +22,9 @@ import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { CategoryCheckboxRelationshipField as CategoryCheckboxRelationshipField_33eb010c1e6b78e80324d8e7722de183 } from '@/components/payload/CategoryCheckboxRelationshipField'
+import { AdvertisementPositionDetails as AdvertisementPositionDetails_0428e9d93d251a958ceb2e3a9c3bb964 } from '@/components/payload/AdvertisementPositionDetails'
+import { AdvertisementBannerTypeField as AdvertisementBannerTypeField_e3c1c9e605bfdea1d6eb5e13c274f006 } from '@/components/payload/AdvertisementDerivedFields'
+import { AdvertisementBannerSizeField as AdvertisementBannerSizeField_e3c1c9e605bfdea1d6eb5e13c274f006 } from '@/components/payload/AdvertisementDerivedFields'
 import { CloudinaryClientUploadHandler as CloudinaryClientUploadHandler_d082512b0d29edcf3859a7c92c33e4db } from '@jhb.software/payload-cloudinary-plugin/client'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -51,6 +54,9 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@/components/payload/CategoryCheckboxRelationshipField#CategoryCheckboxRelationshipField": CategoryCheckboxRelationshipField_33eb010c1e6b78e80324d8e7722de183,
+  "@/components/payload/AdvertisementPositionDetails#AdvertisementPositionDetails": AdvertisementPositionDetails_0428e9d93d251a958ceb2e3a9c3bb964,
+  "@/components/payload/AdvertisementDerivedFields#AdvertisementBannerTypeField": AdvertisementBannerTypeField_e3c1c9e605bfdea1d6eb5e13c274f006,
+  "@/components/payload/AdvertisementDerivedFields#AdvertisementBannerSizeField": AdvertisementBannerSizeField_e3c1c9e605bfdea1d6eb5e13c274f006,
   "@jhb.software/payload-cloudinary-plugin/client#CloudinaryClientUploadHandler": CloudinaryClientUploadHandler_d082512b0d29edcf3859a7c92c33e4db,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

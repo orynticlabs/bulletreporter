@@ -41,7 +41,7 @@ function BreakingNews() {
 
   if (isLoading) {
     return (
-      <div className="bg-red-600 text-white py-2 px-4">
+      <div className="mt-0 bg-red-600 text-white py-2 px-4">
         <div className="container mx-auto flex items-center space-x-3">
           <span className="bg-white text-red-600 text-xs font-bold px-2 py-1 rounded animate-pulse">
             {t.ticker.label}
@@ -57,7 +57,7 @@ function BreakingNews() {
   const current = breakingNews[currentIndex]
 
   return (
-    <div className="bg-red-600 text-white py-2 px-4 overflow-hidden">
+    <div className="mt-0 bg-red-600 text-white py-2 px-4 overflow-hidden">
       <div className="container mx-auto flex items-center space-x-3">
         <div className="flex items-center space-x-1 flex-shrink-0">
           <Zap className="w-4 h-4 text-yellow-300 animate-pulse" />

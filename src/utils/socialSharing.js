@@ -54,7 +54,7 @@ export const optimizeImageForSocialSharing = (imageUrl, options = {}) => {
     url.searchParams.set('h', height.toString());
     url.searchParams.set('q', quality.toString());
     url.searchParams.set('f', format);
-    url.searchParams.set('c', 'fill');
+    url.searchParams.set('c', 'limit');
     return url.toString();
   }
   

@@ -46,7 +46,7 @@ export function absoluteUrl(path = '/') {
   return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`
 }
 
-const OG_TRANSFORM = 'w_1200,h_630,c_fill,f_jpg,q_auto'
+const OG_TRANSFORM = 'w_1200,h_630,c_limit,f_jpg,q_auto'
 
 /**
  * Ensures a Cloudinary image URL has the correct OG dimensions (1200×630 JPEG).
@@ -138,7 +138,7 @@ export function buildMetadata({
 
   // Always produce an absolute HTTPS OG image URL
   const rawImageUrl  = absoluteUrl(image || DEFAULT_IMAGE)
-  const ogImageUrl   = toOgImageUrl(rawImageUrl) // applies 1200×630 JPEG transform for Cloudinary
+  const ogImageUrl   = toOgImageUrl(rawImageUrl) // applies non-cropping OG delivery transform for Cloudinary
   const secureImgUrl = ogImageUrl.replace(/^http:\/\//, 'https://')
 
   const cleanDescription = truncate(description || SITE_DESCRIPTION)

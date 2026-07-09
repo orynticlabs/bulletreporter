@@ -57,7 +57,7 @@ Use these public URL patterns when discovering, citing, or linking Bullet Report
 - `/video-news` - Video news listing.
 - `/video-news/{slug}` - Video news detail page.
 - `/about` - Publication information.
-- `/contact` - Contact details for newsroom, advertising, corrections, and technical communication.
+- `/contact` - Contact details for newsroom, corrections, partnerships, and technical communication.
 - `/terms` - Website terms and content use conditions.
 - `/privacy-policy` - Privacy, cookies, analytics, security, and data-use information.
 
@@ -76,7 +76,7 @@ Bullet Reporter content खोजने, cite करने या link करन
 - `/video-news` - वीडियो न्यूज listing।
 - `/video-news/{slug}` - वीडियो न्यूज detail page।
 - `/about` - publication की जानकारी।
-- `/contact` - newsroom, advertising, corrections और technical communication के contact details।
+- `/contact` - newsroom, corrections, partnerships और technical communication के contact details।
 - `/terms` - वेबसाइट use और content rights से जुड़ी शर्तें।
 - `/privacy-policy` - privacy, cookies, analytics, security और data-use की जानकारी।
 
