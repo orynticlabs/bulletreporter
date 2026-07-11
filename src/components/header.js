@@ -12,7 +12,6 @@ import { getDisplayDateAfterRollover, getRelativeTime } from '@/utils/dateUtils'
 import { PUBLIC_CACHE_CHECK_INTERVAL } from '@/utils/queryConfig'
 import SearchResults from './SearchResults'
 
-const MENU_CATEGORY_LIMIT  = 12
 const ALERTS_LIMIT         = 4               // only latest 4 shown in panel
 const ALERTS_POLL_INTERVAL = PUBLIC_CACHE_CHECK_INTERVAL
 const ALERTS_CACHE_TTL     = PUBLIC_CACHE_CHECK_INTERVAL - 5 * 1000
@@ -396,8 +395,8 @@ function Header() {
 
   // ── Category nav ──────────────────────────────────────────────────────────
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
-    queryKey: ['categories', 'header-menu', MENU_CATEGORY_LIMIT],
-    queryFn: () => fetchPayloadCategories({ limit: MENU_CATEGORY_LIMIT }),
+    queryKey: ['categories'],
+    queryFn: fetchPayloadCategories,
     staleTime: 10 * 60 * 1000,
   })
 
@@ -504,9 +503,10 @@ function Header() {
 
   const mainCategories = [
     { name: t.header.mainNews, href: getLangPath('/') },
-    ...categories.slice(0, MENU_CATEGORY_LIMIT).map(cat => ({
+    ...categories.map(cat => ({
       name: getCategoryDisplayName(cat, lang),
       href: getLangPath(`/category/${encodeURIComponent(getCategoryRouteKey(cat))}`),
+      key: cat.id || getCategoryRouteKey(cat),
     }))
   ]
 
@@ -751,7 +751,7 @@ function Header() {
           ) : (
             <ul className="scrollbar-hide flex overflow-x-auto whitespace-nowrap">
               {mainCategories.map((category) => (
-                <li key={category.name}>
+                <li key={category.key || category.href}>
                   <button
                     onClick={() => handleNavClick(category.href)}
                     className={`relative px-4 py-3 text-sm font-medium text-white transition-all group lg:px-5 ${
@@ -799,7 +799,7 @@ function Header() {
             <div className="grid grid-cols-2 gap-2">
               {mainCategories.map((category) => (
                 <button
-                  key={category.name}
+                  key={category.key || category.href}
                   onClick={() => handleNavClick(category.href)}
                   className={`min-w-0 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
                     isActive(category.href)

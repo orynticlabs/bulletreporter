@@ -1,6 +1,7 @@
 import config from '@payload-config'
 import { getPayload } from 'payload'
 import { verifyRecaptchaFromBody } from '@/lib/recaptcha'
+import { createAdminNotification } from '@/lib/adminNotifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +53,12 @@ export async function POST(request, { params }) {
       data,
       overrideAccess: true,
       depth: 0,
+    })
+
+    if (action === 'add') await createAdminNotification(payload, {
+      type, requiredPermission: 'news.read', contentType: 'news',
+      contentId: article.id, contentTitle: article.title, contentSlug: article.slug,
+      message: `Someone ${type === 'like' ? 'liked' : 'disliked'} news: ${article.title}`,
     })
 
     return Response.json({

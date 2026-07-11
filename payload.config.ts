@@ -992,6 +992,9 @@ export default buildConfig({
 
   admin: {
     user: 'users',
+    components: {
+      actions: ['@/components/payload/AdminNotifications#AdminNotifications'],
+    },
     meta: {
       titleSuffix: '- Bullet Reporter Admin',
       icons: {
@@ -1026,6 +1029,33 @@ export default buildConfig({
   editor: lexicalEditor(),
 
   collections: [
+    {
+      slug: 'admin-notifications',
+      lockDocuments: false,
+      admin: { hidden: true },
+      access: { create: () => false, read: () => false, update: () => false, delete: () => false },
+      fields: [
+        { name: 'type', type: 'select', required: true, options: ['like', 'dislike', 'comment'] },
+        { name: 'requiredPermission', type: 'select', required: true, options: ['news.read', 'video-news.read', 'comments.read'] },
+        { name: 'contentType', type: 'select', required: true, options: ['news', 'video-news'] },
+        { name: 'contentId', type: 'number', required: true },
+        { name: 'contentTitle', type: 'text', required: true },
+        { name: 'contentSlug', type: 'text', required: true },
+        { name: 'message', type: 'text', required: true },
+      ],
+    },
+    {
+      slug: 'admin-notification-reads',
+      lockDocuments: false,
+      admin: { hidden: true },
+      access: { create: () => false, read: () => false, update: () => false, delete: () => false },
+      fields: [
+        { name: 'receiptKey', type: 'text', required: true, unique: true },
+        { name: 'notification', type: 'relationship', relationTo: 'admin-notifications', required: true },
+        { name: 'user', type: 'relationship', relationTo: 'users', required: true },
+        { name: 'readAt', type: 'date', required: true },
+      ],
+    },
     {
       slug: 'roles',
       access: {

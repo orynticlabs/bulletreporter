@@ -4,12 +4,15 @@ import { getPayload } from 'payload'
 export const dynamic = 'force-dynamic'
 
 const CACHE_TTL = 30 * 1000
+const ALL_CATEGORIES_LIMIT = 300
 let cachedData = null
 let cachedAt = 0
 
 const getLimit = (searchParams) => {
   const parsed = Number(searchParams.get('limit'))
-  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 100) : 12
+  return Number.isFinite(parsed) && parsed > 0
+    ? Math.min(parsed, ALL_CATEGORIES_LIMIT)
+    : ALL_CATEGORIES_LIMIT
 }
 
 export async function GET(request) {
