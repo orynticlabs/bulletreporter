@@ -257,7 +257,7 @@ model news {
   author_id                     Int?
   is_breaking                   Boolean?                        @default(false)
   is_featured                   Boolean?                        @default(false)
-  status                        enum_news_status?               @default(draft)
+  status                        enum_news_status?               @default(published)
   published_at                  DateTime?                       @db.Timestamptz(3)
   views                         Decimal?                        @default(0) @db.Decimal
   seo_meta_title                String?                         @db.VarChar
@@ -265,7 +265,6 @@ model news {
   seo_keywords                  String?                         @db.VarChar
   updated_at                    DateTime                        @default(now()) @db.Timestamptz(3)
   created_at                    DateTime                        @default(now()) @db.Timestamptz(3)
-  payload_status                enum_news_status?               @default(draft) @map("_status")
   excerpt_hindi                 String?                         @db.VarChar
   editor_id                     Int?
   title_english                 String?                         @db.VarChar
