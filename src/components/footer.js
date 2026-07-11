@@ -18,6 +18,7 @@ const DEVELOPER_URL = process.env.NEXT_PUBLIC_DEVELOPER_URL || ''
 const FACEBOOK_URL = process.env.NEXT_PUBLIC_FACEBOOK_PAGE_URL || ''
 const INSTAGRAM_URL = process.env.NEXT_PUBLIC_INSTAGRAM_URL || ''
 const YOUTUBE_URL = process.env.NEXT_PUBLIC_YOUTUBE_URL || ''
+const FOOTER_CATEGORY_LIMIT = 9
 
 const DeveloperCredit = () => (
   DEVELOPER_URL ? (
@@ -124,9 +125,10 @@ export default function Footer() {
 
   const categoryLinks = [
     { name: t.mainCatName, href: getLangPath('/') },
-    ...categoriesArray.slice(0, 9).map(cat => ({
+    ...categoriesArray.slice(0, FOOTER_CATEGORY_LIMIT).map(cat => ({
       name: getCategoryDisplayName(cat, lang),
       href: getLangPath(`/category/${encodeURIComponent(getCategoryRouteKey(cat))}`),
+      key: cat.id || getCategoryRouteKey(cat),
     })),
   ];
 
@@ -171,7 +173,7 @@ export default function Footer() {
             <ColTitle>{t.col1}</ColTitle>
             <ul className="grid grid-cols-1 gap-x-3 gap-y-1 min-[420px]:grid-cols-2">
               {categoryLinks.map(cat => (
-                <li key={cat.name}>
+                <li key={cat.key || cat.href}>
                   <a
                     href={cat.href}
                     className="flex min-w-0 items-center gap-1.5 text-sm leading-8 text-[#aaa] transition-colors duration-150 hover:text-[#e84118]"

@@ -6,6 +6,7 @@ const PAYLOAD_API_BASE =
     : ''
 
 const CATEGORIES_TTL = 30 * 1000
+export const ALL_CATEGORIES_LIMIT = 300
 
 const CATEGORY_HI_FALLBACKS = {
   chattisgarh: 'छत्तीसगढ़',
@@ -121,7 +122,7 @@ let cachedAt = 0
 let pendingCategories = null
 let pendingCategoriesLimit = 0
 
-export async function fetchPayloadCategories({ limit = 12 } = {}) {
+export async function fetchPayloadCategories({ limit = ALL_CATEGORIES_LIMIT } = {}) {
   const now = Date.now()
   const version = await getPublicCacheVersion('categories', { forceRefresh: true })
 

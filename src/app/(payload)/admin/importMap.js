@@ -25,6 +25,7 @@ import { CategoryCheckboxRelationshipField as CategoryCheckboxRelationshipField_
 import { AdvertisementPositionDetails as AdvertisementPositionDetails_0428e9d93d251a958ceb2e3a9c3bb964 } from '@/components/payload/AdvertisementPositionDetails'
 import { AdvertisementBannerTypeField as AdvertisementBannerTypeField_e3c1c9e605bfdea1d6eb5e13c274f006 } from '@/components/payload/AdvertisementDerivedFields'
 import { AdvertisementBannerSizeField as AdvertisementBannerSizeField_e3c1c9e605bfdea1d6eb5e13c274f006 } from '@/components/payload/AdvertisementDerivedFields'
+import { AdminNotifications as AdminNotifications_12127f759e607b1a19237a0d992628e6 } from '@/components/payload/AdminNotifications'
 import { CloudinaryClientUploadHandler as CloudinaryClientUploadHandler_d082512b0d29edcf3859a7c92c33e4db } from '@jhb.software/payload-cloudinary-plugin/client'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -57,6 +58,7 @@ export const importMap = {
   "@/components/payload/AdvertisementPositionDetails#AdvertisementPositionDetails": AdvertisementPositionDetails_0428e9d93d251a958ceb2e3a9c3bb964,
   "@/components/payload/AdvertisementDerivedFields#AdvertisementBannerTypeField": AdvertisementBannerTypeField_e3c1c9e605bfdea1d6eb5e13c274f006,
   "@/components/payload/AdvertisementDerivedFields#AdvertisementBannerSizeField": AdvertisementBannerSizeField_e3c1c9e605bfdea1d6eb5e13c274f006,
+  "@/components/payload/AdminNotifications#AdminNotifications": AdminNotifications_12127f759e607b1a19237a0d992628e6,
   "@jhb.software/payload-cloudinary-plugin/client#CloudinaryClientUploadHandler": CloudinaryClientUploadHandler_d082512b0d29edcf3859a7c92c33e4db,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

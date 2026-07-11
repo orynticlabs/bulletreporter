@@ -1,6 +1,7 @@
 import config from '@payload-config'
 import { getPayload } from 'payload'
 import { verifyRecaptchaFromBody } from '@/lib/recaptcha'
+import { createAdminNotification } from '@/lib/adminNotifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -88,6 +89,12 @@ export async function POST(request, { params }) {
         content: content.trim(),
         status: 'pending',
       },
+    })
+
+    await createAdminNotification(payload, {
+      type: 'comment', requiredPermission: 'comments.read', contentType: 'news',
+      contentId: article.id, contentTitle: article.title, contentSlug: article.slug,
+      message: `${authorName.trim()} commented on news: ${article.title}`,
     })
 
     return Response.json(comment, { status: 201 })
