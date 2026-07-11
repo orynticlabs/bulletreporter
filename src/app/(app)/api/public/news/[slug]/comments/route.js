@@ -80,6 +80,7 @@ export async function POST(request, { params }) {
 
     const comment = await payload.create({
       collection: 'comments',
+      overrideAccess: true,
       data: {
         article: article.id,
         authorName: authorName.trim(),

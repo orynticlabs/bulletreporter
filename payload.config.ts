@@ -338,34 +338,6 @@ const ensureRequiredNewsRelationships = ({
   return data
 }
 
-const ensureEditorialPublishAccess = ({
-  data,
-  operation,
-  originalDoc,
-  req,
-}: {
-  data?: Record<string, any>
-  operation?: string
-  originalDoc?: Record<string, any>
-  req?: any
-}) => {
-  if (!data || isAdminOrEditor(req?.user)) return data || {}
-
-  if (operation === 'update' && 'status' in data) {
-    data.status = originalDoc?.status || data.status
-  }
-
-  if ('isBreaking' in data) {
-    data.isBreaking = false
-  }
-
-  if ('isFeatured' in data) {
-    data.isFeatured = false
-  }
-
-  return data
-}
-
 const ensureNewsFields = ({
   data,
   operation,
@@ -378,7 +350,6 @@ const ensureNewsFields = ({
   req?: any
 }) => {
   const next = ensureNewsPublishedAt({ data, operation })
-  ensureEditorialPublishAccess({ data: next, operation, originalDoc, req })
   ensureNewsSlug({ data: next, operation })
   ensureLoggedInUserByline({ data: next, operation, originalDoc, req })
   ensureRequiredNewsRelationships({ data: next, operation, originalDoc })
@@ -434,35 +405,151 @@ const ensureVideoNewsFields = ({
 
 // ── Role-Based Access Control helpers ────────────────────────────────────────
 //
-// Role hierarchy (highest → lowest privilege):
-//   admin   – full access to every collection, field, and operation
-//   chief_editor – manage editorial content, latest news, and About page content
-//   editor  – create / edit / publish all news; manage categories, comments, ads
-//   author  – create news; edit/delete only their own draft articles
-//   viewer  – read-only access inside the admin panel (no mutations)
+// Effective permissions are database-driven and cumulative by hierarchy order.
+// Lower order numbers have higher authority; Super Admin is permanently order 1.
 //
 // Public (unauthenticated) visitors can read published news and approved comments
 // through the frontend API, but cannot touch the admin panel at all.
 
-type User = { id: string | number; role?: string } | null | undefined
+type RBACAction = 'read' | 'create' | 'update' | 'delete'
+type RBACResource = 'users' | 'roles' | 'media' | 'categories' | 'news' | 'video-news' | 'comments' | 'advertisements' | 'settings'
+const permission = (resource: RBACResource, action: RBACAction) => `${resource}.${action}`
 
-const isAdmin  = (user: User): boolean => user?.role === 'admin'
-const isChiefEditor = (user: User): boolean => user?.role === 'chief_editor'
-const isEditor = (user: User): boolean => user?.role === 'editor'
-const isAuthor = (user: User): boolean => user?.role === 'author'
-const isViewer = (user: User): boolean => user?.role === 'viewer'
+const getDatabaseRole = async (req: any) => {
+  if (!req?.user?.id) return null
+  const user = await req.payload.findByID({ collection: 'users', id: req.user.id, depth: 2, overrideAccess: true, req })
+  return user?.role && typeof user.role === 'object' ? user.role : null
+}
 
-/** Admin, Chief Editor, or Editor */
-const isAdminOrEditor = (user: User): boolean => isAdmin(user) || isChiefEditor(user) || isEditor(user)
+const hasPermission = async (req: any, resource: RBACResource, action: RBACAction) => {
+  const role = await getDatabaseRole(req)
+  if (!role) return false
+  if (role.slug === 'super-admin') return true
+  if (resource === 'roles' && role.slug !== 'admin') return false
 
-/** Admin or Chief Editor */
-const isAdminOrChiefEditor = (user: User): boolean => isAdmin(user) || isChiefEditor(user)
+  const lowerRoles = await req.payload.find({
+    collection: 'roles',
+    where: { hierarchyOrder: { greater_than_equal: role.hierarchyOrder } },
+    limit: 1000,
+    depth: 0,
+    overrideAccess: true,
+    req,
+  })
+  return lowerRoles.docs.some((candidate: any) =>
+    candidate.permissions?.includes(permission(resource, action)),
+  )
+}
 
-/** Admin, Chief Editor, Editor, or Author (any staff role) */
-const isStaff = (user: User): boolean => isAdmin(user) || isChiefEditor(user) || isEditor(user) || isAuthor(user)
+const hasAnyPermission = (user: any, resource: RBACResource) =>
+  Boolean(user?.role && typeof user.role === 'object' &&
+    (['read', 'create', 'update', 'delete'] as RBACAction[]).some((action) =>
+      user.role.permissions?.includes(permission(resource, action)),
+    ))
 
-/** Any authenticated user (including viewer) */
-const isAuthenticated = (user: User): boolean => Boolean(user)
+const getRequestRole = async (req: any) => {
+  const assignedRole = req?.user?.role
+  if (!assignedRole) return null
+  if (typeof assignedRole === 'object') return assignedRole
+  return req.payload.findByID({
+    collection: 'roles',
+    id: assignedRole,
+    depth: 0,
+    overrideAccess: true,
+    req,
+  })
+}
+
+const enforceRoleDepth = async ({ args, operation, overrideAccess, req }: any) => {
+  const depthOperations = ['read', 'find', 'findByID', 'findVersions', 'findVersionByID']
+  if (!depthOperations.includes(operation) || overrideAccess) return args
+
+  const role = await getRequestRole(req)
+  const maximumDepth = role && ['super-admin', 'admin'].includes(role.slug) ? 10 : 1
+  const requestedDepth = Number(args?.depth)
+
+  return {
+    ...args,
+    depth: Number.isFinite(requestedDepth)
+      ? Math.min(Math.max(0, Math.trunc(requestedDepth)), maximumDepth)
+      : maximumDepth,
+  }
+}
+
+const RBAC_RESOURCES: RBACResource[] = ['users', 'roles', 'media', 'categories', 'news', 'video-news', 'comments', 'advertisements', 'settings']
+const PERMISSION_OPTIONS = RBAC_RESOURCES.flatMap((resource) =>
+  (['read', 'create', 'update', 'delete'] as RBACAction[]).map((action) => ({
+    label: `${resource} - ${action}`,
+    value: permission(resource, action),
+  })),
+)
+
+const preserveRoleBaseline = async ({ data, originalDoc, req }: any) => {
+  const baseId = data?.baseRole || originalDoc?.baseRole
+  let baseline: string[] = originalDoc?.baselinePermissions || []
+  if (baseId) {
+    const base = await req.payload.findByID({ collection: 'roles', id: typeof baseId === 'object' ? baseId.id : baseId, overrideAccess: true, req })
+    baseline = base.baselinePermissions || base.permissions || []
+  }
+  data.baselinePermissions = baseline
+  data.permissions = [...new Set([...baseline, ...(data.permissions || originalDoc?.permissions || [])])]
+  const roleSlug = originalDoc?.slug || data?.slug
+  if (!['super-admin', 'admin'].includes(roleSlug)) {
+    data.baselinePermissions = data.baselinePermissions.filter((value: string) => !value.startsWith('roles.'))
+    data.permissions = data.permissions.filter((value: string) => !value.startsWith('roles.'))
+  }
+  if (originalDoc?.isSystem) {
+    data.slug = originalDoc.slug
+    data.isSystem = true
+  }
+  return data
+}
+
+const enforceHierarchyOrder = async ({ data, originalDoc, req }: any) => {
+  const slug = originalDoc?.slug || data?.slug
+  const hierarchyOrder = data?.hierarchyOrder ?? originalDoc?.hierarchyOrder
+
+  if (!Number.isInteger(hierarchyOrder) || hierarchyOrder < 1) {
+    throw new APIError('Hierarchy order must be a positive whole number.', 400)
+  }
+  if (slug === 'super-admin' && hierarchyOrder !== 1) {
+    throw new APIError('Super Admin must always remain at hierarchy order 1.', 400)
+  }
+  if (slug !== 'super-admin' && hierarchyOrder === 1) {
+    throw new APIError('Hierarchy order 1 is permanently reserved for Super Admin.', 400)
+  }
+
+  const duplicate = await req.payload.find({
+    collection: 'roles',
+    where: {
+      and: [
+        { hierarchyOrder: { equals: hierarchyOrder } },
+        ...(originalDoc?.id ? [{ id: { not_equals: originalDoc.id } }] : []),
+      ],
+    },
+    limit: 1,
+    overrideAccess: true,
+    req,
+  })
+  if (duplicate.totalDocs > 0) {
+    throw new APIError(`Hierarchy order ${hierarchyOrder} is already assigned to another role.`, 400)
+  }
+  return data
+}
+
+const enforceSuperAdminLimit = async ({ data, originalDoc, operation, req }: any) => {
+  const roleId = data?.role || originalDoc?.role
+  if (!roleId) return data
+  const role = await req.payload.findByID({ collection: 'roles', id: typeof roleId === 'object' ? roleId.id : roleId, overrideAccess: true, req })
+  if (role?.slug !== 'super-admin') return data
+  const existing = await req.payload.count({
+    collection: 'users',
+    where: { role: { equals: role.id }, ...(operation === 'update' && originalDoc?.id ? { id: { not_equals: originalDoc.id } } : {}) },
+    overrideAccess: true,
+    req,
+  })
+  if (existing.totalDocs >= 3) throw new APIError('A maximum of 3 Super Admin users is allowed.', 400)
+  return data
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -940,6 +1027,26 @@ export default buildConfig({
 
   collections: [
     {
+      slug: 'roles',
+      access: {
+        read: ({ req }) => hasPermission(req, 'roles', 'read'),
+        create: ({ req }) => hasPermission(req, 'roles', 'create'),
+        update: ({ req }) => hasPermission(req, 'roles', 'update'),
+        delete: async ({ req }) => (await hasPermission(req, 'roles', 'delete')) && { isSystem: { not_equals: true } },
+      },
+      admin: { useAsTitle: 'name', defaultColumns: ['name', 'hierarchyOrder', 'slug', 'isSystem'], hidden: ({ user }) => !hasAnyPermission(user, 'roles') },
+      hooks: { beforeOperation: [enforceRoleDepth], beforeChange: [enforceHierarchyOrder, preserveRoleBaseline] },
+      fields: [
+        { name: 'name', type: 'text', required: true, unique: true },
+        { name: 'slug', type: 'text', required: true, unique: true },
+        { name: 'hierarchyOrder', type: 'number', required: true, unique: true, min: 1, admin: { description: 'Lower numbers have higher authority. Order 1 is permanently reserved for Super Admin.' } },
+        { name: 'isSystem', type: 'checkbox', defaultValue: false, admin: { readOnly: true } },
+        { name: 'baseRole', type: 'relationship', relationTo: 'roles', filterOptions: { isSystem: { equals: true } }, admin: { description: 'Custom roles inherit this predefined role and can only add permissions.' } },
+        { name: 'permissions', type: 'select', hasMany: true, required: true, options: PERMISSION_OPTIONS },
+        { name: 'baselinePermissions', type: 'select', hasMany: true, options: PERMISSION_OPTIONS, admin: { hidden: true, readOnly: true } },
+      ],
+    },
+    {
       slug: 'users',
       auth: {
         tokenExpiration: 10 * 60,
@@ -962,7 +1069,7 @@ export default buildConfig({
           path: '/resend-password-setup',
           method: 'post',
           handler: async (req) => {
-            if (!isAdmin(req.user)) {
+            if (!(await hasPermission(req, 'users', 'update'))) {
               return Response.json({ error: 'Unauthorized' }, { status: 403 })
             }
 
@@ -1009,7 +1116,9 @@ export default buildConfig({
         },
       ],
       hooks: {
+        beforeOperation: [enforceRoleDepth],
         beforeValidate: [
+          enforceSuperAdminLimit,
           preventDirectUserPasswordUpdate,
           ({ data, operation, req }: { data?: Record<string, any>; operation: string; req: any }) => {
             if (operation !== 'create' || !data?.email) {
@@ -1058,45 +1167,37 @@ export default buildConfig({
       },
       access: {
         // Admins see all users; others see only their own profile
-        read: ({ req }) => {
-          if (isAdmin(req.user)) return true
-          if (isAuthenticated(req.user)) return { id: { equals: req.user!.id } }
+        read: async ({ req }) => {
+          if (await hasPermission(req, 'users', 'read')) return true
+          if (req.user) return { id: { equals: req.user.id } }
           return false
         },
         // New user accounts are created only by admins (registration is disabled)
-        create: ({ req }) => isAdmin(req.user),
-        // Admins update anyone; everyone else can update only themselves
-        update: ({ req }) => {
-          if (isAdmin(req.user)) return true
-          if (isAuthenticated(req.user)) return { id: { equals: req.user!.id } }
+        create: ({ req }) => hasPermission(req, 'users', 'create'),
+        // User records can only be changed by roles with users.update.
+        update: async ({ req }) => {
+          if (await hasPermission(req, 'users', 'update')) return true
           return false
         },
         // Only admins can delete users
-        delete: ({ req }) => isAdmin(req.user),
+        delete: ({ req }) => hasPermission(req, 'users', 'delete'),
       },
       admin: {
         useAsTitle: 'name',
         defaultColumns: ['name', 'email', 'role'],
         // Only admins see the Users list in the sidebar
-        hidden: ({ user }: { user: any }) => !isAdmin(user),
+        hidden: ({ user }: { user: any }) => !hasAnyPermission(user, 'users'),
       },
       fields: [
         { name: 'name', type: 'text', required: true },
         {
           name: 'role',
-          type: 'select',
-          options: [
-            { label: 'Admin',        value: 'admin' },
-            { label: 'Chief Editor', value: 'chief_editor' },
-            { label: 'Editor',       value: 'editor' },
-            { label: 'Author',       value: 'author' },
-            { label: 'Viewer',       value: 'viewer' },
-          ],
-          defaultValue: 'author',
+          type: 'relationship',
+          relationTo: 'roles',
           required: true,
           // Only admins can change someone's role
           access: {
-            update: ({ req }) => isAdmin(req.user),
+            update: ({ req }) => hasPermission(req, 'users', 'update'),
           },
         },
         { name: 'bio', type: 'textarea' },
@@ -1109,18 +1210,14 @@ export default buildConfig({
         // Media files are always public (images appear on the frontend)
         read: () => true,
         // Admin, Editor, and Author can upload media
-        create: ({ req }) => isStaff(req.user),
-        // Admin and Editor can edit any media; Authors can edit only media they uploaded
-        update: ({ req }) => {
-          if (isAdminOrEditor(req.user)) return true
-          if (isAuthor(req.user)) return { uploadedBy: { equals: req.user!.id } }
-          return false
-        },
+        create: ({ req }) => hasPermission(req, 'media', 'create'),
+        update: ({ req }) => hasPermission(req, 'media', 'update'),
         // Only Admin and Editor can delete media
-        delete: ({ req }) => isAdminOrEditor(req.user),
+        delete: ({ req }) => hasPermission(req, 'media', 'delete'),
       },
       hooks: {
         beforeOperation: [
+          enforceRoleDepth,
           ({ req, operation }: { req: any; operation: string }) => {
             if (operation === 'create' && req?.file) {
               if (req.file.size > MAX_UPLOAD_BYTES) {
@@ -1137,7 +1234,7 @@ export default buildConfig({
       admin: {
         useAsTitle: 'alt',
         // Authors and above can see the Media library; Viewers cannot upload
-        hidden: ({ user }: { user: any }) => !isStaff(user),
+        hidden: ({ user }: { user: any }) => !hasAnyPermission(user, 'media'),
       },
       fields: [
         { name: 'alt', type: 'text', required: true },
@@ -1150,18 +1247,19 @@ export default buildConfig({
         // Categories are public — used in nav and article filters
         read: () => true,
         // Admin and Editor can manage categories
-        create: ({ req }) => isAdminOrEditor(req.user),
-        update: ({ req }) => isAdminOrEditor(req.user),
+        create: ({ req }) => hasPermission(req, 'categories', 'create'),
+        update: ({ req }) => hasPermission(req, 'categories', 'update'),
         // Only Admin can delete categories (prevents breaking existing articles)
-        delete: ({ req }) => isAdmin(req.user),
+        delete: ({ req }) => hasPermission(req, 'categories', 'delete'),
       },
       admin: {
         useAsTitle: 'name',
         defaultColumns: ['name', 'slug', 'order'],
         // Admin and Editor manage categories; Authors and Viewers only see them as read-only
-        hidden: ({ user }: { user: any }) => !isAdminOrEditor(user),
+        hidden: ({ user }: { user: any }) => !hasAnyPermission(user, 'categories'),
       },
       hooks: {
+        beforeOperation: [enforceRoleDepth],
         beforeValidate: [ensureCategoryFields],
         beforeDelete: [preventDeletingCategoryInUse],
         afterChange: [
@@ -1211,23 +1309,20 @@ export default buildConfig({
       slug: 'news',
       access: {
         // Public: only published articles; logged-in staff: all articles.
-        read: ({ req }) => {
-          if (isStaff(req.user) || isViewer(req.user)) return true
+        read: async ({ req }) => {
+          if (await hasPermission(req, 'news', 'read')) return true
           return { status: { equals: 'published' } }
         },
         // Admin, Editor, and Author can create news
-        create: ({ req }) => isStaff(req.user),
+        create: ({ req }) => hasPermission(req, 'news', 'create'),
         // Admin and Editor can edit any article;
         // Author can edit only articles they authored (and only while draft)
-        update: ({ req }) => {
-          if (isAdminOrEditor(req.user)) return true
-          if (isAuthor(req.user)) return { author: { equals: req.user!.id } }
-          return false
-        },
+        update: ({ req }) => hasPermission(req, 'news', 'update'),
         // Admin and Editor can delete; Authors cannot
-        delete: ({ req }) => isAdminOrEditor(req.user),
+        delete: ({ req }) => hasPermission(req, 'news', 'delete'),
       },
       hooks: {
+        beforeOperation: [enforceRoleDepth],
         beforeValidate: [ensureNewsFields],
         afterChange: [
           async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
@@ -1344,7 +1439,7 @@ export default buildConfig({
           label: 'Breaking News',
           defaultValue: false,
           // Only Admin and Editor can mark as breaking
-          access: { update: ({ req }) => isAdminOrEditor(req.user) },
+          access: { update: ({ req }) => hasPermission(req, 'news', 'update') },
         },
         {
           name: 'isFeatured',
@@ -1352,7 +1447,7 @@ export default buildConfig({
           label: 'Featured Article',
           defaultValue: false,
           // Only Admin and Editor can feature articles
-          access: { update: ({ req }) => isAdminOrEditor(req.user) },
+          access: { update: ({ req }) => hasPermission(req, 'news', 'update') },
         },
         {
           name: 'status',
@@ -1364,7 +1459,7 @@ export default buildConfig({
           defaultValue: 'published',
           required: true,
           // Authors can create articles but cannot publish — only Admin/Editor can
-          access: { update: ({ req }) => isAdminOrEditor(req.user) },
+          access: { update: ({ req }) => hasPermission(req, 'news', 'update') },
           admin: {
             description: 'Authors can save as Draft only. Editors and Admins can publish.',
           },
@@ -1426,19 +1521,16 @@ export default buildConfig({
         plural: 'Video News',
       },
       access: {
-        read: ({ req }) => {
-          if (isStaff(req.user) || isViewer(req.user)) return true
+        read: async ({ req }) => {
+          if (await hasPermission(req, 'video-news', 'read')) return true
           return { status: { equals: 'published' } }
         },
-        create: ({ req }) => isStaff(req.user),
-        update: ({ req }) => {
-          if (isAdminOrEditor(req.user)) return true
-          if (isAuthor(req.user)) return { author: { equals: req.user!.id } }
-          return false
-        },
-        delete: ({ req }) => isAdminOrEditor(req.user),
+        create: ({ req }) => hasPermission(req, 'video-news', 'create'),
+        update: ({ req }) => hasPermission(req, 'video-news', 'update'),
+        delete: ({ req }) => hasPermission(req, 'video-news', 'delete'),
       },
       hooks: {
+        beforeOperation: [enforceRoleDepth],
         beforeValidate: [ensureVideoNewsFields],
         afterChange: [
           async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
@@ -1585,7 +1677,7 @@ export default buildConfig({
           ],
           defaultValue: 'draft',
           required: true,
-          access: { update: ({ req }) => isAdminOrEditor(req.user) },
+          access: { update: ({ req }) => hasPermission(req, 'video-news', 'update') },
           admin: {
             description: 'Authors can save as Draft only. Editors and Admins can publish.',
           },
@@ -1633,26 +1725,27 @@ export default buildConfig({
     {
       slug: 'comments',
       access: {
-        // Anyone on the frontend can post a comment (goes to pending review)
-        create: () => true,
+        // Public comments use the validated public endpoint with overrideAccess;
+        // authenticated admin/API requests must have the database permission.
+        create: ({ req }) => hasPermission(req, 'comments', 'create'),
         // Admin and Editor see all comments; public sees only approved ones
-        read: ({ req }) => {
-          if (isAdminOrEditor(req.user) || isViewer(req.user)) return true
-          if (isAuthor(req.user)) return true          // authors can read all for context
+        read: async ({ req }) => {
+          if (await hasPermission(req, 'comments', 'read')) return true
           return { status: { equals: 'approved' } }
         },
         // Only Admin and Editor can update comments (approve / reject / edit)
-        update: ({ req }) => isAdminOrEditor(req.user),
+        update: ({ req }) => hasPermission(req, 'comments', 'update'),
         // Only Admin and Editor can delete comments
-        delete: ({ req }) => isAdminOrEditor(req.user),
+        delete: ({ req }) => hasPermission(req, 'comments', 'delete'),
       },
       admin: {
         useAsTitle: 'authorName',
         defaultColumns: ['authorName', 'article', 'status', 'createdAt'],
         // Authors cannot moderate comments; only Admin and Editor see the comment queue
-        hidden: ({ user }: { user: any }) => !isAdminOrEditor(user),
+        hidden: ({ user }: { user: any }) => !hasAnyPermission(user, 'comments'),
       },
       hooks: {
+        beforeOperation: [enforceRoleDepth],
         afterChange: [
           async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
             if (hasPublicFieldChanged({ doc, previousDoc, fields: COMMENT_PUBLIC_FIELDS })) {
@@ -1703,8 +1796,8 @@ export default buildConfig({
         plural: 'Advertisements',
       },
       access: {
-        read: ({ req }) => {
-          if (isAdminOrChiefEditor(req.user)) return true
+        read: async ({ req }) => {
+          if (await hasPermission(req, 'advertisements', 'read')) return true
 
           const now = new Date().toISOString()
           return {
@@ -1715,17 +1808,18 @@ export default buildConfig({
             ],
           }
         },
-        create: ({ req }) => isAdminOrChiefEditor(req.user),
-        update: ({ req }) => isAdminOrChiefEditor(req.user),
-        delete: ({ req }) => isAdmin(req.user),
+        create: ({ req }) => hasPermission(req, 'advertisements', 'create'),
+        update: ({ req }) => hasPermission(req, 'advertisements', 'update'),
+        delete: ({ req }) => hasPermission(req, 'advertisements', 'delete'),
       },
       admin: {
         useAsTitle: 'title',
         defaultColumns: ['title', 'position', 'bannerType', 'size', 'isActive', 'startsAt', 'endsAt'],
-        hidden: ({ user }: { user: any }) => !isAdminOrChiefEditor(user),
+        hidden: ({ user }: { user: any }) => !hasAnyPermission(user, 'advertisements'),
         description: 'Manage one top/header ad, one bottom/footer ad, and up to three sidebar ads.',
       },
       hooks: {
+        beforeOperation: [enforceRoleDepth],
         beforeValidate: [ensureAdvertisementFields],
         beforeChange: [validateAdvertisementImage, enforceAdvertisementLimits],
         afterChange: [
@@ -1861,9 +1955,10 @@ export default buildConfig({
       slug: 'settings',
       label: 'Site Settings',
       access: {
-        read: () => true,
-        update: ({ req }) => isAdminOrChiefEditor(req.user),
+        read: ({ req }) => hasPermission(req, 'settings', 'read'),
+        update: ({ req }) => hasPermission(req, 'settings', 'update'),
       },
+      hooks: { beforeOperation: [enforceRoleDepth] },
       fields: [
         { name: 'siteName', type: 'text', defaultValue: 'Bullet Reporter' },
         { name: 'tagline', type: 'text' },

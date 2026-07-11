@@ -331,11 +331,13 @@ model payload_locked_documents_rels {
   comments_id              Int?
   advertisements_id        Int?
   video_news_id            Int?
+  roles_id                 Int?
   advertisements           advertisements?          @relation(fields: [advertisements_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_advertisements_fk")
   categories               categories?              @relation(fields: [categories_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_categories_fk")
   comments                 comments?                @relation(fields: [comments_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_comments_fk")
   media                    media?                   @relation(fields: [media_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_media_fk")
   news                     news?                    @relation(fields: [news_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_news_fk")
+  roles                    roles?                   @relation(fields: [roles_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_roles_fk")
   payload_locked_documents payload_locked_documents @relation(fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_parent_fk")
   users                    users?                   @relation(fields: [users_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_users_fk")
   video_news               video_news?              @relation(fields: [video_news_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_video_news_fk")
@@ -348,6 +350,7 @@ model payload_locked_documents_rels {
   @@index([order])
   @@index([parent_id], map: "payload_locked_documents_rels_parent_idx")
   @@index([path])
+  @@index([roles_id])
   @@index([users_id])
   @@index([video_news_id])
 }
@@ -433,7 +436,7 @@ model settings {
 model users {
   id                                                 Int                             @id @default(autoincrement())
   name                                               String                          @db.VarChar
-  role                                               enum_users_role                 @default(author)
+  role_id                                            Int
   bio                                                String?                         @db.VarChar
   avatar_id                                          Int?
   updated_at                                         DateTime                        @default(now()) @db.Timestamptz(3)
@@ -457,10 +460,55 @@ model users {
   users_sessions                                     users_sessions[]
   video_news_video_news_author_idTousers             video_news[]                    @relation("video_news_author_idTousers")
   video_news_video_news_editor_idTousers             video_news[]                    @relation("video_news_editor_idTousers")
+  role                                               roles                           @relation(fields: [role_id], references: [id], onUpdate: NoAction, map: "users_role_id_roles_id_fk")
 
   @@index([avatar_id], map: "users_avatar_idx")
+  @@index([role_id], map: "users_role_idx")
   @@index([created_at])
   @@index([updated_at])
+}
+
+model roles {
+  id                            Int                             @id @default(autoincrement())
+  name                          String                          @unique(map: "roles_name_idx") @db.VarChar
+  slug                          String                          @unique(map: "roles_slug_idx") @db.VarChar
+  hierarchy_order               Int                             @unique(map: "roles_hierarchy_order_idx")
+  is_system                     Boolean                         @default(false)
+  base_role_id                  Int?
+  updated_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  created_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  base_role                     roles?                          @relation("roles_base_role", fields: [base_role_id], references: [id], onUpdate: NoAction, map: "roles_base_role_id_roles_id_fk")
+  derived_roles                 roles[]                         @relation("roles_base_role")
+  permissions                   roles_permissions[]
+  baseline_permissions          roles_baseline_permissions[]
+  users                         users[]
+  payload_locked_documents_rels payload_locked_documents_rels[]
+
+  @@index([base_role_id], map: "roles_base_role_idx")
+  @@index([created_at])
+  @@index([updated_at])
+}
+
+model roles_permissions {
+  order     Int
+  parent_id Int
+  id        String @id @db.VarChar
+  value     String @db.VarChar
+  role      roles  @relation(fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "roles_permissions_parent_id_fk")
+
+  @@index([order], map: "roles_permissions_order_idx")
+  @@index([parent_id], map: "roles_permissions_parent_id_idx")
+}
+
+model roles_baseline_permissions {
+  order     Int
+  parent_id Int
+  id        String @id @db.VarChar
+  value     String @db.VarChar
+  role      roles  @relation(fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "roles_baseline_permissions_parent_id_fk")
+
+  @@index([order], map: "roles_baseline_permissions_order_idx")
+  @@index([parent_id], map: "roles_baseline_permissions_parent_id_idx")
 }
 
 model users_sessions {
@@ -560,14 +608,6 @@ enum enum_comments_status {
 enum enum_news_status {
   draft
   published
-}
-
-enum enum_users_role {
-  admin
-  chief_editor
-  editor
-  author
-  viewer
 }
 
 enum enum_video_news_language {
