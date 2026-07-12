@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/cleanup-news",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/send-newsletter",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/send-newsletter",
+      "schedule": "30 13 * * *"
     }
   ]
 }

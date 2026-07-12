@@ -195,6 +195,52 @@ model comments {
   @@index([video_article_id], map: "comments_video_article_idx")
 }
 
+model newsletter_subscribers {
+  id                    Int                     @id @default(autoincrement())
+  name                  String                  @db.VarChar
+  email                 String                  @unique(map: "newsletter_subscribers_email_idx") @db.VarChar
+  unsubscribe_token     String                  @unique(map: "newsletter_subscribers_unsubscribe_token_idx") @db.VarChar
+  is_active             Boolean                 @default(true)
+  subscribed_at         DateTime                @default(now()) @db.Timestamptz(3)
+  last_digest_at        DateTime?               @db.Timestamptz(3)
+  created_at            DateTime                @default(now()) @db.Timestamptz(3)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(3)
+  newsletter_deliveries newsletter_deliveries[]
+
+  @@index([is_active, last_digest_at], map: "newsletter_subscribers_active_digest_idx")
+}
+
+model newsletter_digest_items {
+  id           Int      @id @default(autoincrement())
+  item_key     String   @unique(map: "newsletter_digest_items_item_key_idx") @db.VarChar
+  content_type String   @db.VarChar
+  content_id   Int
+  title        String   @db.VarChar
+  excerpt      String   @default("") @db.VarChar
+  slug         String   @db.VarChar
+  published_at DateTime @db.Timestamptz(3)
+  created_at   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([published_at(sort: Desc)], map: "newsletter_digest_items_published_at_idx")
+}
+
+model newsletter_deliveries {
+  id            Int                               @id @default(autoincrement())
+  delivery_key  String                            @unique(map: "newsletter_deliveries_delivery_key_idx") @db.VarChar
+  slot_key      String                            @db.VarChar
+  subscriber_id Int
+  status        enum_newsletter_deliveries_status @default(sending)
+  attempts      Int                               @default(1)
+  last_error    String?                           @db.VarChar
+  sent_at       DateTime?                         @db.Timestamptz(3)
+  created_at    DateTime                          @default(now()) @db.Timestamptz(3)
+  updated_at    DateTime                          @default(now()) @db.Timestamptz(3)
+  subscriber    newsletter_subscribers            @relation(fields: [subscriber_id], references: [id], onDelete: Cascade, map: "newsletter_deliveries_subscriber_fk")
+
+  @@index([subscriber_id], map: "newsletter_deliveries_subscriber_idx")
+  @@index([slot_key, status], map: "newsletter_deliveries_slot_status_idx")
+}
+
 model media {
   id                                  Int                             @id @default(autoincrement())
   alt                                 String                          @db.VarChar
@@ -660,6 +706,12 @@ enum enum_comments_status {
 enum enum_news_status {
   draft
   published
+}
+
+enum enum_newsletter_deliveries_status {
+  sending
+  sent
+  failed
 }
 
 enum enum_video_news_language {

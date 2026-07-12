@@ -96,6 +96,7 @@ const en = {
     title: 'Comments',
     yourName: 'Your Name *',
     namePlaceholder: 'Enter your name',
+    emailPlaceholder: 'Enter your email',
     comment: 'Comment *',
     commentPlaceholder: 'Write your comment...',
     submit: 'Add Comment',
@@ -108,6 +109,8 @@ const en = {
     showLess: 'Show less',
     pending: 'Your comment will be published after review.',
     submitted: 'Comment submitted!',
+    newsletterOptIn: 'Notify me about new stories by email',
+    newsletterEmailRequired: 'Enter your email to subscribe to new story notifications.',
   },
 
   // Reactions

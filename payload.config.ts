@@ -12,6 +12,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { logEmailDiagnosticsForSend } from './src/lib/emailDiagnostics'
 import { buildAccountInviteEmail, buildPasswordResetEmail } from './src/lib/authEmailTemplates'
+import { queueNewsletterItem } from './src/lib/newsletter'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -1356,6 +1357,20 @@ export default buildConfig({
         beforeValidate: [ensureNewsFields],
         afterChange: [
           async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
+            if (doc?.status === 'published' && previousDoc?.status !== 'published') {
+              try {
+                await queueNewsletterItem({
+                  contentType: 'news',
+                  contentId: doc.id,
+                  title: doc.title,
+                  excerpt: doc.excerpt,
+                  slug: doc.slug,
+                  publishedAt: doc.publishedAt,
+                })
+              } catch (error) {
+                req.payload.logger.error({ err: error }, 'Unable to queue news for newsletter')
+              }
+            }
             if (hasPublicFieldChanged({ doc, previousDoc, fields: NEWS_PUBLIC_FIELDS })) {
               await touchPublicCache({ req, scopes: ['news'] })
               if (doc?.slug) {
@@ -1564,6 +1579,20 @@ export default buildConfig({
         beforeValidate: [ensureVideoNewsFields],
         afterChange: [
           async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
+            if (doc?.status === 'published' && previousDoc?.status !== 'published') {
+              try {
+                await queueNewsletterItem({
+                  contentType: 'video-news',
+                  contentId: doc.id,
+                  title: doc.title,
+                  excerpt: doc.description,
+                  slug: doc.slug,
+                  publishedAt: doc.publishedAt,
+                })
+              } catch (error) {
+                req.payload.logger.error({ err: error }, 'Unable to queue video news for newsletter')
+              }
+            }
             if (hasPublicFieldChanged({ doc, previousDoc, fields: VIDEO_NEWS_PUBLIC_FIELDS })) {
               await touchPublicCache({ req, scopes: ['videoNews'] })
               if (doc?.slug) {

@@ -2,6 +2,8 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { verifyRecaptchaFromBody } from '@/lib/recaptcha'
 import { createAdminNotification } from '@/lib/adminNotifications'
+import { after } from 'next/server'
+import { subscribeToNewsletter } from '@/lib/newsletter'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,12 +56,15 @@ export async function POST(request, { params }) {
     const { slug: rawSlug } = await params
     const slug = decodeURIComponent(rawSlug)
     const body = await request.json()
-    const { authorName, authorEmail, content } = body
+    const { authorName, authorEmail, content, subscribeToNewsletter: wantsNewsletter } = body
     const captchaError = await verifyRecaptchaFromBody(request, body, 'video_comment')
     if (captchaError) return captchaError
 
-    if (!authorName?.trim() || !content?.trim()) {
-      return Response.json({ error: 'Name and comment are required' }, { status: 400 })
+    if (!authorName?.trim() || !authorEmail?.trim() || !content?.trim()) {
+      return Response.json({ error: 'Name, email, and comment are required' }, { status: 400 })
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authorEmail.trim())) {
+      return Response.json({ error: 'A valid email address is required' }, { status: 400 })
     }
 
     const payload = await getPayload({ config })
@@ -83,16 +88,22 @@ export async function POST(request, { params }) {
       data: {
         videoArticle: video.id,
         authorName: authorName.trim(),
-        authorEmail: authorEmail?.trim() || undefined,
+        authorEmail: authorEmail.trim().toLowerCase(),
         content: content.trim(),
         status: 'pending',
       },
     })
 
-    await createAdminNotification(payload, {
-      type: 'comment', requiredPermission: 'comments.read', contentType: 'video-news',
-      contentId: video.id, contentTitle: video.title, contentSlug: video.slug,
-      message: `${authorName.trim()} commented on video news: ${video.title}`,
+    after(async () => {
+      const jobs = [createAdminNotification(payload, {
+        type: 'comment', requiredPermission: 'comments.read', contentType: 'video-news',
+        contentId: video.id, contentTitle: video.title, contentSlug: video.slug,
+        message: `${authorName.trim()} commented on video news: ${video.title}`,
+      })]
+      if (wantsNewsletter) {
+        jobs.push(subscribeToNewsletter({ name: authorName, email: authorEmail }))
+      }
+      await Promise.allSettled(jobs)
     })
 
     return Response.json(comment, { status: 201 })
