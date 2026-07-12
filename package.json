@@ -1,6 +1,6 @@
 {
   "name": "bullet-reporter-nextjs",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "private": true,
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",

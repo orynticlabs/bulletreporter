@@ -617,7 +617,7 @@ model video_news {
   thumbnail_id                      Int?
   author_id                         Int?
   editor_id                         Int?
-  status                            enum_video_news_status?         @default(draft)
+  status                            enum_video_news_status?         @default(published)
   published_at                      DateTime?                       @db.Timestamptz(6)
   views                             Decimal?                        @default(0) @db.Decimal
   seo_meta_title                    String?                         @db.VarChar
@@ -628,6 +628,16 @@ model video_news {
   payload_status                    enum_video_news_status?         @default(draft) @map("_status")
   likes                             Int                             @default(0)
   dislikes                          Int                             @default(0)
+  url                               String?                         @db.VarChar
+  thumbnail_u_r_l                   String?                         @db.VarChar
+  filename                          String?                         @unique(map: "video_news_filename_idx") @db.VarChar
+  mime_type                         String?                         @db.VarChar
+  filesize                          Decimal?                        @db.Decimal
+  width                             Decimal?                        @db.Decimal
+  height                            Decimal?                        @db.Decimal
+  focal_x                           Decimal?                        @db.Decimal
+  focal_y                           Decimal?                        @db.Decimal
+  cloudinary_public_id              String?                         @db.VarChar
   video_news_v                      video_news_v[]
   comments                          comments[]
   payload_locked_documents_rels     payload_locked_documents_rels[]

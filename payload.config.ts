@@ -243,6 +243,7 @@ const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEX
 const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY
 const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET
 const cloudinaryFolder = process.env.CLOUDINARY_FOLDER
+const cloudinaryVideoFolder = process.env.CLOUDINARY_VIDEO_FOLDER || `${cloudinaryFolder || 'bullet_reporter'}/videos`
 const hasCloudinaryCredentials = Boolean(cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret)
 const requireCloudinaryStorage = process.env.PAYLOAD_REQUIRE_CLOUDINARY !== 'false'
 const missingCloudinaryKeys = [
@@ -278,6 +279,27 @@ const randomSlug = (length = 12) => {
   }
 
   return value
+}
+
+const getVideoUploadPublicId = (filename?: string) => {
+  const cleanFilename = String(filename || '').replace(/\.[^/.]+$/, '')
+  if (!cleanFilename) return ''
+  return `${cloudinaryVideoFolder.replace(/\/$/, '')}/${cleanFilename}`
+}
+
+const getVideoUploadUrl = (publicId: string) => {
+  if (!publicId || !cloudinaryCloudName) return ''
+  return `https://res.cloudinary.com/${cloudinaryCloudName}/video/upload/${publicId.replace(/\s+/g, '%20')}`
+}
+
+const preserveClientVideoUploadMetadata = ({ data, req }: { data?: Record<string, any>; req?: any }) => {
+  if (!data) return data || {}
+  const context = req?.file?.clientUploadContext
+  if (context?.publicId) {
+    data.cloudinaryPublicId = context.publicId
+    data.url = context.secureUrl || getVideoUploadUrl(context.publicId)
+  }
+  return data
 }
 
 const ensureNewsSlug = ({ data, operation }: { data?: Record<string, any>, operation?: string }) => {
@@ -422,12 +444,36 @@ const ensureVideoNewsFields = ({
 }) => {
   const next = ensureNewsFields({ data, operation, originalDoc, req })
 
-  if (next.youtubeVideo) {
-    next.youtubeVideoId = extractYouTubeVideoId(next.youtubeVideo)
+  const youtubeVideo = 'youtubeVideo' in next
+    ? String(next.youtubeVideo || '').trim()
+    : String(originalDoc?.youtubeVideo || '').trim()
+  const hasIncomingFile = Boolean(req?.file)
+  const storedFilename = next.filename || originalDoc?.filename
+  const storedPublicId = next.cloudinaryPublicId || originalDoc?.cloudinaryPublicId
+  const hasStoredUpload = Boolean(storedPublicId || storedFilename)
+  const hasUploadedVideo = hasIncomingFile || hasStoredUpload
+
+  if (youtubeVideo && hasUploadedVideo) {
+    throw new APIError('Choose only one video source: a video link or an uploaded video, not both.', 400, null, true)
   }
 
-  if (!next.youtubeVideoId) {
-    throw new APIError('Please enter a valid YouTube video URL or 11-character YouTube video ID.', 400, null, true)
+  if (!youtubeVideo && !hasUploadedVideo) {
+    throw new APIError('Provide either a valid YouTube video link or upload a video file.', 400, null, true)
+  }
+
+  if (youtubeVideo) {
+    next.youtubeVideo = youtubeVideo
+    next.youtubeVideoId = extractYouTubeVideoId(youtubeVideo)
+    if (!next.youtubeVideoId) {
+      throw new APIError('Please enter a valid YouTube video URL or 11-character YouTube video ID.', 400, null, true)
+    }
+  } else {
+    next.youtubeVideo = null
+    next.youtubeVideoId = null
+    if (!next.cloudinaryPublicId && !hasIncomingFile && storedFilename) {
+      next.cloudinaryPublicId = getVideoUploadPublicId(storedFilename)
+      next.url = getVideoUploadUrl(next.cloudinaryPublicId)
+    }
   }
 
   return next
@@ -642,6 +688,12 @@ if (!Number.isFinite(configuredMaxUploadMb) || configuredMaxUploadMb <= 0) {
 
 const MAX_UPLOAD_MB = configuredMaxUploadMb
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+const configuredMaxVideoUploadMb = Number(process.env.PAYLOAD_MAX_VIDEO_UPLOAD_MB || 100)
+if (!Number.isFinite(configuredMaxVideoUploadMb) || configuredMaxVideoUploadMb <= 0) {
+  throw new Error('PAYLOAD_MAX_VIDEO_UPLOAD_MB must be a positive number.')
+}
+const MAX_VIDEO_UPLOAD_MB = configuredMaxVideoUploadMb
+const MAX_VIDEO_UPLOAD_BYTES = MAX_VIDEO_UPLOAD_MB * 1024 * 1024
 
 const CATEGORY_HINDI_TRANSLATIONS: Record<string, string> = {
   agriculture: 'कृषि',
@@ -973,6 +1025,11 @@ const VIDEO_NEWS_PUBLIC_FIELDS = [
   'content',
   'youtubeVideo',
   'youtubeVideoId',
+  'url',
+  'filename',
+  'mimeType',
+  'filesize',
+  'cloudinaryPublicId',
   'thumbnail',
   'author',
   'editor',
@@ -1608,10 +1665,26 @@ export default buildConfig({
         delete: ({ req }) => hasPermission(req, 'video-news', 'delete'),
       },
       hooks: {
-        beforeOperation: [enforceRoleDepth],
+        beforeOperation: [
+          enforceRoleDepth,
+          ({ req, operation }: { req: any; operation: string }) => {
+            if (operation === 'create' || operation === 'update') {
+              if (req?.file && req.file.size > MAX_VIDEO_UPLOAD_BYTES) {
+                throw new APIError(`Video file size must not exceed ${MAX_VIDEO_UPLOAD_MB} MB.`, 400, null, true)
+              }
+            }
+          },
+        ],
         beforeValidate: [ensureVideoNewsFields],
+        beforeChange: [preserveClientVideoUploadMetadata],
         afterChange: [
           async ({ doc, previousDoc, req }: { doc: any; previousDoc: any; req: any }) => {
+            // The Cloudinary adapter deletes the old asset after a successful
+            // replacement. Repair legacy metadata so that cleanup also works
+            // for uploads saved before public IDs were persisted.
+            if (previousDoc?.filename && !previousDoc?.cloudinaryPublicId) {
+              previousDoc.cloudinaryPublicId = getVideoUploadPublicId(previousDoc.filename)
+            }
             if (doc?.status === 'published' && previousDoc?.status !== 'published') {
               try {
                 await queueNewsletterItem({
@@ -1659,7 +1732,11 @@ export default buildConfig({
       admin: {
         useAsTitle: 'title',
         defaultColumns: ['title', 'category', 'language', 'status', 'publishedAt'],
-        description: 'Create YouTube-based video news stories for the frontend video section.',
+        description: 'Create video news using either a YouTube link or one uploaded video. Do not provide both.',
+      },
+      upload: {
+        filesRequiredOnCreate: false,
+        mimeTypes: ['video/*'],
       },
       fields: [
         { name: 'title', type: 'text', required: true },
@@ -1714,10 +1791,9 @@ export default buildConfig({
         {
           name: 'youtubeVideo',
           type: 'text',
-          label: 'YouTube Video URL or ID',
-          required: true,
+          label: 'YouTube Video URL or ID (Option 1)',
           admin: {
-            description: 'Paste a YouTube watch URL, Shorts URL, embed URL, live URL, youtu.be link, or the 11-character video ID.',
+            description: 'Paste a YouTube URL or ID, or leave this empty and upload one video using the upload area above. Only one source is allowed.',
           },
         },
         {
@@ -1767,7 +1843,7 @@ export default buildConfig({
             { label: 'Draft', value: 'draft' },
             { label: 'Published', value: 'published' },
           ],
-          defaultValue: 'draft',
+          defaultValue: 'published',
           required: true,
           access: { update: ({ req }) => hasPermission(req, 'video-news', 'update') },
           admin: {
@@ -2135,6 +2211,20 @@ export default buildConfig({
       },
       folder: cloudinaryFolder,
       clientUploads: false,
+      useFilename: true,
+    }),
+    payloadCloudinaryPlugin({
+      enabled: hasCloudinaryCredentials,
+      collections: {
+        'video-news': true,
+      },
+      cloudName: cloudinaryCloudName || '',
+      credentials: {
+        apiKey: cloudinaryApiKey || '',
+        apiSecret: cloudinaryApiSecret || '',
+      },
+      folder: cloudinaryVideoFolder,
+      clientUploads: true,
       useFilename: true,
     }),
   ],
