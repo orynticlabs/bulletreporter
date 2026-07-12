@@ -38,8 +38,8 @@ export async function GET(request: Request) {
     depth: 0,
     overrideAccess: true,
   })
-  const readIds = new Set(reads.docs.map((receipt: any) => Number(receipt.notification)))
-  const docs = notifications.docs.map((notification: any) => ({
+  const readIds = new Set(reads.docs.map((receipt) => Number(receipt.notification)))
+  const docs = notifications.docs.map((notification) => ({
     ...notification,
     read: readIds.has(Number(notification.id)),
   }))
@@ -81,8 +81,9 @@ export async function PATCH(request: Request) {
         overrideAccess: true,
       })
       updated += 1
-    } catch (error: any) {
-      if (!String(error?.message || '').toLowerCase().includes('unique')) throw error
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error || '')
+      if (!message.toLowerCase().includes('unique')) throw error
     }
   }
   return Response.json({ updated })
