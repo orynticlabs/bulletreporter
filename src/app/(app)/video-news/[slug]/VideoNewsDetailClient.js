@@ -341,7 +341,7 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
           <article className="lg:col-span-3 space-y-6">
             <Card className="overflow-hidden shadow-lg">
 
-              {/* YouTube embed */}
+              {/* YouTube or uploaded Cloudinary video */}
               <div className="relative aspect-video bg-gray-950">
                 {video.youtube_embed_url ? (
                   <iframe
@@ -350,6 +350,16 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
                     className="h-full w-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
+                  />
+                ) : video.uploaded_video_url ? (
+                  <video
+                    src={video.uploaded_video_url}
+                    poster={video.uploaded_video_poster || video.thumbnail_url || undefined}
+                    title={video.title}
+                    className="h-full w-full object-contain"
+                    controls
+                    playsInline
+                    preload="metadata"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-red-950 to-gray-950">

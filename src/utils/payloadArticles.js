@@ -131,6 +131,32 @@ const getMediaUrl = (media, transform = 'f_auto,q_auto,c_limit,w_900') => {
   return url
 }
 
+const getCloudinaryVideoUrl = (video) => {
+  if (!video || typeof video !== 'object') return ''
+  if (video.cloudinaryPublicId) {
+    const cloudName = getCloudinaryCloudName(video)
+    if (cloudName) {
+      const publicId = String(video.cloudinaryPublicId).replace(/\s+/g, '%20')
+      return `https://res.cloudinary.com/${cloudName}/video/upload/f_auto,q_auto/${publicId}`
+    }
+  }
+
+  // Never expose Payload's relative /api/.../file route to public video
+  // players. It is only a fallback for a fully-qualified stored URL.
+  if (/^https:\/\//i.test(video.url || '') && video.mimeType?.startsWith('video/')) {
+    return video.url
+  }
+  return ''
+}
+
+const getCloudinaryVideoPoster = (video) => {
+  if (!video?.cloudinaryPublicId) return ''
+  const cloudName = getCloudinaryCloudName(video)
+  if (!cloudName) return ''
+  const publicId = String(video.cloudinaryPublicId).replace(/\s+/g, '%20')
+  return `https://res.cloudinary.com/${cloudName}/video/upload/so_0,f_jpg,q_auto,c_limit,w_900/${publicId}.jpg`
+}
+
 /**
  * Returns a Cloudinary URL pre-sized for Open Graph (1200×630, JPEG).
  * Used exclusively by generateMetadata — never for <img> tags.
@@ -262,13 +288,17 @@ const renderLexicalNode = (node) => {
     if (!video || typeof video !== 'object') return ''
 
     const videoId = video.youtubeVideoId || getYouTubeVideoId(video.youtubeVideo)
-    if (!videoId) return ''
+    const uploadedVideoUrl = getCloudinaryVideoUrl(video)
+    if (!videoId && !uploadedVideoUrl) return ''
 
     const title = escapeHtml(video.title || 'Video news')
     const slug = typeof video.slug === 'string' ? video.slug : ''
     const detailUrl = slug ? `/video-news/${encodeURIComponent(slug)}` : ''
 
-    return `<figure class="embedded-video-news"><div class="embedded-video-news__player"><iframe src="https://www.youtube.com/embed/${escapeHtml(videoId)}" title="${title}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><figcaption>${detailUrl ? `<a href="${detailUrl}">${title}</a>` : title}</figcaption></figure>`
+    const player = videoId
+      ? `<iframe src="https://www.youtube.com/embed/${escapeHtml(videoId)}" title="${title}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`
+      : `<video src="${escapeHtml(uploadedVideoUrl)}" poster="${escapeHtml(getCloudinaryVideoPoster(video))}" title="${title}" controls preload="metadata" playsinline></video>`
+    return `<figure class="embedded-video-news"><div class="embedded-video-news__player">${player}</div><figcaption>${detailUrl ? `<a href="${detailUrl}">${title}</a>` : title}</figcaption></figure>`
   }
 
   if (node.type === 'paragraph') {
@@ -361,7 +391,9 @@ export const normalizePayloadVideoNews = (doc, lang = 'hi') => {
   const contentHtml = lexicalToHtml(doc.content)
   const contentText = lexicalToPlainText(doc.content)
   const videoId = doc.youtubeVideoId || getYouTubeVideoId(doc.youtubeVideo)
-  const thumbnailUrl = getMediaUrl(doc.thumbnail) || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null)
+  const uploadedVideoUrl = getCloudinaryVideoUrl(doc)
+  const uploadedVideoPoster = getCloudinaryVideoPoster(doc)
+  const thumbnailUrl = getMediaUrl(doc.thumbnail) || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : uploadedVideoPoster || null)
 
   const categoryValues = getCategoryDisplayValues(doc.category, 'Video News', lang)
 
@@ -390,6 +422,9 @@ export const normalizePayloadVideoNews = (doc, lang = 'hi') => {
     youtube_video_id: videoId,
     youtube_embed_url: videoId ? `https://www.youtube.com/embed/${videoId}` : '',
     youtube_url: videoId ? `https://www.youtube.com/watch?v=${videoId}` : doc.youtubeVideo || '',
+    uploaded_video_url: uploadedVideoUrl,
+    uploaded_video_poster: uploadedVideoPoster,
+    video_source: videoId ? 'youtube' : uploadedVideoUrl ? 'upload' : '',
     language: doc.language || 'hi',
     views: Number(doc.views || 0),
     likes: Number(doc.likes || 0),
