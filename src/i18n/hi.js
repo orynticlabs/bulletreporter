@@ -96,6 +96,7 @@ const hi = {
     title: 'टिप्पणियां',
     yourName: 'आपका नाम *',
     namePlaceholder: 'अपना नाम दर्ज करें',
+    emailPlaceholder: 'अपना ईमेल दर्ज करें',
     comment: 'टिप्पणी *',
     commentPlaceholder: 'अपनी टिप्पणी लिखें...',
     submit: 'टिप्पणी जोड़ें',
@@ -108,6 +109,8 @@ const hi = {
     showLess: 'कम दिखाएं',
     pending: 'आपकी टिप्पणी समीक्षा के बाद प्रकाशित होगी।',
     submitted: 'टिप्पणी सबमिट हो गई!',
+    newsletterOptIn: 'मुझे ईमेल पर नई खबरों की सूचना दें',
+    newsletterEmailRequired: 'नई खबरों की सूचना पाने के लिए अपना ईमेल दर्ज करें।',
   },
 
   // Reactions

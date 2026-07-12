@@ -122,6 +122,7 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
   const [commentName, setCommentName]   = useState('')
   const [commentEmail, setCommentEmail] = useState('')
   const [commentText, setCommentText]   = useState('')
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false)
   const [showAllComments, setShowAllComments] = useState(false)
   const COMMENTS_PREVIEW = 3
 
@@ -212,6 +213,7 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
       setCommentName('')
       setCommentEmail('')
       setCommentText('')
+      setNewsletterOptIn(false)
       toast({ title: t.comments.submitted, description: t.comments.pending })
     },
     onError: () => toast({ title: t.common.error, variant: 'destructive' }),
@@ -219,14 +221,15 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
 
   const handleCommentSubmit = (e) => {
     e.preventDefault()
-    if (!commentName.trim() || !commentText.trim()) {
+    if (!commentName.trim() || !commentEmail.trim() || !commentText.trim()) {
       toast({ title: t.common.fillRequired, variant: 'destructive' })
       return
     }
     commentMutation.mutate({
       authorName: commentName.trim(),
-      authorEmail: commentEmail.trim() || undefined,
+      authorEmail: commentEmail.trim(),
       content: commentText.trim(),
+      subscribeToNewsletter: newsletterOptIn,
     })
   }
 
@@ -531,11 +534,12 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
                       required
                     />
                     <Input
-                      placeholder={t.newsDetail.emailOptional}
+                      placeholder={`${t.comments.emailPlaceholder} *`}
                       type="email"
                       value={commentEmail}
                       onChange={e => setCommentEmail(e.target.value)}
                       className="text-sm bg-white"
+                      required
                     />
                   </div>
                   <Textarea
@@ -546,6 +550,20 @@ export default function VideoNewsDetailClient({ initialVideo = null }) {
                     className="text-sm resize-none bg-white"
                     required
                   />
+                  <label
+                    htmlFor="video-newsletter-opt-in"
+                    className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-gray-800 cursor-pointer select-none"
+                  >
+                    <input
+                      id="video-newsletter-opt-in"
+                      data-testid="newsletter-opt-in"
+                      type="checkbox"
+                      checked={newsletterOptIn}
+                      onChange={e => setNewsletterOptIn(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 accent-red-600"
+                    />
+                    <span className="font-medium">{t.comments.newsletterOptIn}</span>
+                  </label>
                   <Button type="submit" disabled={commentMutation.isPending}
                     className="bg-red-600 hover:bg-red-700 w-full sm:w-auto flex items-center gap-2">
                     <Send className="w-4 h-4" />
