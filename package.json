@@ -11,7 +11,7 @@
     "prisma:pull": "prisma db pull",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "node scripts/prisma-safe-deploy.mjs",
-    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:migrate:deploy": "node scripts/prisma-safe-deploy.mjs",
     "prisma:status": "prisma migrate status",
     "lint": "next lint"
   },

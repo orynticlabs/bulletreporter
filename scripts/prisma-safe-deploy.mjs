@@ -9,6 +9,8 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
   console.log(`Usage: node scripts/prisma-safe-deploy.mjs
 
 Safely deploys Prisma migrations.
+- Requires DIRECT_DATABASE_URL (direct Neon endpoint without "-pooler").
+- Leaves the application's pooled DATABASE_URL unchanged outside this process.
 - Existing Payload database: marks the baseline migration as applied, then deploys pending migrations.
 - Empty database: deploys all migrations from the beginning.
 `)
@@ -51,15 +53,22 @@ loadEnvFile(resolve(process.cwd(), '.env'))
 loadEnvFile(resolve(process.cwd(), '.env.local'))
 
 const databaseUrl =
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  process.env.POSTGRES_PRISMA_URL ||
-  process.env.PAYLOAD_DATABASE_URL
+  process.env.DIRECT_DATABASE_URL
 
 if (!databaseUrl) {
-  throw new Error('DATABASE_URL is required before running Prisma migrations.')
+  throw new Error(
+    'DIRECT_DATABASE_URL is required for Prisma migrations. Use the direct Neon URL without "-pooler".',
+  )
 }
 
+if (new URL(databaseUrl).hostname.includes('-pooler')) {
+  throw new Error(
+    'DIRECT_DATABASE_URL must be a direct Neon connection URL. Its hostname must not contain "-pooler".',
+  )
+}
+
+// This override exists only inside the migration subprocess. The parent build
+// and the Next.js application continue using the pooled DATABASE_URL.
 process.env.DATABASE_URL = databaseUrl
 
 const runPrisma = (args) => {
