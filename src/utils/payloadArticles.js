@@ -257,6 +257,20 @@ const renderLexicalNode = (node) => {
     return `<figure><img src="${escapeHtml(src)}" alt="${alt}" loading="lazy" /></figure>`
   }
 
+  if (node.type === 'block' && node.fields?.blockType === 'videoNews') {
+    const video = node.fields.video
+    if (!video || typeof video !== 'object') return ''
+
+    const videoId = video.youtubeVideoId || getYouTubeVideoId(video.youtubeVideo)
+    if (!videoId) return ''
+
+    const title = escapeHtml(video.title || 'Video news')
+    const slug = typeof video.slug === 'string' ? video.slug : ''
+    const detailUrl = slug ? `/video-news/${encodeURIComponent(slug)}` : ''
+
+    return `<figure class="embedded-video-news"><div class="embedded-video-news__player"><iframe src="https://www.youtube.com/embed/${escapeHtml(videoId)}" title="${title}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><figcaption>${detailUrl ? `<a href="${detailUrl}">${title}</a>` : title}</figcaption></figure>`
+  }
+
   if (node.type === 'paragraph') {
     const children = renderLexicalChildren(node.children)
     return children.trim() ? `<p>${children}</p>` : ''
@@ -279,6 +293,9 @@ export const lexicalToPlainText = (value) => {
     if (!node) return ''
     if (node.type === 'text') return node.text || ''
     if (node.type === 'linebreak') return '\n'
+    if (node.type === 'block' && node.fields?.blockType === 'videoNews') {
+      return typeof node.fields.video === 'object' ? node.fields.video.title || '' : ''
+    }
     return (node.children || []).map(walk).join(' ')
   }
 

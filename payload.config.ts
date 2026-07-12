@@ -3,7 +3,7 @@ import { buildConfig, APIError } from 'payload'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { payloadCloudinaryPlugin } from '@jhb.software/payload-cloudinary-plugin'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { BlocksFeature, lexicalEditor } from '@payloadcms/richtext-lexical'
 import { revalidatePath } from 'next/cache'
 import { v2 as cloudinary } from 'cloudinary'
 import sharp from 'sharp'
@@ -16,6 +16,35 @@ import { queueNewsletterItem } from './src/lib/newsletter'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+const newsContentEditor = lexicalEditor({
+  features: ({ defaultFeatures }) => [
+    ...defaultFeatures,
+    BlocksFeature({
+      blocks: [
+        {
+          slug: 'videoNews',
+          labels: {
+            singular: 'Video News',
+            plural: 'Video News',
+          },
+          fields: [
+            {
+              name: 'video',
+              type: 'relationship',
+              relationTo: 'video-news',
+              required: true,
+              admin: {
+                appearance: 'drawer',
+                description: 'Select a video that has already been added in Video News.',
+              },
+            },
+          ],
+        },
+      ],
+    }),
+  ],
+})
 
 const loadEnvFile = (filePath: string) => {
   if (!fs.existsSync(filePath)) return
@@ -1433,6 +1462,10 @@ export default buildConfig({
           type: 'richText',
           label: 'Content Editor',
           required: true,
+          editor: newsContentEditor,
+          admin: {
+            description: 'Use the Video News block to insert a video already created in Video News. Videos cannot be uploaded here.',
+          },
         },
         {
           name: 'featuredImage',
