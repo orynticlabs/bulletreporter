@@ -624,8 +624,8 @@ export default function NewsDetail({ initialArticle = null }) {
           </article>
 
           {/* ── Sidebar ── */}
-          <aside className="hidden lg:block lg:col-span-1">
-            <div className="sticky top-24">
+          <aside className="lg:col-span-1">
+            <div className="lg:sticky lg:top-24">
               <Sidebar />
             </div>
           </aside>

@@ -4,6 +4,9 @@ import { resolve } from 'node:path'
 import pg from 'pg'
 
 const BASELINE_MIGRATION = '20260705162000_init_payload_prisma_schema'
+const RECOVERABLE_MIGRATIONS = new Set([
+  '20260721180000_director_messages',
+])
 
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
   console.log(`Usage: node scripts/prisma-safe-deploy.mjs
@@ -114,6 +117,22 @@ try {
   let baselineApplied = false
 
   if (hasPrismaMigrationsTable) {
+    const failedMigrations = await pool.query(`
+      select migration_name
+      from "_prisma_migrations"
+      where finished_at is null
+        and rolled_back_at is null
+    `)
+
+    for (const { migration_name: migrationName } of failedMigrations.rows) {
+      if (!RECOVERABLE_MIGRATIONS.has(migrationName)) {
+        continue
+      }
+
+      console.log(`[Prisma] Marking corrected failed migration as rolled back: ${migrationName}`)
+      runPrisma(['migrate', 'resolve', '--rolled-back', migrationName])
+    }
+
     const applied = await pool.query(
       `
         select 1

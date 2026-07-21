@@ -488,7 +488,7 @@ const ensureVideoNewsFields = ({
 // through the frontend API, but cannot touch the admin panel at all.
 
 type RBACAction = 'read' | 'create' | 'update' | 'delete'
-type RBACResource = 'users' | 'roles' | 'media' | 'categories' | 'news' | 'video-news' | 'comments' | 'advertisements' | 'settings'
+type RBACResource = 'users' | 'roles' | 'media' | 'categories' | 'news' | 'video-news' | 'comments' | 'advertisements' | 'director-details' | 'settings'
 const permission = (resource: RBACResource, action: RBACAction) => `${resource}.${action}`
 
 const getDatabaseRole = async (req: any) => {
@@ -551,7 +551,7 @@ const enforceRoleDepth = async ({ args, operation, overrideAccess, req }: any) =
   }
 }
 
-const RBAC_RESOURCES: RBACResource[] = ['users', 'roles', 'media', 'categories', 'news', 'video-news', 'comments', 'advertisements', 'settings']
+const RBAC_RESOURCES: RBACResource[] = ['users', 'roles', 'media', 'categories', 'news', 'video-news', 'comments', 'advertisements', 'director-details', 'settings']
 const PERMISSION_OPTIONS = RBAC_RESOURCES.flatMap((resource) =>
   (['read', 'create', 'update', 'delete'] as RBACAction[]).map((action) => ({
     label: `${resource} - ${action}`,
@@ -627,6 +627,65 @@ const enforceSuperAdminLimit = async ({ data, originalDoc, operation, req }: any
   return data
 }
 
+const canManageDirectorMessage = async (req: any) => {
+  const role = await getDatabaseRole(req)
+  return Boolean(role && ['super-admin', 'admin'].includes(role.slug))
+}
+
+const enforceSingleDirectorMessage = async ({ operation, req }: any) => {
+  if (operation !== 'create') return
+
+  const existing = await req.payload.count({
+    collection: 'director-details',
+    overrideAccess: true,
+    req,
+  })
+
+  if (existing.totalDocs > 0) {
+    throw new APIError('Only one Director Details record can be created. Delete the existing record before creating another.', 400)
+  }
+}
+
+const DIRECTOR_IMAGE_WIDTH = 600
+const DIRECTOR_IMAGE_HEIGHT = 600
+
+const validateDirectorImage = async ({
+  data,
+  originalDoc,
+  req,
+}: {
+  data?: Record<string, any>
+  originalDoc?: Record<string, any>
+  req: any
+}) => {
+  if (!data) return data || {}
+
+  const imageID = getRelationshipID(data.image ?? originalDoc?.image)
+  if (!imageID) return data
+
+  const image = await req.payload.findByID({
+    collection: 'media',
+    id: imageID,
+    depth: 0,
+    overrideAccess: true,
+    req,
+  })
+
+  const width = Number(image?.width)
+  const height = Number(image?.height)
+
+  if (width !== DIRECTOR_IMAGE_WIDTH || height !== DIRECTOR_IMAGE_HEIGHT) {
+    throw new APIError(
+      `Director image must be exactly ${DIRECTOR_IMAGE_WIDTH} x ${DIRECTOR_IMAGE_HEIGHT} px to remain sharp. Selected image is ${width || 'unknown'} x ${height || 'unknown'} px.`,
+      400,
+      null,
+      true,
+    )
+  }
+
+  return data
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ensureCloudinaryUploadConfigured = ({ data, req }: { data?: Record<string, any>, req?: any }) => {
@@ -672,6 +731,40 @@ const preventDeletingCategoryInUse = async ({ id, req }: { id: string | number; 
     if (usageCount > 0) {
       throw new APIError(
         `This category cannot be deleted because it is used by one or more ${collection.pluralLabel}. Remove this category from all ${collection.pluralLabel} first.`,
+        400,
+        null,
+        true,
+      )
+    }
+  }
+}
+
+const preventDeletingMediaInUse = async ({ id, req }: { id: string | number; req: any }) => {
+  const mediaId = String(id)
+  const references = [
+    { collection: 'news', field: 'featuredImage', message: 'one or more news articles' },
+    { collection: 'director-details', field: 'image', message: 'Director Details' },
+  ]
+
+  for (const reference of references) {
+    const result = await req.payload.find({
+      collection: reference.collection,
+      depth: 0,
+      limit: 1,
+      overrideAccess: true,
+      pagination: false,
+      req,
+      select: { id: true },
+      where: {
+        [reference.field]: {
+          equals: mediaId,
+        },
+      },
+    })
+
+    if (Array.isArray(result?.docs) && result.docs.length > 0) {
+      throw new APIError(
+        `This media file cannot be deleted because it is currently used by ${reference.message}. Remove or replace the image there first, then delete this media file.`,
         400,
         null,
         true,
@@ -1079,6 +1172,7 @@ export default buildConfig({
 
   admin: {
     user: 'users',
+    autoRefresh: true,
     components: {
       actions: ['@/components/payload/AdminNotifications#AdminNotifications'],
     },
@@ -1166,7 +1260,8 @@ export default buildConfig({
     {
       slug: 'users',
       auth: {
-        tokenExpiration: 10 * 60,
+        // Keep admin sessions persistent; explicit logout still revokes the session.
+        tokenExpiration: 10 * 365 * 24 * 60 * 60,
         forgotPassword: {
           expiration: 10 * 60 * 1000,
           generateEmailHTML: ({ req, token, user }: { req?: any; token?: string; user?: any }) => {
@@ -1344,6 +1439,7 @@ export default buildConfig({
           },
         ],
         beforeChange: [ensureCloudinaryUploadConfigured],
+        beforeDelete: [preventDeletingMediaInUse],
       },
       upload: {
         mimeTypes: ['image/*', 'video/*'],
@@ -1954,6 +2050,61 @@ export default buildConfig({
             { label: 'Rejected', value: 'rejected' },
           ],
           defaultValue: 'pending',
+        },
+      ],
+    },
+    {
+      slug: 'director-details',
+      labels: {
+        singular: 'Director Details',
+        plural: 'Director Details',
+      },
+      access: {
+        read: () => true,
+        create: ({ req }) => canManageDirectorMessage(req),
+        update: ({ req }) => canManageDirectorMessage(req),
+        delete: ({ req }) => canManageDirectorMessage(req),
+      },
+      admin: {
+        useAsTitle: 'name',
+        defaultColumns: ['name', 'updatedAt'],
+        description: 'Manage the director details displayed above the weather card. Only one record can exist.',
+        components: {
+          beforeList: ['@/components/payload/DirectorDetailsAdminControls#DirectorDetailsAdminControls'],
+        },
+      },
+      hooks: {
+        beforeOperation: [enforceRoleDepth],
+        beforeValidate: [enforceSingleDirectorMessage],
+        beforeChange: [validateDirectorImage],
+      },
+      fields: [
+        {
+          name: 'name',
+          label: 'Director Name',
+          type: 'text',
+          required: true,
+          maxLength: 120,
+        },
+        {
+          name: 'image',
+          label: 'Director Image',
+          type: 'upload',
+          relationTo: 'media',
+          required: true,
+          admin: {
+            description: 'Required size: exactly 600 x 600 px. Other dimensions will be rejected to prevent a blurry portrait.',
+          },
+        },
+        {
+          name: 'about',
+          label: 'About Director',
+          type: 'textarea',
+          required: true,
+          maxLength: 1200,
+          admin: {
+            description: 'Add the director’s profile, background, or other relevant details.',
+          },
         },
       ],
     },

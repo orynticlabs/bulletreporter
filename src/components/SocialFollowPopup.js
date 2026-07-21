@@ -6,7 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 
 const LEGACY_STORAGE_KEY = 'bulletreporter:social-follow-popup-dismissed'
 const SESSION_STORAGE_KEY = 'bulletreporter:social-follow-popup-closed-at'
-const FIRST_OPEN_DELAY_MS = 900
+const FIRST_OPEN_DELAY_MS = 20 * 1000
 const REPEAT_DELAY_MS = 20 * 60 * 1000
 const ACTIVE_RECHECK_DELAY_MS = 60 * 1000
 
@@ -62,6 +62,7 @@ export default function SocialFollowPopup() {
   const { lang } = useLanguage()
   const [isVisible, setIsVisible] = useState(false)
   const [closedAt, setClosedAt] = useState(0)
+  const [isPageLoaded, setIsPageLoaded] = useState(false)
   const lastActivityRef = useRef(Date.now())
   const availableLinks = useMemo(() => SOCIAL_LINKS.filter((link) => link.url), [])
   const copy = COPY[lang] || COPY.hi
@@ -77,6 +78,18 @@ export default function SocialFollowPopup() {
       // Storage can fail in strict browser modes; the popup still works for this page view.
     }
   }, [availableLinks.length])
+
+  useEffect(() => {
+    if (document.readyState === 'complete') {
+      setIsPageLoaded(true)
+      return
+    }
+
+    const handlePageLoad = () => setIsPageLoaded(true)
+    window.addEventListener('load', handlePageLoad, { once: true })
+
+    return () => window.removeEventListener('load', handlePageLoad)
+  }, [])
 
   useEffect(() => {
     const markActive = () => {
@@ -97,7 +110,7 @@ export default function SocialFollowPopup() {
   }, [])
 
   useEffect(() => {
-    if (!availableLinks.length || isVisible) return
+    if (!availableLinks.length || !isPageLoaded || isVisible) return
 
     const now = Date.now()
     const delay = closedAt > 0 ? Math.max(REPEAT_DELAY_MS - (now - closedAt), 0) : FIRST_OPEN_DELAY_MS
@@ -112,7 +125,7 @@ export default function SocialFollowPopup() {
     }, delay)
 
     return () => window.clearTimeout(timer)
-  }, [availableLinks.length, closedAt, isVisible])
+  }, [availableLinks.length, closedAt, isPageLoaded, isVisible])
 
   const closePopup = () => {
     const nextClosedAt = Date.now()

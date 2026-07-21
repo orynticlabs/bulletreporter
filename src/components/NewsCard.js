@@ -2,9 +2,8 @@
 
 import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Clock, Eye, User, Calendar, Zap } from 'lucide-react'
+import { Clock, Eye, User, Calendar } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { shareOnPlatform } from '@/utils/socialSharing'
 import { getRelativeTime } from '@/utils/dateUtils'
@@ -15,24 +14,11 @@ function NewsCard({ id, title, excerpt, category, categorySlug, categories = [],
   const { toast } = useToast()
   const { t, lang } = useLanguage()
 
-  const categoryBadges = (Array.isArray(categories) && categories.length ? categories : [category])
-    .filter(Boolean)
-    .map((label, index) => ({
-      label,
-      slug: (Array.isArray(categorySlugs) && categorySlugs[index]) || (index === 0 ? categorySlug : null) || label,
-    }))
-
   const getLangPath = useCallback((path) => lang === 'en' ? `/en${path}` : path, [lang])
 
   const handleCardClick = useCallback(() => {
     if (slug) router.push(getLangPath(`/news/${encodeURIComponent(slug)}`))
   }, [slug, router, getLangPath])
-
-  const handleCategoryClick = useCallback((e) => {
-    e.stopPropagation()
-    const categoryKey = e.currentTarget.dataset.categorySlug
-    if (categoryKey) router.push(getLangPath(`/category/${encodeURIComponent(categoryKey)}`))
-  }, [router, getLangPath])
 
   const handleShare = useCallback((e, platform) => {
     e.stopPropagation()
@@ -43,15 +29,15 @@ function NewsCard({ id, title, excerpt, category, categorySlug, categories = [],
   return (
     <Card className={`group overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${featured ? 'md:col-span-2 border-red-200' : ''}`}
       onClick={handleCardClick}>
-      <div className="relative w-full overflow-hidden bg-black" style={{ aspectRatio: '16/9' }}>
+      <div className="relative w-full overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
         {imageUrl ? (
           <img src={imageUrl} alt={title}
             className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
             loading={imageLoading}
           />
         ) : youtubeUrl ? (
-          <div className="w-full h-full bg-black flex items-center justify-center">
-            <div className="text-white text-center">
+          <div className="flex h-full w-full items-center justify-center bg-gray-100">
+            <div className="text-center text-gray-700">
               <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-2">
                 <svg className="w-8 h-8 fill-white ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
               </div>
@@ -62,30 +48,6 @@ function NewsCard({ id, title, excerpt, category, categorySlug, categories = [],
           <div className="w-full h-full bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center">
             <span className="text-red-400 text-4xl font-bold opacity-30">BR</span>
           </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-        {/* Category badge */}
-        {categoryBadges.length > 0 && (
-          <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1.5">
-            {categoryBadges.slice(0, 3).map((badge) => (
-              <Badge
-                key={`${badge.slug}-${badge.label}`}
-                data-category-slug={badge.slug}
-                className="bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-colors text-xs"
-                onClick={handleCategoryClick}
-              >
-                {badge.label}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {featured && (
-          <Badge className="absolute top-3 right-3 bg-yellow-500 text-white text-xs flex items-center gap-1">
-            <Zap className="w-3 h-3" />
-            {t.newsCard.topStory}
-          </Badge>
         )}
       </div>
 

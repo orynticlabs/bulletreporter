@@ -15,11 +15,11 @@ function VideoNewsCard({ video, featured = false, onOpen }) {
     <button
       type="button"
       onClick={onOpen}
-      className={`group overflow-hidden rounded-lg border border-gray-200 bg-white text-left shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-red-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
+      className={`group overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-red-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
         featured ? 'md:col-span-2' : ''
       }`}
     >
-      <div className="relative aspect-video overflow-hidden bg-gray-950">
+      <div className="relative aspect-video overflow-hidden bg-slate-100">
         {video.thumbnail_url ? (
           <img
             src={video.thumbnail_url}
@@ -28,36 +28,23 @@ function VideoNewsCard({ video, featured = false, onOpen }) {
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-red-950 to-gray-950">
-            <Video className="h-10 w-10 text-white/50" />
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-red-50 to-slate-100">
+            <Video className="h-10 w-10 text-red-300" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-        <span className="absolute left-3 top-3 rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow">
-          Video News
-        </span>
-        <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-red-600 shadow-lg transition-transform group-hover:scale-110">
-          <Play className="ml-0.5 h-5 w-5 fill-red-600" />
+        <span className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-red-600 shadow-xl transition-all group-hover:scale-110 group-hover:bg-red-600 group-hover:text-white">
+          <Play className="ml-0.5 h-5 w-5 fill-current" />
         </span>
       </div>
 
       <div className="p-4">
-        {(video.categories?.length ? video.categories : [video.category]).filter(Boolean).length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {(video.categories?.length ? video.categories : [video.category]).filter(Boolean).slice(0, 3).map((category, index) => (
-              <span key={`${category}-${index}`} className="text-xs font-black uppercase tracking-wide text-red-600">
-                {category}
-              </span>
-            ))}
-          </div>
-        )}
-        <h3 className={`font-black leading-snug text-gray-950 transition-colors group-hover:text-red-600 line-clamp-2 ${
+        <h3 className={`font-black leading-snug text-slate-950 transition-colors group-hover:text-red-600 line-clamp-2 ${
           featured ? 'text-lg md:text-xl' : 'text-base'
         }`}>
           {video.title}
         </h3>
         {featured && video.description && (
-          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-600">
+          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">
             {video.description}
           </p>
         )}
@@ -113,36 +100,38 @@ export default function VideoNewsSection({ limit = 5, compact = false, initialVi
   if (shouldLoad && !loading && videos.length === 0) return null
 
   return (
-    <section ref={sectionRef} className="rounded-lg border border-red-100 bg-white shadow-sm">
-      <div className="h-1.5 bg-red-700" />
-      <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-4 py-3">
+    <section ref={sectionRef} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white">
-            <Video className="h-4 w-4" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-600 text-white shadow-sm">
+            <Video className="h-5 w-5" />
           </span>
-          <h2 className="text-lg font-black text-gray-950 md:text-xl">
+          <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">Watch now</p>
+          <h2 className="text-xl font-black text-slate-950 md:text-2xl">
             {t.home.videoNews}
           </h2>
+          </div>
         </div>
         <button
           type="button"
           onClick={() => router.push(getLangPath('/video-news'))}
-          className="flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-bold text-red-600 transition-colors hover:border-red-300 hover:bg-red-100 hover:text-red-700"
+          className="flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-900 shadow-sm transition-colors hover:border-red-300 hover:text-red-600"
         >
           {t.home.viewAll}
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 sm:p-5">
         {loading ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {[0, 1, 2].map((item) => (
-              <div key={item} className="h-64 animate-pulse rounded-lg bg-gray-100" />
+              <div key={item} className="h-64 animate-pulse rounded-xl bg-slate-100" />
             ))}
           </div>
         ) : (
-          <div className={`grid grid-cols-1 gap-4 ${compact ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
+          <div className={`grid grid-cols-1 gap-4 ${compact ? 'md:grid-cols-3' : 'sm:grid-cols-2 xl:grid-cols-4'}`}>
             {videos.map((video, index) => (
               <VideoNewsCard
                 key={video.id}

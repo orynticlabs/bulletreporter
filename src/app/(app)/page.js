@@ -27,16 +27,16 @@ function BreakingCard({ article, onClick, loading = 'lazy' }) {
     <button
       type="button"
       onClick={onClick}
-      className="group w-full text-left focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+      className="group overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-red-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
     >
-      <div className="aspect-[16/9] w-full overflow-hidden rounded-md bg-gray-100 shadow-sm ring-1 ring-gray-200">
+      <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-100">
         <NewsImage
           article={article}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading={loading}
         />
       </div>
-      <h3 className="mt-3 text-base font-black leading-snug text-gray-900 transition-colors group-hover:text-red-600 line-clamp-2 md:text-lg">
+      <h3 className="min-h-[68px] px-3.5 py-3 text-[15px] font-extrabold leading-snug text-slate-900 transition-colors group-hover:text-red-600 line-clamp-3">
         {article.title}
       </h3>
     </button>
@@ -64,7 +64,7 @@ function LatestFeatureCard({ article, onClick, loading = 'lazy' }) {
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-full min-h-[220px] w-full flex-col overflow-hidden border border-gray-200 bg-white text-left transition-colors hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+      className="group flex h-full min-h-[220px] w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-red-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
     >
       <div className="aspect-[16/9] w-full overflow-hidden bg-gray-100">
         <NewsImage
@@ -73,7 +73,7 @@ function LatestFeatureCard({ article, onClick, loading = 'lazy' }) {
           loading={loading}
         />
       </div>
-      <h3 className="px-3 py-3 text-base font-black leading-snug text-gray-900 transition-colors group-hover:text-red-600 line-clamp-4 md:text-lg">
+      <h3 className="px-4 py-4 text-base font-extrabold leading-snug text-slate-900 transition-colors group-hover:text-red-600 line-clamp-3">
         {article.title}
       </h3>
     </button>
@@ -83,28 +83,27 @@ function LatestFeatureCard({ article, onClick, loading = 'lazy' }) {
 function LatestMoreBox({ articles, onArticleClick, onViewAll, title, viewAllLabel }) {
   if (!articles.length) return null
   return (
-    <aside className="relative border-[10px] border-red-600 bg-gray-50 px-3 pb-4 pt-3">
-      <div className="absolute -bottom-[10px] left-0 h-12 w-7 bg-red-600"></div>
-      <div className="absolute -bottom-[10px] right-0 h-12 w-7 bg-red-600"></div>
-      <h3 className="mb-3 text-base font-black text-gray-900">
+    <aside className="relative overflow-hidden rounded-xl border border-slate-200 bg-white px-4 pb-5 pt-4 text-slate-950 shadow-sm">
+      <div className="absolute inset-x-0 top-0 h-1 bg-red-600" />
+      <h3 className="mb-4 border-b border-slate-200 pb-3 text-base font-black">
         <span className="text-red-600">{title.split(' ')[0]}</span>{' '}
         {title.split(' ').slice(1).join(' ')}
       </h3>
-      <div className="space-y-3">
+      <div className="divide-y divide-slate-100">
         {articles.map((article) => (
           <button
             key={article.id}
             type="button"
             onClick={article.slug ? onArticleClick(article.slug) : undefined}
-            className="group grid w-full grid-cols-[72px_1fr] items-center gap-3 text-left focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            className="group grid w-full grid-cols-[82px_1fr] items-center gap-3 py-3 text-left focus:outline-none focus:ring-2 focus:ring-red-500"
           >
-            <div className="h-14 overflow-hidden bg-gray-100">
+            <div className="h-16 overflow-hidden rounded-lg bg-slate-100">
               <NewsImage
                 article={article}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
             </div>
-            <h4 className="text-sm font-black leading-snug text-gray-900 transition-colors group-hover:text-red-600 line-clamp-2">
+            <h4 className="text-sm font-bold leading-snug text-slate-900 transition-colors group-hover:text-red-600 line-clamp-3">
               {article.title}
             </h4>
           </button>
@@ -131,7 +130,7 @@ export default function Home() {
   const goToArticle = useCallback((slug) => () => router.push(getLangPath(`/news/${encodeURIComponent(slug)}`)), [lang, router, getLangPath])
 
   const { data: breakingData, isLoading: breakingLoading, error: breakingError, refetch: refetchBreaking } = useQuery({
-    queryKey: ['articles', { isBreaking: true, limit: 20, page: 1, lang, summary: true }],
+    queryKey: ['articles', { isBreaking: true, limit: 40, page: 1, lang, summary: true }],
     queryFn: fetchArticles,
     staleTime: CONTENT_STALE_TIME,
     refetchInterval: CONTENT_REFETCH_INTERVAL,
@@ -140,7 +139,7 @@ export default function Home() {
   })
 
   const { data: articlesData, isLoading: articlesLoading, error: articlesError, refetch: refetchArticles } = useQuery({
-    queryKey: ['articles', { limit: 10, page: 1, lang, summary: true }],
+    queryKey: ['articles', { limit: 18, page: 1, lang, summary: true }],
     queryFn: fetchArticles,
     staleTime: CONTENT_STALE_TIME,
     refetchInterval: CONTENT_REFETCH_INTERVAL,
@@ -149,7 +148,7 @@ export default function Home() {
   })
 
   const { data: featuredData, isLoading: featuredLoading } = useQuery({
-    queryKey: ['articles', { isFeatured: true, limit: 6, page: 1, lang, summary: true }],
+    queryKey: ['articles', { isFeatured: true, limit: 9, page: 1, lang, summary: true }],
     queryFn: fetchArticles,
     staleTime: CONTENT_STALE_TIME,
     refetchInterval: CONTENT_REFETCH_INTERVAL,
@@ -161,9 +160,9 @@ export default function Home() {
   const breakingNews = breakingData?.articles || []
   const articles = articlesData?.articles || []
   const featuredArticles = featuredData?.articles || []
-  const breakingPreviewArticles = breakingNews.slice(0, 4)
-  const latestFeatureArticles = articles.slice(0, 6)
-  const latestMoreArticles = articles.slice(6, 9).length ? articles.slice(6, 9) : articles.slice(0, 3)
+  const breakingPreviewArticles = breakingNews.slice(0, 40)
+  const latestFeatureArticles = articles.slice(0, 12)
+  const latestMoreArticles = articles.slice(12, 18).length ? articles.slice(12, 18) : articles.slice(0, 6)
 
   useEffect(() => {
     if (breakingError) toast({ title: t.home.errorBreaking, description: t.home.serverTimeout, variant: 'destructive' })
@@ -179,35 +178,34 @@ export default function Home() {
     <Layout>
       <main className="container mx-auto px-3 py-5 sm:px-4 sm:py-6">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
-          <div className="lg:col-span-3 space-y-12">
+          <div className="space-y-14 lg:col-span-3">
 
             {/* ── Breaking News ── */}
             <section>
-              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-                <div className="h-1.5 bg-red-700"></div>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4 text-slate-950">
                   <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-600 text-white shadow-sm">
                       <Zap className="h-4 w-4 fill-white" />
                     </span>
-                    <h2 className="min-w-0 text-lg font-black text-gray-950 md:text-xl">
+                    <h2 className="min-w-0 text-xl font-black md:text-2xl">
                       {t.home.breakingNews}
                     </h2>
-                    <span className="hidden items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-black text-red-600 sm:flex">
+                    <span className="hidden items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-black text-red-600 ring-1 ring-red-100 sm:flex">
                       <span className="h-1.5 w-1.5 rounded-full bg-red-600"></span>
                       LIVE
                     </span>
                   </div>
                   <button
                     onClick={() => router.push(getLangPath('/news/breaking'))}
-                    className="flex shrink-0 items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-bold text-red-600 transition-colors hover:border-red-300 hover:bg-red-100 hover:text-red-700"
+                    className="flex shrink-0 items-center gap-1 rounded-full border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-900 shadow-sm transition-colors hover:border-red-300 hover:text-red-600"
                   >
                     {t.home.viewAll}
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
 
-                <div className="px-4 py-5">
+                <div className="p-4 sm:p-5">
                   {breakingLoading ? (
                     <LoadingSpinner message={t.home.loadingBreaking} size="lg" variant="skeleton" skeletonCount={4} skeletonMinWidth={180} />
                   ) : breakingError ? (
@@ -217,7 +215,7 @@ export default function Home() {
                       <button onClick={handleRetry} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">{t.home.retry}</button>
                     </div>
                   ) : breakingNews.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                       {breakingPreviewArticles.map((article, index) => (
                         <BreakingCard
                           key={article.id}
@@ -235,17 +233,20 @@ export default function Home() {
             </section>
 
             {/* ── Latest News ── */}
-            <section className="bg-white">
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm sm:p-5">
+              <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="h-4 w-4 rounded-sm bg-red-600 [clip-path:polygon(0_0,100%_0,100%_100%)]"></span>
-                  <h2 className="text-xl font-black text-gray-950 md:text-2xl">
+                  <span className="h-8 w-1.5 rounded-full bg-red-600" />
+                  <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600">Latest updates</p>
+                  <h2 className="text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
                     {t.home.latestNews}
                   </h2>
+                  </div>
                 </div>
                 <button
                   onClick={() => router.push(getLangPath('/news'))}
-                  className="flex shrink-0 items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-bold text-gray-900 transition-colors hover:border-red-300 hover:text-red-600"
+                  className="flex shrink-0 items-center gap-1 rounded-full border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-800 shadow-sm transition-all hover:border-red-300 hover:text-red-600"
                 >
                   {t.home.viewAll}
                   <ChevronRight className="w-4 h-4" />
@@ -260,7 +261,7 @@ export default function Home() {
                   <button onClick={handleRetry} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">{t.home.retry}</button>
                 </div>
               ) : articles.length > 0 ? (
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1.25fr]">
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[2.2fr_1fr]">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {latestFeatureArticles.map((article, index) => (
                       <LatestFeatureCard
@@ -287,19 +288,18 @@ export default function Home() {
 
             {/* ── Featured Articles ── */}
             {featuredArticles.length > 0 && (
-              <section>
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-red-50 p-4 ring-1 ring-amber-200/70 shadow-sm sm:p-5">
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-amber-200/70 pb-4">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1 h-7 bg-red-600 rounded-full inline-block"></span>
-                      <span className="w-1 h-5 bg-red-400 rounded-full inline-block"></span>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400 text-slate-950 shadow-sm">
+                      <Star className="h-5 w-5 fill-slate-950" />
                     </div>
-                    <h2 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <h2 className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
                       {t.home.specialArticles}
                     </h2>
                   </div>
-                  <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1">
-                    <Star className="w-3 h-3 text-yellow-500" />
+                  <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-white/80 px-3 py-1.5 text-xs font-bold text-amber-800 shadow-sm">
+                    <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
                     {t.home.featured}
                   </span>
                 </div>
@@ -307,7 +307,7 @@ export default function Home() {
                 {featuredLoading ? (
                   <LoadingSpinner message={t.home.loadingNews} size="lg" variant="skeleton" skeletonCount={4} skeletonMinWidth={260} />
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     {featuredArticles.map((article, i) => (
                       <NewsCard key={article.id} id={article.id} title={article.title}
                         excerpt={(article.description || '').slice(0, 120)}
@@ -324,15 +324,15 @@ export default function Home() {
               </section>
             )}
 
-            <VideoNewsSection />
+            <VideoNewsSection limit={9} />
           </div>
 
           {/* ── Sidebar ── */}
-          <div className="hidden lg:col-span-1 lg:block">
-            <div className="sticky top-24">
+          <aside className="lg:col-span-1">
+            <div className="lg:sticky lg:top-24">
               <Sidebar />
             </div>
-          </div>
+          </aside>
         </div>
       </main>
     </Layout>

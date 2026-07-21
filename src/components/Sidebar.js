@@ -3,14 +3,64 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Cloud, Wind, Droplets, RefreshCw, TrendingUp } from 'lucide-react'
+import { Cloud, Wind, Droplets, RefreshCw, TrendingUp, UserRound } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import AdvertisementSlot from '@/components/AdvertisementSlot'
-import { fetchPayloadArticles } from '@/utils/payloadArticles'
+import { fetchPayloadArticles, getMediaUrl } from '@/utils/payloadArticles'
 import { CONTENT_REFETCH_INTERVAL, CONTENT_STALE_TIME } from '@/utils/queryConfig'
 
 const DEFAULT_WEATHER_CITY = 'Bhopal'
 const DEFAULT_WEATHER_COORDS = { lat: 23.2599, lon: 77.4126 }
+
+const fetchDirectorMessage = async () => {
+  const response = await fetch('/api/director-details?limit=1&depth=1&sort=-updatedAt', {
+    cache: 'no-store',
+    credentials: 'omit',
+  })
+
+  if (!response.ok) throw new Error('Unable to load director message')
+  const data = await response.json()
+  return data?.docs?.[0] || null
+}
+
+function DirectorMessageCard({ message, lang, className = '' }) {
+  const name = message?.name?.trim()
+  const about = message?.about?.trim()
+  const image = message?.image
+  const imageUrl = getMediaUrl(image, 'f_auto,q_auto:best,c_fill,g_face,w_600,h_600')
+
+  if (!name || !about || !imageUrl) return null
+
+  return (
+    <article className={`${className} overflow-hidden rounded-xl border border-red-100 bg-white shadow-md`}>
+      <div className="h-1.5 bg-red-600" />
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <img
+            src={imageUrl}
+            alt={name}
+            className="h-20 w-20 shrink-0 rounded-full border-4 border-red-50 object-cover shadow-sm sm:h-24 sm:w-24 lg:h-20 lg:w-20"
+            loading="lazy"
+          />
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-red-600">
+              {lang === 'en' ? 'Director Details' : 'निदेशक विवरण'}
+            </p>
+            <h3 className="mt-1 break-words text-lg font-black leading-tight text-gray-950">
+              {name}
+            </h3>
+          </div>
+        </div>
+        <div className="mt-4 flow-root rounded-lg bg-red-50/70 p-4 text-sm font-medium leading-6 text-gray-700">
+          <span className="float-left mr-3 mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-white text-red-500 shadow-sm ring-1 ring-red-100">
+            <UserRound className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <p className="whitespace-pre-line break-words">{about}</p>
+        </div>
+      </div>
+    </article>
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Facebook Page Embed
@@ -21,16 +71,37 @@ const DEFAULT_WEATHER_COORDS = { lat: 23.2599, lon: 77.4126 }
 function FacebookEmbed() {
   const pageUrl = (process.env.NEXT_PUBLIC_FACEBOOK_PAGE_URL || '').trim()
   const containerRef = useRef(null)
-  const sdkReady = true
+  const [embedWidth, setEmbedWidth] = useState(320)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return undefined
+
+    const updateWidth = (width) => {
+      const nextWidth = Math.max(180, Math.min(500, Math.floor(width)))
+      setEmbedWidth((current) => current === nextWidth ? current : nextWidth)
+    }
+
+    updateWidth(container.getBoundingClientRect().width)
+
+    if (typeof ResizeObserver === 'undefined') return undefined
+
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) updateWidth(entry.contentRect.width)
+    })
+    observer.observe(container)
+
+    return () => observer.disconnect()
+  }, [])
 
   if (!pageUrl) {
     return (
-      <div className="bg-white rounded-xl shadow-md border border-gray-100">
-        <div className="flex items-center gap-2 px-4 py-3 bg-[#1877F2] rounded-t-xl">
-          <svg className="w-5 h-5 text-white flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <div className="mx-auto w-full max-w-[500px] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-md lg:max-w-none">
+        <div className="flex min-w-0 items-center gap-2.5 bg-[#1877F2] px-4 py-3">
+          <svg className="h-5 w-5 flex-shrink-0 text-white" viewBox="0 0 24 24" fill="currentColor">
             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
           </svg>
-          <span className="font-bold text-white text-sm">Facebook</span>
+          <span className="truncate text-sm font-bold leading-5 text-white">Bullet Reporter</span>
         </div>
         <div className="flex flex-col items-center gap-2 py-6 px-4 text-center bg-gray-50">
           <p className="text-xs text-gray-400">
@@ -42,32 +113,53 @@ function FacebookEmbed() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-100">
+    <div ref={containerRef} className="mx-auto w-full min-w-0 max-w-[500px] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-md lg:max-w-none">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-[#1877F2] rounded-t-xl">
-        <svg className="w-5 h-5 text-white flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <div className="flex min-w-0 items-center gap-2.5 bg-[#1877F2] px-4 py-3">
+        <svg className="h-5 w-5 flex-shrink-0 text-white" viewBox="0 0 24 24" fill="currentColor">
           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
         </svg>
-        <span className="font-bold text-white text-sm tracking-wide">Facebook</span>
+        <span className="min-w-0 truncate text-sm font-bold leading-5 tracking-wide text-white">Bullet Reporter</span>
+        <span className="ml-auto shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">Facebook</span>
       </div>
 
-      <iframe
-        title="Facebook Page"
-        src={`https://www.facebook.com/plugins/page.php?href=${encodeURIComponent(pageUrl)}&tabs=timeline&width=320&height=500&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=true`}
-        className="block w-full border-0"
-        style={{ height: 500 }}
-        loading="lazy"
-        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-      />
+      <a
+        href={pageUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex min-w-0 items-center gap-3 border-b border-gray-100 bg-white px-4 py-3"
+        aria-label="Open Bullet Reporter on Facebook"
+      >
+        <img
+          src="/logo.png"
+          alt=""
+          className="h-12 w-12 shrink-0 rounded-full border border-blue-200 bg-white object-contain p-1"
+        />
+        <span className="min-w-0 truncate text-base font-bold leading-6 text-[#2851a3]">
+          Bullet Reporter
+        </span>
+      </a>
+
+      <div className="h-[500px] overflow-hidden bg-white">
+        <iframe
+          key={embedWidth}
+          title="Facebook Page timeline"
+          src={`https://www.facebook.com/plugins/page.php?href=${encodeURIComponent(pageUrl)}&tabs=timeline&width=${embedWidth}&height=588&small_header=true&adapt_container_width=true&hide_cover=true&show_facepile=false`}
+          className="block w-full max-w-full -translate-y-[88px] border-0 bg-white transition-opacity duration-300"
+          style={{ height: 588, width: '100%' }}
+          loading="lazy"
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+          scrolling="no"
+        />
+      </div>
 
       {/* SDK embed container — no overflow:hidden so the FB iframe header isn't clipped */}
       <div
-        ref={containerRef}
         className="hidden"
         style={{ minHeight: 500, background: '#fff' }}
       >
         {/* Loading skeleton shown before SDK fires */}
-        {!sdkReady && (
+        {false && (
           <div className="flex flex-col gap-3 p-4 animate-pulse">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0" />
@@ -218,6 +310,15 @@ function Sidebar() {
   const router = useRouter()
   const { t, lang } = useLanguage()
 
+  const { data: directorMessage = null } = useQuery({
+    queryKey: ['director-details'],
+    queryFn: fetchDirectorMessage,
+    staleTime: CONTENT_STALE_TIME,
+    refetchInterval: CONTENT_REFETCH_INTERVAL,
+    refetchIntervalInBackground: false,
+    retry: 1,
+  })
+
   // ── Weather ─────────────────────────────────────────────────────────────
   const [weatherData, setWeatherData] = useState({
     temperature: null, humidity: null, windSpeed: null,
@@ -350,7 +451,13 @@ function Sidebar() {
   const getLangPath = useCallback((path) => lang === 'en' ? `/en${path}` : path, [lang])
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-5">
+
+      <DirectorMessageCard
+        message={directorMessage}
+        lang={lang}
+        className="order-last lg:order-first"
+      />
 
       {/* 1. Weather ──────────────────────────────────────────────────────── */}
       <div className="min-h-[210px] bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-xl p-4 shadow-lg">

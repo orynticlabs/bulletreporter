@@ -45,7 +45,7 @@ Primary use cases include:
 | CMS | Payload-powered admin dashboard for editorial operations and content management. |
 | Content | News, categories, video news, advertisements, comments, reactions, and public engagement counters. |
 | Auth | Payload user auth, admin session handling, forgot-password flow, reset-password flow, and account invite emails. |
-| Security | reCAPTCHA v3 checks, secure headers, admin inactivity logout, sanitized logging, and environment-driven secrets. |
+| Security | reCAPTCHA v3 checks, secure headers, explicit admin logout, sanitized logging, and environment-driven secrets. |
 | Media | Cloudinary-backed media uploads and optimized Next.js image delivery. |
 | SEO | Dynamic pages, sitemap, robots, JSON-LD support, public cache state, and AI crawler guidance files. |
 | Integrations | Neon/Postgres-compatible database, Cloudinary, SMTP/Nodemailer, YouTube Shorts, OpenWeather, and social sharing metadata. |
@@ -273,10 +273,8 @@ The admin dashboard is served at `/admin` and is powered by Payload CMS.
 Key admin behavior:
 
 - Admin users authenticate through Payload auth.
-- Admin users are logged out only after 10 minutes of inactivity.
-- Activity such as clicking, typing, moving the pointer, scrolling, focusing the tab, and returning to the tab refreshes the inactivity timer.
-- Admin activity is shared across admin tabs to avoid logging out an active user in another tab.
-- Login and first-user pages are excluded from the inactivity logout timer.
+- Admin sessions remain signed in during inactivity.
+- Admin users are signed out only through the logout action or logout API.
 
 ## Authentication and Email
 
@@ -309,7 +307,7 @@ Next.js image optimization is configured for Cloudinary, YouTube thumbnails, and
 Security-relevant behavior includes:
 
 - Payload CMS authentication for admin users.
-- Admin inactivity logout after 10 inactive minutes.
+- Persistent admin sessions with explicit logout.
 - reCAPTCHA v3 verification for public forgot-password, reset-password, comments, reactions, and view actions where configured.
 - Security headers through `next.config.js`, including:
   - `X-Content-Type-Options: nosniff`
@@ -369,7 +367,7 @@ Before going live:
 - Confirm forgot-password email sends successfully.
 - Confirm reset-password links open the public reset page.
 - Confirm reCAPTCHA accepts legitimate users and blocks invalid tokens.
-- Confirm `/admin` logs out only after 10 inactive minutes.
+- Confirm `/admin` remains signed in while inactive and logs out through the logout action.
 - Confirm sitemap and robots metadata are reachable.
 - Confirm public pages render correctly on mobile and desktop.
 

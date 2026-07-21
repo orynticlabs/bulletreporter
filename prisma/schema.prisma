@@ -155,6 +155,21 @@ model advertisements {
   @@index([updated_at])
 }
 
+model director_details {
+  id                            Int                             @id @default(autoincrement())
+  name                          String                          @db.VarChar
+  image_id                      Int?
+  about                         String                          @db.VarChar
+  updated_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  created_at                    DateTime                        @default(now()) @db.Timestamptz(3)
+  media                         media?                          @relation(fields: [image_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "director_details_image_id_media_id_fk")
+  payload_locked_documents_rels payload_locked_documents_rels[]
+
+  @@index([created_at])
+  @@index([image_id], map: "director_details_image_idx")
+  @@index([updated_at])
+}
+
 model categories {
   id                            Int                             @id @default(autoincrement())
   name                          String                          @db.VarChar
@@ -278,6 +293,7 @@ model media {
   news_v                              news_v[]
   video_news_v                        video_news_v[]
   advertisements                      advertisements[]
+  director_details                    director_details[]
   news                                news[]
   payload_locked_documents_rels       payload_locked_documents_rels[]
   settings_settings_favicon_idTomedia settings[]                      @relation("settings_favicon_idTomedia")
@@ -375,9 +391,11 @@ model payload_locked_documents_rels {
   news_id                  Int?
   comments_id              Int?
   advertisements_id        Int?
+  director_details_id      Int?
   video_news_id            Int?
   roles_id                 Int?
   advertisements           advertisements?          @relation(fields: [advertisements_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_advertisements_fk")
+  director_details         director_details?        @relation(fields: [director_details_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_director_details_fk")
   categories               categories?              @relation(fields: [categories_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_categories_fk")
   comments                 comments?                @relation(fields: [comments_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_comments_fk")
   media                    media?                   @relation(fields: [media_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_media_fk")
@@ -388,6 +406,7 @@ model payload_locked_documents_rels {
   video_news               video_news?              @relation(fields: [video_news_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payload_locked_documents_rels_video_news_fk")
 
   @@index([advertisements_id])
+  @@index([director_details_id])
   @@index([categories_id])
   @@index([comments_id])
   @@index([media_id])

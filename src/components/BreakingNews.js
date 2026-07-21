@@ -41,12 +41,12 @@ function BreakingNews() {
 
   if (isLoading) {
     return (
-      <div className="mt-0 bg-red-600 text-white py-2 px-4">
-        <div className="container mx-auto flex items-center space-x-3">
-          <span className="bg-white text-red-600 text-xs font-bold px-2 py-1 rounded animate-pulse">
+      <div className="mt-0 bg-red-600 px-3 py-2 text-white sm:px-4">
+        <div className="container mx-auto flex min-w-0 items-center gap-2 sm:gap-3">
+          <span className="shrink-0 animate-pulse rounded bg-white px-2 py-1 text-xs font-bold text-red-600">
             {t.ticker.label}
           </span>
-          <span className="text-sm animate-pulse">{t.ticker.loading}</span>
+          <span className="min-w-0 flex-1 truncate text-sm animate-pulse">{t.ticker.loading}</span>
         </div>
       </div>
     )
@@ -57,25 +57,28 @@ function BreakingNews() {
   const current = breakingNews[currentIndex]
 
   return (
-    <div className="mt-0 bg-red-600 text-white py-2 px-4 overflow-hidden">
-      <div className="container mx-auto flex items-center space-x-3">
-        <div className="flex items-center space-x-1 flex-shrink-0">
+    <div className="mt-0 overflow-hidden bg-red-600 px-3 py-2 text-white sm:px-4">
+      <div className="container mx-auto flex min-w-0 items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-1">
           <Zap className="w-4 h-4 text-yellow-300 animate-pulse" />
           <span className="bg-white text-red-600 text-xs font-bold px-2 py-1 rounded">
             {t.ticker.label}
           </span>
         </div>
         <button
-          className="flex-1 text-left text-sm hover:text-yellow-200 transition-colors line-clamp-1 cursor-pointer"
+          className="min-w-0 flex-1 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap text-left text-sm leading-6 transition-colors hover:text-yellow-200"
           onClick={() => current?.slug && handleClick(current.slug)}
+          title={current?.title || ''}
         >
           {current?.title}
         </button>
         <button
           onClick={() => router.push(lang === 'en' ? '/en/news/breaking' : '/news/breaking')}
-          className="flex-shrink-0 flex items-center text-xs hover:text-yellow-200 transition-colors"
+          className="flex shrink-0 items-center text-xs transition-colors hover:text-yellow-200"
+          aria-label={t.news.allNews}
         >
-          {t.news.allNews} <ChevronRight className="w-3 h-3 ml-1" />
+          <span className="hidden sm:inline">{t.news.allNews}</span>
+          <ChevronRight className="h-4 w-4 sm:ml-1 sm:h-3 sm:w-3" />
         </button>
       </div>
     </div>

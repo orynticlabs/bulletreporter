@@ -113,7 +113,7 @@ const buildCloudinaryUrl = (media, transform = 'f_auto,q_auto') => {
   return `https://res.cloudinary.com/${cloudName}/image/upload/${transformPath}${publicId}`
 }
 
-const getMediaUrl = (media, transform = 'f_auto,q_auto,c_limit,w_900') => {
+export const getMediaUrl = (media, transform = 'f_auto,q_auto,c_limit,w_900') => {
   if (!media || typeof media !== 'object') return null
 
   // Prefer building from cloudinaryPublicId — gives us full control over the

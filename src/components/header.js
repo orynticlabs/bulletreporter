@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Search, Menu, Bell, BellOff, Share2, MessageCircle, Facebook, Instagram, Twitter, Loader2, X, Phone, Mail, Clock, ChevronRight, Zap } from 'lucide-react'
+import { Search, Menu, Bell, BellOff, Share2, MessageCircle, Facebook, Twitter, Send, Loader2, X, Phone, Mail, Clock, ChevronRight, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSearch } from '@/contexts/SearchContext'
@@ -524,41 +524,27 @@ function Header() {
 
     switch (platform) {
       case 'whatsapp':
-        return `https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`
+        return `https://wa.me/?text=${encodedText}%20${encodedUrl}`
       case 'facebook':
         return `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
       case 'x':
         return `https://x.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`
+      case 'telegram':
+        return `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`
       default:
         return url || '/'
     }
   }
 
-  const handleShareClick = async (event, platform) => {
+  const handleShareClick = () => {
     setIsSocialOpen(false)
-    if (platform !== 'instagram') return
-
-    const shareData = getShareData()
-    event.preventDefault()
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share(shareData)
-      } catch {}
-      return
-    }
-
-    if (typeof navigator !== 'undefined' && navigator.clipboard && shareData.url) {
-      try {
-        await navigator.clipboard.writeText(shareData.url)
-      } catch {}
-    }
   }
 
   const socialLinks = [
     { name: 'WhatsApp',  icon: MessageCircle, platform: 'whatsapp',  color: 'text-green-600' },
     { name: 'Facebook',  icon: Facebook,      platform: 'facebook',  color: 'text-blue-600' },
-    { name: 'Instagram', icon: Instagram,     platform: 'instagram', color: 'text-pink-600' },
     { name: 'X',         icon: Twitter,       platform: 'x',         color: 'text-gray-950' },
+    { name: 'Telegram',  icon: Send,          platform: 'telegram',  color: 'text-sky-500' },
   ]
 
   const isActive = (href) => {
@@ -661,10 +647,10 @@ function Header() {
                     </div>
                     {socialLinks.map((s) => (
                       <a key={s.name} href={getShareHref(s.platform)}
-                        target={s.platform === 'instagram' ? undefined : '_blank'}
-                        rel={s.platform === 'instagram' ? undefined : 'noopener noreferrer'}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="flex items-center gap-2.5 px-4 py-2 hover:bg-red-50 transition-colors"
-                        onClick={(event) => handleShareClick(event, s.platform)}>
+                        onClick={handleShareClick}>
                         <s.icon className={`w-4 h-4 ${s.color}`} />
                         <span className="text-gray-700 text-sm font-medium">{s.name}</span>
                       </a>
@@ -819,9 +805,9 @@ function Header() {
               <div className="flex gap-3">
                 {socialLinks.map((s) => (
                   <a key={s.name} href={getShareHref(s.platform)}
-                    target={s.platform === 'instagram' ? undefined : '_blank'}
-                    rel={s.platform === 'instagram' ? undefined : 'noopener noreferrer'}
-                    onClick={(event) => handleShareClick(event, s.platform)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={handleShareClick}
                     className="bg-gray-100 hover:bg-red-50 p-2 rounded-full transition-colors" title={s.name}>
                     <s.icon className={`w-4 h-4 ${s.color}`} />
                   </a>

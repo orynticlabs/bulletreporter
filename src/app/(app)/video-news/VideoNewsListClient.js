@@ -169,11 +169,11 @@ export default function VideoNewsListClient() {
             )}
           </div>
 
-          <div className="hidden lg:col-span-1 lg:block">
-            <div className="sticky top-24">
+          <aside className="lg:col-span-1">
+            <div className="lg:sticky lg:top-24">
               <Sidebar />
             </div>
-          </div>
+          </aside>
         </div>
       </main>
     </Layout>

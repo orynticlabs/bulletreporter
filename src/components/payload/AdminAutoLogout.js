@@ -3,29 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 
-const INACTIVITY_LIMIT_MS = 10 * 60 * 1000
-const ACTIVITY_STORAGE_KEY = 'br_admin_last_activity_at'
-const ACTIVITY_BROADCAST_INTERVAL_MS = 5000
-const REQUEST_ACTIVITY_INTERVAL_MS = 60 * 1000
 const FORCE_LOGOUT_ENDPOINT = '/api/admin-session/logout'
-const ACTIVITY_EVENTS = [
-  'click',
-  'keydown',
-  'keyup',
-  'input',
-  'change',
-  'mousemove',
-  'mousedown',
-  'pointerdown',
-  'pointermove',
-  'scroll',
-  'touchstart',
-  'touchmove',
-  'wheel',
-  'focus',
-]
-const LOGIN_PATHS = ['/admin/login', '/admin/forgot', '/admin/create-first-user']
-const LOGOUT_PATHS = ['/admin/logout', '/admin/logout-inactivity']
 const CREATE_USER_PATH = '/admin/collections/users/create'
 const USER_EDIT_PATH_PATTERN = /^\/admin\/collections\/users\/([^/?#]+)$/
 const CREATE_USER_NOTICE_ID = 'br-user-password-setup-notice'
@@ -43,27 +21,6 @@ const getEditableUserIdFromPath = (pathname) => {
   if (!userId || userId === 'create') return null
 
   return userId
-}
-
-const isTrackableAdminRequest = (input) => {
-  try {
-    const rawUrl =
-      typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.href
-          : input?.url
-
-    if (!rawUrl) return false
-
-    const url = new URL(rawUrl, window.location.origin)
-
-    if (url.origin !== window.location.origin) return false
-
-    return url.pathname.startsWith('/api') || url.pathname.startsWith('/admin')
-  } catch (_) {
-    return false
-  }
 }
 
 const eyeIcon = `
@@ -398,25 +355,14 @@ const clearPayloadClientStorage = () => {
 
 export default function AdminAutoLogout() {
   const pathname = usePathname()
-  const timerRef = useRef(null)
   const loggingOutRef = useRef(false)
-  const lastActivityRef = useRef(Date.now())
-  const lastBroadcastRef = useRef(0)
 
   const isAdminPage = pathname?.startsWith('/admin')
-  const isLoginPage = LOGIN_PATHS.some((path) => pathname?.startsWith(path))
-  const isLogoutPage = LOGOUT_PATHS.some((path) => pathname?.startsWith(path))
-  const isManualLogoutPage =
-    pathname?.startsWith('/admin/logout') && !pathname?.startsWith('/admin/logout-inactivity')
+  const isManualLogoutPage = pathname?.startsWith('/admin/logout')
 
-  const logout = useCallback(async ({ keepalive = false, redirect = true, inactivity = false } = {}) => {
+  const logout = useCallback(async ({ keepalive = false, redirect = true } = {}) => {
     if (loggingOutRef.current) return
     loggingOutRef.current = true
-
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
 
     try {
       await fetch(FORCE_LOGOUT_ENDPOINT, {
@@ -431,146 +377,9 @@ export default function AdminAutoLogout() {
     clearPayloadClientStorage()
 
     if (redirect) {
-      const nextPath = inactivity ? '/admin/logout-inactivity' : '/admin/login'
-      window.location.replace(nextPath)
+      window.location.replace('/admin/login')
     }
   }, [])
-
-  const getStoredActivityAt = useCallback(() => {
-    try {
-      const stored = Number(localStorage.getItem(ACTIVITY_STORAGE_KEY))
-      return Number.isFinite(stored) ? stored : null
-    } catch (_) {
-      return null
-    }
-  }, [])
-
-  const hasExpired = useCallback((activityAt = lastActivityRef.current) => {
-    return Date.now() - activityAt >= INACTIVITY_LIMIT_MS
-  }, [])
-
-  const checkInactivity = useCallback(() => {
-    const storedActivityAt = getStoredActivityAt()
-    const activityAt = storedActivityAt || lastActivityRef.current
-
-    if (hasExpired(activityAt)) {
-      logout({ inactivity: true })
-      return true
-    }
-
-    lastActivityRef.current = Math.max(lastActivityRef.current, activityAt)
-    return false
-  }, [getStoredActivityAt, hasExpired, logout])
-
-  const resetTimer = useCallback((activityAt = Date.now()) => {
-    if (!isAdminPage || isLoginPage || isLogoutPage || loggingOutRef.current) return
-
-    lastActivityRef.current = Math.max(lastActivityRef.current, activityAt)
-
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current)
-    }
-
-    const expiresIn = Math.max(0, INACTIVITY_LIMIT_MS - (Date.now() - lastActivityRef.current))
-    timerRef.current = window.setTimeout(() => {
-      logout({ inactivity: true })
-    }, expiresIn)
-  }, [isAdminPage, isLoginPage, isLogoutPage, logout])
-
-  const recordActivity = useCallback(() => {
-    const now = Date.now()
-    resetTimer(now)
-
-    if (now - lastBroadcastRef.current < ACTIVITY_BROADCAST_INTERVAL_MS) return
-
-    lastBroadcastRef.current = now
-    try {
-      localStorage.setItem(ACTIVITY_STORAGE_KEY, String(now))
-    } catch (_) {
-      // Storage can be blocked; the current tab timer still works.
-    }
-  }, [resetTimer])
-
-  useEffect(() => {
-    if (!isAdminPage || isLoginPage || isLogoutPage) return undefined
-
-    const originalFetch = window.fetch
-    const originalOpen = window.XMLHttpRequest?.prototype?.open
-    const originalSend = window.XMLHttpRequest?.prototype?.send
-    const activeIntervals = new Set()
-
-    const startRequestActivity = () => {
-      recordActivity()
-
-      const interval = window.setInterval(recordActivity, REQUEST_ACTIVITY_INTERVAL_MS)
-      activeIntervals.add(interval)
-
-      return () => {
-        window.clearInterval(interval)
-        activeIntervals.delete(interval)
-      }
-    }
-
-    if (typeof originalFetch === 'function') {
-      window.fetch = (...args) => {
-        const shouldTrack = isTrackableAdminRequest(args[0])
-        const stopTracking = shouldTrack ? startRequestActivity() : null
-
-        try {
-          const responsePromise = originalFetch.apply(window, args)
-
-          if (stopTracking && responsePromise?.finally) {
-            return responsePromise.finally(stopTracking)
-          }
-
-          stopTracking?.()
-          return responsePromise
-        } catch (error) {
-          stopTracking?.()
-          throw error
-        }
-      }
-    }
-
-    if (typeof originalOpen === 'function' && typeof originalSend === 'function') {
-      window.XMLHttpRequest.prototype.open = function open(method, url, ...rest) {
-        this.__brTrackAdminActivity = isTrackableAdminRequest(url)
-        return originalOpen.call(this, method, url, ...rest)
-      }
-
-      window.XMLHttpRequest.prototype.send = function send(...args) {
-        const stopTracking = this.__brTrackAdminActivity ? startRequestActivity() : null
-
-        if (stopTracking) {
-          this.addEventListener('loadend', stopTracking, { once: true })
-        }
-
-        try {
-          return originalSend.apply(this, args)
-        } catch (error) {
-          stopTracking?.()
-          throw error
-        }
-      }
-    }
-
-    return () => {
-      if (typeof originalFetch === 'function') {
-        window.fetch = originalFetch
-      }
-
-      if (typeof originalOpen === 'function') {
-        window.XMLHttpRequest.prototype.open = originalOpen
-      }
-
-      if (typeof originalSend === 'function') {
-        window.XMLHttpRequest.prototype.send = originalSend
-      }
-
-      activeIntervals.forEach((interval) => window.clearInterval(interval))
-      activeIntervals.clear()
-    }
-  }, [isAdminPage, isLoginPage, isLogoutPage, recordActivity])
 
   useEffect(() => {
     if (isManualLogoutPage) {
@@ -620,52 +429,6 @@ export default function AdminAutoLogout() {
 
     return () => observer.disconnect()
   }, [isAdminPage, pathname])
-
-  useEffect(() => {
-    if (!isAdminPage || isLoginPage || isLogoutPage) return undefined
-
-    loggingOutRef.current = false
-    if (checkInactivity()) return undefined
-
-    recordActivity()
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        if (checkInactivity()) return
-        recordActivity()
-      }
-    }
-
-    const handleStorage = (event) => {
-      if (event.key !== ACTIVITY_STORAGE_KEY || !event.newValue) return
-
-      const activityAt = Number(event.newValue)
-      if (Number.isFinite(activityAt)) {
-        resetTimer(activityAt)
-      }
-    }
-
-    ACTIVITY_EVENTS.forEach((eventName) => {
-      window.addEventListener(eventName, recordActivity, { capture: true, passive: true })
-      document.addEventListener(eventName, recordActivity, { capture: true, passive: true })
-    })
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('storage', handleStorage)
-
-    return () => {
-      if (timerRef.current) {
-        window.clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
-
-      ACTIVITY_EVENTS.forEach((eventName) => {
-        window.removeEventListener(eventName, recordActivity, { capture: true })
-        document.removeEventListener(eventName, recordActivity, { capture: true })
-      })
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('storage', handleStorage)
-    }
-  }, [checkInactivity, isAdminPage, isLoginPage, isLogoutPage, recordActivity, resetTimer])
 
   return null
 }
