@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
-    "dev": "npm run clean && next dev -p 3001",
+    "dev": "npm run clean && next dev -p 3002",
     "build": "npm run clean && npm run prisma:migrate && next build",
-    "start": "next start -p 3001",
+    "start": "next start -p 3002",
     "media:migrate-cloudinary": "node scripts/migrate-media-to-cloudinary.mjs",
     "prisma:pull": "prisma db pull",
     "prisma:generate": "prisma generate",
