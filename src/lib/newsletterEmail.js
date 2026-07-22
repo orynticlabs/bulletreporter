@@ -7,7 +7,7 @@ const escapeHtml = (value = '') => String(value)
 
 const normalizeUrl = (value = '') => {
   const url = value.trim().replace(/\/+$/, '')
-  if (!url) return 'http://localhost:3000'
+  if (!url) return 'http://localhost:3001'
   return /^https?:\/\//i.test(url) ? url : `https://${url}`
 }
 

@@ -199,13 +199,13 @@ Use `prisma:pull` only when intentionally baselining an already populated databa
 4. Open the public website:
 
    ```text
-   http://localhost:3000
+   http://localhost:3001
    ```
 
 5. Open the Payload admin dashboard:
 
    ```text
-   http://localhost:3000/admin
+   http://localhost:3001/admin
    ```
 
 On first setup, Payload may prompt you to create the first admin user depending on the current database state.
