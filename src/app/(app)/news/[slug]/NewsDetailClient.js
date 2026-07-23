@@ -406,7 +406,7 @@ export default function NewsDetail({ initialArticle = null }) {
 
                 {/* Body */}
                 <div
-                  className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed"
+                  className="prose prose-sm md:prose-base max-w-none text-justify text-gray-700 leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: article.content || article.description || '' }}
                 />
 

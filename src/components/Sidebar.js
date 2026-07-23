@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Cloud, Wind, Droplets, RefreshCw, TrendingUp, UserRound } from 'lucide-react'
+import { Cloud, Wind, Droplets, RefreshCw, TrendingUp } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import AdvertisementSlot from '@/components/AdvertisementSlot'
 import { fetchPayloadArticles, getMediaUrl } from '@/utils/payloadArticles'
@@ -51,11 +51,8 @@ function DirectorMessageCard({ message, lang, className = '' }) {
             </h3>
           </div>
         </div>
-        <div className="mt-4 flow-root rounded-lg bg-red-50/70 p-4 text-sm font-medium leading-6 text-gray-700">
-          <span className="float-left mr-3 mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-white text-red-500 shadow-sm ring-1 ring-red-100">
-            <UserRound className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <p className="whitespace-pre-line break-words">{about}</p>
+        <div className="mt-4 rounded-lg bg-red-50/70 p-4 text-sm font-medium leading-6 text-gray-700">
+          <p className="whitespace-pre-line break-words text-justify">{about}</p>
         </div>
       </div>
     </article>
