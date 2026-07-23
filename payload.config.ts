@@ -6,6 +6,7 @@ import { payloadCloudinaryPlugin } from '@jhb.software/payload-cloudinary-plugin
 import { BlocksFeature, lexicalEditor } from '@payloadcms/richtext-lexical'
 import { revalidatePath } from 'next/cache'
 import { v2 as cloudinary } from 'cloudinary'
+import { build as buildPrettyLogger } from 'pino-pretty'
 import sharp from 'sharp'
 import fs from 'fs'
 import path from 'path'
@@ -142,6 +143,19 @@ const configuredCorsOrigins = [
 const allowedCorsOrigins = Array.from(
   new Set([...configuredCorsOrigins, ...configuredCorsOrigins.flatMap(getOriginAliases)]),
 )
+
+const payloadLoggerDestination = buildPrettyLogger({
+  colorize: Boolean(process.stdout.isTTY),
+  colorizeObjects: false,
+  errorLikeObjectKeys: ['err', 'error'],
+  errorProps: 'type,name,message,stack,code,cause',
+  ignore: 'hostname',
+  levelFirst: true,
+  messageFormat: '[{name}] {msg}',
+  singleLine: false,
+  sync: true,
+  translateTime: 'SYS:yyyy-mm-dd HH:MM:ss.l',
+})
 
 const getAppUrl = (req?: any) => {
   const configuredUrl = normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL || '')
@@ -1157,6 +1171,29 @@ export default buildConfig({
   sharp,
   cors: allowedCorsOrigins,
   csrf: allowedCorsOrigins,
+  logger: {
+    destination: payloadLoggerDestination,
+    options: {
+      base: {
+        environment: process.env.NODE_ENV || 'development',
+        service: 'bullet-reporter',
+      },
+      level: process.env.LOG_LEVEL || 'info',
+      name: 'payload',
+      redact: {
+        censor: '[REDACTED]',
+        paths: [
+          'password',
+          '*.password',
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.headers.x-api-key',
+          'token',
+          '*.token',
+        ],
+      },
+    },
+  },
 
   email: nodemailerAdapter({
     defaultFromAddress: resolvedEmailFromAddress,
@@ -2101,7 +2138,7 @@ export default buildConfig({
           label: 'About Director',
           type: 'textarea',
           required: true,
-          maxLength: 1200,
+          maxLength: 5000,
           admin: {
             description: 'Add the director’s profile, background, or other relevant details.',
           },

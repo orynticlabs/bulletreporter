@@ -1,4 +1,5 @@
 import type { Payload } from 'payload'
+import { logDeploymentEvent, toLoggableError } from './deploymentLogger'
 
 type EffectiveRole = {
   slug?: string | null
@@ -28,7 +29,14 @@ export async function createAdminNotification(payload: Payload, data: AdminNotif
   try {
     return await payload.create({ collection: 'admin-notifications', data, depth: 0, overrideAccess: true })
   } catch (error) {
-    console.error('Admin notification could not be recorded', error)
+    logDeploymentEvent('error', 'admin-notifications', 'Admin notification could not be recorded', {
+      contentId: data.contentId,
+      contentSlug: data.contentSlug,
+      contentType: data.contentType,
+      notificationType: data.type,
+      requiredPermission: data.requiredPermission,
+      error: toLoggableError(error),
+    })
     return null
   }
 }

@@ -9,7 +9,11 @@ const formatValue = (value: unknown): string => {
   if (value === null) return 'null'
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  return JSON.stringify(value)
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return '[unserializable]'
+  }
 }
 
 const formatDetails = (details: LogDetails): string => {
@@ -50,8 +54,10 @@ const serializeError = (error: unknown): LogDetails => {
     aggregateErrors?: unknown[]
     code?: string
     command?: string
+    cause?: unknown
     errno?: number
     port?: number
+    stack?: string
     syscall?: string
   }
 
@@ -63,6 +69,8 @@ const serializeError = (error: unknown): LogDetails => {
     syscall: err.syscall,
     command: err.command,
     port: err.port,
+    stack: err.stack,
+    cause: err.cause ? serializeError(err.cause) : undefined,
     aggregateErrors: Array.isArray(err.aggregateErrors)
       ? err.aggregateErrors.map(serializeError)
       : undefined,
