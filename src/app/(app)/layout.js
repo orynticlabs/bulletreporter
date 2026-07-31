@@ -30,6 +30,9 @@ export const metadata = {
     statusBarStyle: 'default',
     title: SITE_NAME,
   },
+  other: {
+    'google-adsense-account': 'ca-pub-3287247871677255',
+  },
 }
 
 export const viewport = {
